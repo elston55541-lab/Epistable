@@ -1331,7 +1331,7 @@ function FacBuyers({fac}) {
   useEffect(()=>{load();},[]);
   return (
     <div>
-      {show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>{setShow(false);load();}} onSubmit={form=>DB.createBuyer({...form,factoryId:fac.id,factoryName:fac.name})}/>}
+      {show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>{setShow(false);load();}} onSubmit={form=>DB.createBuyer({name:form.name,email:form.email,password:form.password,company:form.company||"",factoryId:fac.id,factoryName:fac.name})}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Buyers</div><div style={{fontSize:12,color:C.textDim}}>{buyers.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
