@@ -128,7 +128,7 @@ const DB = {
   },
 
   // Buyers
-  async createBuyer(d) {
+ async createBuyer(d) {
   const id=genId("BUY");
   const b={
     id,
