@@ -88,11 +88,24 @@ const DB = {
 
   // Users
   async createUser(d) {
-    const id=genId("USR");
-    const u={id,...d,created_at:Date.now(),status:"active",scans_total:0,last_active:null,factory_id:d.factoryId,factory_name:d.factoryName};
-    await supabase.from("users").insert(u);
-    return u;
-  },
+  const id=genId("USR");
+  const u={
+    id,
+    name:d.name,
+    email:d.email.toLowerCase(),
+    password:d.password,
+    role:d.role,
+    factory_id:d.factoryId,
+    factory_name:d.factoryName,
+    avatar:d.avatar,
+    status:"active",
+    scans_total:0,
+    last_active:null,
+    created_at:Date.now()
+  };
+  await supabase.from("users").insert(u);
+  return u;
+},
   async getUser(id) {
     const {data}=await supabase.from("users").select().eq("id",id).single();
     return data;
