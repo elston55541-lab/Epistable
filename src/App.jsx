@@ -129,10 +129,21 @@ const DB = {
 
   // Buyers
   async createBuyer(d) {
-    const id=genId("BUY");
-    const b={id,...d,created_at:Date.now(),status:"active",factory_id:d.factoryId,factory_name:d.factoryName};
-    await supabase.from("buyers").insert(b);
-    return b;
+  const id=genId("BUY");
+  const b={
+    id,
+    name:d.name,
+    email:d.email.toLowerCase(),
+    password:d.password,
+    company:d.company||"",
+    factory_id:d.factoryId,
+    factory_name:d.factoryName,
+    status:"active",
+    last_active:null,
+    created_at:Date.now()
+  };
+  await supabase.from("buyers").insert(b);
+  return b;
   },
   async getBuyerByEmail(email) {
   const {data}=await supabase.from("buyers").select().eq("email",email.toLowerCase()).maybeSingle();
