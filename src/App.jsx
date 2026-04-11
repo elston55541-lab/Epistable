@@ -786,9 +786,16 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
     load();return u;
   }
   async function createBuyer(form){
-    const b=await DB.createBuyer({...form,factoryId:fac.id,factoryName:fac.name});
+    const b=await DB.createBuyer({
+      name:form.name,
+      email:form.email,
+      password:form.password,
+      company:form.company||"",
+      factoryId:fac.id,
+      factoryName:fac.name
+    });
     return b;
-  }
+   }
 
   return (
     <div>
