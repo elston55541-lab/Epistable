@@ -98,8 +98,8 @@ const DB = {
     return data;
   },
   async getUserByEmail(email) {
-    const {data}=await supabase.from("users").select().eq("email",email.toLowerCase()).single();
-    return data;
+  const {data}=await supabase.from("users").select().eq("email",email.toLowerCase()).maybeSingle();
+  return data;
   },
   async updUser(id,u) {
     const {data}=await supabase.from("users").update(u).eq("id",id).select().single();
@@ -122,8 +122,8 @@ const DB = {
     return b;
   },
   async getBuyerByEmail(email) {
-    const {data}=await supabase.from("buyers").select().eq("email",email.toLowerCase()).single();
-    return data;
+  const {data}=await supabase.from("buyers").select().eq("email",email.toLowerCase()).maybeSingle();
+  return data;
   },
   async updBuyer(id,u) {
     await supabase.from("buyers").update(u).eq("id",id);
