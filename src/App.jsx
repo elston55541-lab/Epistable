@@ -539,7 +539,7 @@ function Login({onOwner,onFactory,onBuyer}) {
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:isDesktop?"row":"column",fontFamily:"'Segoe UI',sans-serif"}}>
-      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:isDesktop?"0 64px":"24px 28px 20px",display:"flex",flexDirection:"column",justifyContent:"center",width:isDesktop?"45%":"100%",flexShrink:0}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:isDesktop?"0 64px":"24px 28px 20px",display:"flex",flexDirection:"column",justifyContent:"center",width:isDesktop?"45%":"100%",flexShrink:0,minHeight:isDesktop?"100vh":"auto"}}>
         <div style={{marginBottom:isDesktop?52:28}}>
           <div style={{fontSize:28,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:8}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:16,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.5px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:14}}>Quality, quantified</div>
