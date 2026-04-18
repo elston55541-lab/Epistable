@@ -485,7 +485,7 @@ function ChatBot({role,ctxData}) {
     setMsgs(prev=>[...prev,{role:"user",content:txt}]);
     setLoading(true);
     try {
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,system:buildCtx(),messages:[...msgs.slice(-8),{role:"user",content:txt}]})});
+      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,system:buildCtx(),messages:[...msgs.slice(-8),{role:"user",content:txt}]})});
       const data=await res.json();
       setMsgs(prev=>[...prev,{role:"assistant",content:data.content?.[0]?.text||"Sorry, no response."}]);
     } catch(e) {
@@ -1083,7 +1083,7 @@ function FacScan({user,fac,paused,onSaved}) {
     setLoading(true);setGrade(null);
     try {
       const supplierName=form.supplierId?suppliers.find(s=>s.id===form.supplierId)?.name||form.supplier:form.supplier;
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName||"Unknown"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
+      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName||"Unknown"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
       const data=await res.json();
       let text=data.content?.[0]?.text||"{}";text=text.replace(/```json|```/g,"").trim();
       setGrade(JSON.parse(text));
