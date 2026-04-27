@@ -174,7 +174,7 @@ const DB = {
       const ms=fac.current_month===m?(fac.current_month_scans||0)+1:1;
       await DB.updFac(insp.factoryId,{scans_total:(fac.scans_total||0)+1,current_month_scans:ms,current_month:m,last_active:Date.now()});
     }
-    await DB.updUser(insp.userId,{scans_total:supabase.rpc("increment"),last_active:Date.now()});
+    const usr=await DB.getUser(insp.userId); if(usr) await DB.updUser(insp.userId,{scans_total:(usr.scans_total||0)+1,last_active:Date.now()});
   },
   async getInsp(id) {
     const {data}=await supabase.from("inspections").select().eq("id",id).single();
