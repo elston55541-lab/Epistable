@@ -1327,7 +1327,7 @@ function FacSuppliers({fac}) {
 
 function FacBuyers({fac}) {
   const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);const [refresh,setRefresh]=useState(0);
-  async function load(){const b=await DB.facBuyers(fac?.id||"");setBuyers(b);}
+  async function load(){   console.log("Loading buyers for factory:", fac?.id);   const b=await DB.facBuyers(fac?.id||"");   console.log("Buyers found:", b);   setBuyers(b); }
   useEffect(()=>{load();},[refresh]);
   return (
     <div>
