@@ -1326,12 +1326,12 @@ function FacSuppliers({fac}) {
 }
 
 function FacBuyers({fac}) {
-  const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);
-  async function load(){setBuyers(await DB.facBuyers(fac?.id||""));}
-  useEffect(()=>{load();},[]);
+  const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);const [refresh,setRefresh]=useState(0);
+  async function load(){const b=await DB.facBuyers(fac?.id||"");setBuyers(b);}
+  useEffect(()=>{load();},[refresh]);
   return (
     <div>
-{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>{setShow(false);load();}} onSubmit={async form=>{const b=await DB.createBuyer({name:form.name,email:form.email,password:form.password,company:form.company||"",factoryId:fac.id,factoryName:fac.name});await load();return b;}}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>{setShow(false);setRefresh(r=>r+1);}} onSubmit={async form=>{const b=await DB.createBuyer({name:form.name,email:form.email,password:form.password,company:form.company||"",factoryId:fac.id,factoryName:fac.name});await load();return b;}}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Buyers</div><div style={{fontSize:12,color:C.textDim}}>{buyers.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
