@@ -29,4 +29,4 @@ The publishable anon key is still public by design. Security comes from Supabase
 
 ## Current branch status
 
-This branch adds the reusable client, auth, DB helpers, and RLS draft. The existing `src/App.jsx` has not been cut over yet because it is a large monolith and should be migrated in a separate reviewed step to avoid breaking the current demo flow.
+This branch adds the reusable client, auth, DB helpers, RLS draft, and an initial `src/App.jsx` cutover. Login now uses Supabase Auth + `profiles`, and profile creation no longer stores plaintext passwords. New profiles still need to be paired with Supabase Auth users before they can sign in.
