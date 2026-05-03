@@ -5,6 +5,7 @@ import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
 import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
 import { useBP } from "./hooks/useBP";
 import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loader, Modal, PBar, Sel, StatPill } from "./components/ui";
+import { SlabCertificate } from "./components/SlabCertificate";
 
 // ── DB (Supabase) ──
 const DB = {
@@ -1370,8 +1371,10 @@ function BuyerPortal({factoryId,onBack,buyer}) {
 
 // ── ROOT ──
 export default function App() {
+  const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const [session,setSession]=useState(null);
   async function logout(){try{await signOut();}catch(e){}setSession(null);}
+  if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
     :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewPortal={()=>setSession({...session,showPortal:true})}/>)
