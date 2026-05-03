@@ -22,7 +22,7 @@ returns table (
   photos jsonb,
   ts bigint,
   date text,
-  time text
+  "time" text
 )
 language sql
 stable
@@ -49,7 +49,7 @@ as $$
     coalesce(to_jsonb(i.photos), '[]'::jsonb) as photos,
     i.ts,
     i.date,
-    i.time
+    i."time"
   from public.inspections i
   left join public.factories f on f.id = i.factory_id
   where i.id = slab_id
