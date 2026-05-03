@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-// ── SUPABASE ──
-const SUPABASE_URL = "https://gfmrzcfajuwxishfnbur.supabase.co";
-const SUPABASE_KEY = "sb_publishable_rymg6uYPUH3WMferT4UpNw_BaFSnSxS";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { supabase } from "./lib/supabase";
+import { signInWithEmail, signOut } from "./lib/auth";
 
 const C = {
   bg:"#f0f2f5", white:"#ffffff", surface:"#f8f9fb",
@@ -21,7 +17,6 @@ const C = {
   shadow:"0 1px 4px rgba(0,0,0,0.08)",
 };
 
-const OWNER = { email:"owner@silak.ai", password:"owner2026" };
 const STONES = [
   {id:"makrana",label:"Makrana White"},{id:"black",label:"Black Granite"},
   {id:"green",label:"Rainforest Green"},{id:"yellow",label:"Jaisalmer Yellow"},
@@ -59,8 +54,8 @@ const gradeConf = g => GRADES.find(x=>x.id===g)||GRADES[1];
 const slabQrUrl = (slabId) => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent("https://epistable.pages.dev/slab/"+slabId)}`;
 
 function useBP() {
-  const [w,setW]=useState(window.innerWidth);
-  useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  const [w,setW]=useState(typeof window==="undefined"?1024:window.innerWidth);
+  useEffect(()=>{if(typeof window==="undefined")return;const h=()=>setW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   return {isMobile:w<640,isDesktop:w>=1024};
 }
 
@@ -91,9 +86,9 @@ const DB = {
   const id=genId("USR");
   const u={
     id,
+    auth_user_id:d.authUserId||null,
     name:d.name,
     email:d.email.toLowerCase(),
-    password:d.password,
     role:d.role,
     factory_id:d.factoryId,
     factory_name:d.factoryName,
@@ -103,38 +98,39 @@ const DB = {
     last_active:null,
     created_at:Date.now()
   };
-  await supabase.from("users").insert(u);
+  await supabase.from("profiles").insert(u);
   return u;
 },
   async getUser(id) {
-    const {data}=await supabase.from("users").select().eq("id",id).single();
+    const {data}=await supabase.from("profiles").select().eq("id",id).single();
     return data;
   },
   async getUserByEmail(email) {
-  const {data}=await supabase.from("users").select().eq("email",email.toLowerCase()).maybeSingle();
+  const {data}=await supabase.from("profiles").select().eq("email",email.toLowerCase()).neq("role","buyer").maybeSingle();
   return data;
   },
   async updUser(id,u) {
-    const {data}=await supabase.from("users").update(u).eq("id",id).select().single();
+    const {data}=await supabase.from("profiles").update(u).eq("id",id).select().single();
     return data;
   },
   async facUsers(fid) {
-    const {data}=await supabase.from("users").select().eq("factory_id",fid);
+    const {data}=await supabase.from("profiles").select().eq("factory_id",fid).neq("role","buyer");
     return data||[];
   },
   async allUsers() {
-    const {data}=await supabase.from("users").select().order("created_at",{ascending:false});
+    const {data}=await supabase.from("profiles").select().neq("role","buyer").order("created_at",{ascending:false});
     return data||[];
   },
 
   // Buyers
  async createBuyer(d) {
   const id=genId("BUY");
-  const b={
+ const b={
     id,
+    auth_user_id:d.authUserId||null,
     name:d.name,
     email:d.email.toLowerCase(),
-    password:d.password,
+    role:"buyer",
     company:d.company||"",
     factory_id:d.factoryId,
     factory_name:d.factoryName,
@@ -142,18 +138,18 @@ const DB = {
     last_active:null,
     created_at:Date.now()
   };
-  await supabase.from("buyers").insert(b);
+  await supabase.from("profiles").insert(b);
   return b;
   },
   async getBuyerByEmail(email) {
-  const {data}=await supabase.from("buyers").select().eq("email",email.toLowerCase()).maybeSingle();
+  const {data}=await supabase.from("profiles").select().eq("email",email.toLowerCase()).eq("role","buyer").maybeSingle();
   return data;
   },
   async updBuyer(id,u) {
-    await supabase.from("buyers").update(u).eq("id",id);
+    await supabase.from("profiles").update(u).eq("id",id);
   },
   async facBuyers(fid) {
-    const {data}=await supabase.from("buyers").select().eq("factory_id",fid);
+    const {data}=await supabase.from("profiles").select().eq("factory_id",fid).eq("role","buyer");
     return data||[];
   },
 
@@ -542,22 +538,14 @@ function Login({onOwner,onFactory,onBuyer}) {
     if(!email||!pass){setErr("Please enter email and password.");return;}
     setLoading(true);setErr("");
     try {
-      if(email.toLowerCase()===OWNER.email&&pass===OWNER.password){onOwner();return;}
-      const u=await DB.getUserByEmail(email);
-      if(u){
-        if(u.status==="suspended"){setErr("Account suspended.");setLoading(false);return;}
-        if(u.password!==pass){setErr("Incorrect password.");setLoading(false);return;}
-        await DB.updUser(u.id,{last_active:Date.now()});
-        onFactory(u);return;
+      const {profile}=await signInWithEmail(email,pass);
+      if(profile.role==="owner"){onOwner();return;}
+      if(profile.role==="buyer"){
+        await DB.updBuyer(profile.id,{last_active:Date.now()});
+        onBuyer(profile);return;
       }
-      const b=await DB.getBuyerByEmail(email);
-      if(b){
-        if(b.status==="suspended"){setErr("Account suspended.");setLoading(false);return;}
-        if(b.password!==pass){setErr("Incorrect password.");setLoading(false);return;}
-        await DB.updBuyer(b.id,{last_active:Date.now()});
-        onBuyer(b);return;
-      }
-      setErr("No account found for this email.");setLoading(false);
+      await DB.updUser(profile.id,{last_active:Date.now()});
+      onFactory(profile);return;
     } catch(e){setErr("Login error: "+e.message);setLoading(false);}
   }
 
@@ -789,7 +777,7 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
     const b=await DB.createBuyer({
       name:form.name,
       email:form.email,
-      password:form.password,
+      authUserId:form.authUserId,
       company:form.company||"",
       factoryId:fac.id,
       factoryName:fac.name
@@ -828,14 +816,13 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
 }
 
 function UserFormModal({title,onClose,onSubmit,facs,isBuyer}) {
-  const [form,setForm]=useState({name:"",email:"",password:"",role:"inspector",factoryId:facs?.[0]?.id||"",company:""});
-  const [busy,setBusy]=useState(false);const [done,setDone]=useState(null);const [showPwd,setShowPwd]=useState(false);
-  function genPwd(){const c="ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";return Array.from({length:10},()=>c[Math.floor(Math.random()*c.length)]).join("");}
+  const [form,setForm]=useState({name:"",email:"",authUserId:"",role:"inspector",factoryId:facs?.[0]?.id||"",company:""});
+  const [busy,setBusy]=useState(false);const [done,setDone]=useState(null);
   async function submit(){
-    if(!form.name||!form.email||!form.password)return;
+    if(!form.name||!form.email)return;
     setBusy(true);
     const result=await onSubmit(form);
-    setDone({...result,plainPassword:form.password});
+    setDone(result);
     setBusy(false);
   }
   return (
@@ -843,28 +830,21 @@ function UserFormModal({title,onClose,onSubmit,facs,isBuyer}) {
       {done?<div>
         <div style={{textAlign:"center",marginBottom:14}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={{fontSize:18,fontWeight:800}}>Created!</div></div>
         <div style={{background:C.primaryBg,border:`2px solid ${C.primaryBorder}`,borderRadius:12,padding:16,marginBottom:12}}>
-          {[["Name",done.name],["Email",done.email],["Password",done.plainPassword],["Role",isBuyer?"Buyer":done.role]].map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:13,fontWeight:l==="Password"?800:600,color:l==="Password"?C.primary:C.text,fontFamily:l==="Password"?"monospace":"inherit"}}>{v}</span></div>
+          {[["Name",done.name],["Email",done.email],["Role",isBuyer?"Buyer":done.role],["Auth ID",done.auth_user_id||"Link in Supabase Auth"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:l==="Auth ID"?"monospace":"inherit",textAlign:"right"}}>{v}</span></div>
           ))}
         </div>
-        <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>⚠️ Save password now — cannot be retrieved later.</div>
+        <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>Create or invite this email in Supabase Auth, then link its user ID here for login.</div>
         <Btn full onClick={onClose}>Done</Btn>
       </div>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Rajesh Kumar"/>
         {isBuyer&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Al-Rashid Stone Trading, Dubai"/>}
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
-        <div>
-          <label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Password <span style={{color:C.red}}>*</span></label>
-          <div style={{display:"flex",gap:8}}>
-            <input type={showPwd?"text":"password"} value={form.password} onChange={e=>setForm(p=>({...p,password:e.target.value}))} placeholder="Min 6 chars" style={{flex:1,padding:"12px 14px",background:C.white,border:`1.5px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:14,outline:"none",fontFamily:"monospace"}}/>
-            <button onClick={()=>setShowPwd(p=>!p)} style={{padding:"0 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,cursor:"pointer",fontSize:16,WebkitTapHighlightColor:"transparent"}}>👁</button>
-          </div>
-        </div>
+        <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional until Auth user is created" hint="Credentials are managed in Supabase Auth, not stored in this app."/>
         {!isBuyer&&<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={[{value:"inspector",label:"Inspector"},{value:"manager",label:"Manager"},{value:"admin",label:"Admin"}]}/>}
-        <Btn variant="secondary" size="sm" style={{alignSelf:"flex-start"}} onClick={()=>setForm(p=>({...p,password:genPwd()}))}>🎲 Generate Password</Btn>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
-          <Btn onClick={submit} disabled={busy||!form.name||!form.email||!form.password}>{busy?"Creating…":"Create"}</Btn>
+          <Btn onClick={submit} disabled={busy||!form.name||!form.email}>{busy?"Creating…":"Create Profile"}</Btn>
         </div>
       </div>}
     </Modal>
@@ -1327,11 +1307,11 @@ function FacSuppliers({fac}) {
 
 function FacBuyers({fac}) {
   const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);const [refresh,setRefresh]=useState(0);
-  async function load(){   console.log("Loading buyers for factory:", fac?.id);   const b=await DB.facBuyers(fac?.id||"");   console.log("Buyers found:", b);   setBuyers(b); }
+  async function load(){const b=await DB.facBuyers(fac?.id||"");setBuyers(b);}
   useEffect(()=>{load();},[refresh]);
   return (
     <div>
-{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>{setShow(false);setRefresh(r=>r+1);}} onSubmit={async form=>{const b=await DB.createBuyer({name:form.name,email:form.email,password:form.password,company:form.company||"",factoryId:fac.id,factoryName:fac.name});await load();return b;}}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>{setShow(false);setRefresh(r=>r+1);}} onSubmit={async form=>{const b=await DB.createBuyer({name:form.name,email:form.email,authUserId:form.authUserId,company:form.company||"",factoryId:fac.id,factoryName:fac.name});await load();return b;}}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Buyers</div><div style={{fontSize:12,color:C.textDim}}>{buyers.length} accounts</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
@@ -1558,8 +1538,9 @@ function BuyerPortal({factoryId,onBack,buyer}) {
 // ── ROOT ──
 export default function App() {
   const [session,setSession]=useState(null);
-  return session?.type==="owner"?<Owner onLogout={()=>setSession(null)}/>
-    :session?.type==="factory"?<FactoryApp user={session.user} onLogout={()=>setSession(null)}/>
-    :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={()=>setSession(null)} onViewPortal={()=>setSession({...session,showPortal:true})}/>)
+  async function logout(){try{await signOut();}catch(e){}setSession(null);}
+  return session?.type==="owner"?<Owner onLogout={logout}/>
+    :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
+    :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewPortal={()=>setSession({...session,showPortal:true})}/>)
     :<Login onOwner={()=>setSession({type:"owner"})} onFactory={u=>setSession({type:"factory",user:u})} onBuyer={b=>setSession({type:"buyer",buyer:b})}/>;
 }
