@@ -1,57 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
 import { signInWithEmail, signOut } from "./lib/auth";
-
-const C = {
-  bg:"#f0f2f5", white:"#ffffff", surface:"#f8f9fb",
-  primary:"#0057a8", primaryD:"#003f7a",
-  primaryBg:"#e8f0fa", primaryBorder:"#b8d0f0",
-  teal:"#0097a7",
-  text:"#1a2533", textMid:"#4a5568", textDim:"#8896a4",
-  border:"#e2e8f0",
-  green:"#2e7d32", greenBg:"#e8f5e9", greenBorder:"#a5d6a7",
-  red:"#c62828", redBg:"#ffebee", redBorder:"#ef9a9a",
-  amber:"#b45309", amberBg:"#fffbeb", amberBorder:"#fcd34d",
-  blue2:"#1565c0", blue2Bg:"#e3f2fd", blue2Border:"#90caf9",
-  purple:"#6b21a8", purpleBg:"#f5f0ff", purpleBorder:"#d8b4fe",
-  shadow:"0 1px 4px rgba(0,0,0,0.08)",
-};
-
-const STONES = [
-  {id:"makrana",label:"Makrana White"},{id:"black",label:"Black Granite"},
-  {id:"green",label:"Rainforest Green"},{id:"yellow",label:"Jaisalmer Yellow"},
-  {id:"pink",label:"Udaipur Pink"},{id:"kota",label:"Kota Brown"},
-  {id:"carrara",label:"Carrara White"},{id:"red",label:"Indian Red Granite"},
-];
-const DEFECTS = [
-  {id:"crack",label:"Crack",color:C.red},
-  {id:"stain",label:"Stain",color:C.amber},{id:"pit",label:"Pitting",color:C.red},
-  {id:"chip",label:"Edge Chip",color:C.amber},{id:"vein",label:"Vein Issue",color:C.blue2},
-  {id:"polish",label:"Polish Issue",color:C.amber},{id:"thin",label:"Thin Spot",color:C.purple},
-];
-const GRADES = [
-  {id:"Premium",label:"PREMIUM",color:C.green,bg:C.greenBg,border:C.greenBorder,emoji:"🏆",price:850},
-  {id:"Standard",label:"STANDARD",color:C.amber,bg:C.amberBg,border:C.amberBorder,emoji:"✅",price:480},
-  {id:"Commercial",label:"COMMERCIAL",color:C.blue2,bg:C.blue2Bg,border:C.blue2Border,emoji:"🏢",price:320},
-  {id:"Rejected",label:"REJECT",color:C.red,bg:C.redBg,border:C.redBorder,emoji:"❌",price:0},
-];
-const PLANS = {
-  Starter:{label:"Starter",scansIncluded:100,pricePerScan:5,monthlyFee:299},
-  Pro:{label:"Pro",scansIncluded:500,pricePerScan:3,monthlyFee:999},
-  Enterprise:{label:"Enterprise",scansIncluded:2000,pricePerScan:1.5,monthlyFee:2999},
-};
-
-const genId = p => p+"-"+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
-const fmtT = ts => new Date(ts).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
-const fmtD = ts => new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
-const curMon = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
-const calcBill = (plan,scans) => {
-  const p=PLANS[plan]||PLANS.Starter;
-  const ov=Math.max(0,scans-p.scansIncluded);
-  return {monthlyFee:p.monthlyFee,includedScans:p.scansIncluded,overageScans:ov,overageCharge:Math.round(ov*p.pricePerScan),pricePerScan:p.pricePerScan,total:p.monthlyFee+Math.round(ov*p.pricePerScan)};
-};
-const gradeConf = g => GRADES.find(x=>x.id===g)||GRADES[1];
-const slabQrUrl = (slabId) => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent("https://epistable.pages.dev/slab/"+slabId)}`;
+import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
+import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
 
 function useBP() {
   const [w,setW]=useState(typeof window==="undefined"?1024:window.innerWidth);
@@ -65,20 +16,17 @@ const DB = {
   async createFac(d) {
     const id=genId("FAC");
     const f={id,...d,created_at:Date.now(),status:"active",scans_total:0,billing_status:"pending",current_month_scans:0,current_month:curMon()};
-    await supabase.from("factories").insert(f);
+    requireData(await supabase.from("factories").insert(f));
     return f;
   },
   async getFac(id) {
-    const {data}=await supabase.from("factories").select().eq("id",id).single();
-    return data;
+    return maybeOne(await supabase.from("factories").select().eq("id",id).maybeSingle());
   },
   async updFac(id,u) {
-    const {data}=await supabase.from("factories").update(u).eq("id",id).select().single();
-    return data;
+    return requireData(await supabase.from("factories").update(u).eq("id",id).select().single());
   },
   async allFacs() {
-    const {data}=await supabase.from("factories").select().order("created_at",{ascending:false});
-    return data||[];
+    return rows(await supabase.from("factories").select().order("created_at",{ascending:false}));
   },
 
   // Users
@@ -98,28 +46,23 @@ const DB = {
     last_active:null,
     created_at:Date.now()
   };
-  await supabase.from("profiles").insert(u);
+  requireData(await supabase.from("profiles").insert(u));
   return u;
 },
   async getUser(id) {
-    const {data}=await supabase.from("profiles").select().eq("id",id).single();
-    return data;
+    return maybeOne(await supabase.from("profiles").select().eq("id",id).maybeSingle());
   },
   async getUserByEmail(email) {
-  const {data}=await supabase.from("profiles").select().eq("email",email.toLowerCase()).neq("role","buyer").maybeSingle();
-  return data;
+  return maybeOne(await supabase.from("profiles").select().eq("email",email.toLowerCase()).neq("role","buyer").maybeSingle());
   },
   async updUser(id,u) {
-    const {data}=await supabase.from("profiles").update(u).eq("id",id).select().single();
-    return data;
+    return requireData(await supabase.from("profiles").update(u).eq("id",id).select().single());
   },
   async facUsers(fid) {
-    const {data}=await supabase.from("profiles").select().eq("factory_id",fid).neq("role","buyer");
-    return data||[];
+    return rows(await supabase.from("profiles").select().eq("factory_id",fid).neq("role","buyer"));
   },
   async allUsers() {
-    const {data}=await supabase.from("profiles").select().neq("role","buyer").order("created_at",{ascending:false});
-    return data||[];
+    return rows(await supabase.from("profiles").select().neq("role","buyer").order("created_at",{ascending:false}));
   },
 
   // Buyers
@@ -138,24 +81,22 @@ const DB = {
     last_active:null,
     created_at:Date.now()
   };
-  await supabase.from("profiles").insert(b);
+  requireData(await supabase.from("profiles").insert(b));
   return b;
   },
   async getBuyerByEmail(email) {
-  const {data}=await supabase.from("profiles").select().eq("email",email.toLowerCase()).eq("role","buyer").maybeSingle();
-  return data;
+  return maybeOne(await supabase.from("profiles").select().eq("email",email.toLowerCase()).eq("role","buyer").maybeSingle());
   },
   async updBuyer(id,u) {
-    await supabase.from("profiles").update(u).eq("id",id);
+    requireData(await supabase.from("profiles").update(u).eq("id",id));
   },
   async facBuyers(fid) {
-    const {data}=await supabase.from("profiles").select().eq("factory_id",fid).eq("role","buyer");
-    return data||[];
+    return rows(await supabase.from("profiles").select().eq("factory_id",fid).eq("role","buyer"));
   },
 
   // Inspections
   async saveInsp(insp) {
-    await supabase.from("inspections").insert({
+    requireData(await supabase.from("inspections").insert({
       id:insp.id, user_id:insp.userId, factory_id:insp.factoryId,
       factory_name:insp.factoryName, inspector:insp.inspector,
       stone:insp.stone, supplier:insp.supplier, supplier_id:insp.supplierId,
@@ -163,7 +104,7 @@ const DB = {
       export_ready:insp.exportReady, measurements:insp.measurements,
       defects:insp.defects, notes:insp.notes, photo:insp.photo,
       photos:insp.photos, ts:insp.ts, date:insp.date, time:insp.time
-    });
+    }));
     const fac=await DB.getFac(insp.factoryId);
     if(fac){
       const m=curMon();
@@ -173,20 +114,20 @@ const DB = {
     const usr=await DB.getUser(insp.userId); if(usr) await DB.updUser(insp.userId,{scans_total:(usr.scans_total||0)+1,last_active:Date.now()});
   },
   async getInsp(id) {
-    const {data}=await supabase.from("inspections").select().eq("id",id).single();
+    const data=await maybeOne(await supabase.from("inspections").select().eq("id",id).maybeSingle());
     if(!data)return null;
     return {...data,userId:data.user_id,factoryId:data.factory_id,factoryName:data.factory_name,supplierId:data.supplier_id,pricePerSqFt:data.price_per_sq_ft,exportReady:data.export_ready};
   },
   async userInsps(uid) {
-    const {data}=await supabase.from("inspections").select().eq("user_id",uid).order("ts",{ascending:false}).limit(200);
+    const data=await rows(await supabase.from("inspections").select().eq("user_id",uid).order("ts",{ascending:false}).limit(200));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
   async facInsps(fid) {
-    const {data}=await supabase.from("inspections").select().eq("factory_id",fid).order("ts",{ascending:false}).limit(300);
+    const data=await rows(await supabase.from("inspections").select().eq("factory_id",fid).order("ts",{ascending:false}).limit(300));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
   async allInsps() {
-    const {data}=await supabase.from("inspections").select().order("ts",{ascending:false});
+    const data=await rows(await supabase.from("inspections").select().order("ts",{ascending:false}));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
 
@@ -194,18 +135,17 @@ const DB = {
   async createSupplier(d) {
     const id=genId("SUP");
     const s={id,...d,created_at:Date.now(),status:"active",factory_id:d.factoryId};
-    await supabase.from("suppliers").insert(s);
+    requireData(await supabase.from("suppliers").insert(s));
     return s;
   },
   async updSupplier(id,u) {
-    await supabase.from("suppliers").update(u).eq("id",id);
+    requireData(await supabase.from("suppliers").update(u).eq("id",id));
   },
   async facSuppliers(fid) {
-    const {data}=await supabase.from("suppliers").select().eq("factory_id",fid);
-    return data||[];
+    return rows(await supabase.from("suppliers").select().eq("factory_id",fid));
   },
   async supplierInsps(sid) {
-    const {data}=await supabase.from("inspections").select().eq("supplier_id",sid).order("ts",{ascending:false});
+    const data=await rows(await supabase.from("inspections").select().eq("supplier_id",sid).order("ts",{ascending:false}));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
 
@@ -213,18 +153,18 @@ const DB = {
   async createDispute(d) {
     const id=genId("DSP");
     const disp={id,...d,created_at:Date.now(),status:"open",factory_id:d.factoryId,factory_name:d.factoryName,buyer_name:d.buyerName,buyer_company:d.buyerCompany,slab_id:d.slabId};
-    await supabase.from("disputes").insert(disp);
+    requireData(await supabase.from("disputes").insert(disp));
     return disp;
   },
   async updDispute(id,u) {
-    await supabase.from("disputes").update(u).eq("id",id);
+    requireData(await supabase.from("disputes").update(u).eq("id",id));
   },
   async facDisputes(fid) {
-    const {data}=await supabase.from("disputes").select().eq("factory_id",fid).order("created_at",{ascending:false});
+    const data=await rows(await supabase.from("disputes").select().eq("factory_id",fid).order("created_at",{ascending:false}));
     return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,slabId:d.slab_id}));
   },
   async allDisputes() {
-    const {data}=await supabase.from("disputes").select().order("created_at",{ascending:false});
+    const data=await rows(await supabase.from("disputes").select().order("created_at",{ascending:false}));
     return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,slabId:d.slab_id}));
   },
 
@@ -232,31 +172,30 @@ const DB = {
   async createInquiry(d) {
     const id=genId("INQ");
     const inq={id,...d,created_at:Date.now(),status:"new",factory_id:d.factoryId,factory_name:d.factoryName,buyer_name:d.buyerName,buyer_company:d.buyerCompany,buyer_email:d.buyerEmail,slab_id:d.slabId,price_per_sq_ft:d.pricePerSqFt};
-    await supabase.from("inquiries").insert(inq);
+    requireData(await supabase.from("inquiries").insert(inq));
     return inq;
   },
   async updInquiry(id,u) {
-    await supabase.from("inquiries").update(u).eq("id",id);
+    requireData(await supabase.from("inquiries").update(u).eq("id",id));
   },
   async facInquiries(fid) {
-    const {data}=await supabase.from("inquiries").select().eq("factory_id",fid).order("created_at",{ascending:false});
+    const data=await rows(await supabase.from("inquiries").select().eq("factory_id",fid).order("created_at",{ascending:false}));
     return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
   },
   async allInquiries() {
-    const {data}=await supabase.from("inquiries").select().order("created_at",{ascending:false});
+    const data=await rows(await supabase.from("inquiries").select().order("created_at",{ascending:false}));
     return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
   },
 
   // Notifications
   async addNotif(uid,n) {
-    await supabase.from("notifications").insert({id:genId("N"),user_id:uid,...n,ts:Date.now(),read:false});
+    requireData(await supabase.from("notifications").insert({id:genId("N"),user_id:uid,...n,ts:Date.now(),read:false}));
   },
   async getNotifs(uid) {
-    const {data}=await supabase.from("notifications").select().eq("user_id",uid).order("ts",{ascending:false}).limit(50);
-    return data||[];
+    return rows(await supabase.from("notifications").select().eq("user_id",uid).order("ts",{ascending:false}).limit(50));
   },
   async readAll(uid) {
-    await supabase.from("notifications").update({read:true}).eq("user_id",uid);
+    requireData(await supabase.from("notifications").update({read:true}).eq("user_id",uid));
   },
 };
 
