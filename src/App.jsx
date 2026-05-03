@@ -1282,15 +1282,37 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
   );
 }
 
+function slabDims(slab) {
+  const m=slab?.measurements||{};
+  return m.length&&m.width?`${m.length} x ${m.width} cm`:"Size not recorded";
+}
+
 function BuyerPortal({factoryId,onBack,buyer}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
-  const [selSlab,setSelSlab]=useState(null);const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
+  const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");
+  const [maxPrice,setMaxPrice]=useState("");const [sortBy,setSortBy]=useState("newest");
+  const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
   const [qrSlab,setQrSlab]=useState(null);
   const {isMobile}=useBP();
   useEffect(()=>{
     Promise.all([DB.getFac(factoryId),DB.facInsps(factoryId)]).then(([f,i])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));});
   },[]);
-  const filtered=insps.filter(i=>(filter==="All"||i.grade===filter)&&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())));
+  const stoneOptions=["All",...Array.from(new Set(insps.map(i=>i.stone).filter(Boolean))).sort()];
+  const supplierOptions=["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()];
+  const filtered=insps
+    .filter(i=>(filter==="All"||i.grade===filter)
+      &&(stoneFilter==="All"||i.stone===stoneFilter)
+      &&(supplierFilter==="All"||i.supplier===supplierFilter)
+      &&(exportFilter==="All"||(exportFilter==="Export"&&i.exportReady)||(exportFilter==="Domestic"&&!i.exportReady))
+      &&(!maxPrice||Number(i.pricePerSqFt||0)<=Number(maxPrice))
+      &&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())||i.supplier?.toLowerCase().includes(search.toLowerCase())))
+    .sort((a,b)=>{
+      if(sortBy==="priceLow")return Number(a.pricePerSqFt||0)-Number(b.pricePerSqFt||0);
+      if(sortBy==="priceHigh")return Number(b.pricePerSqFt||0)-Number(a.pricePerSqFt||0);
+      if(sortBy==="grade")return (a.grade==="Premium"?0:1)-(b.grade==="Premium"?0:1);
+      return Number(b.ts||0)-Number(a.ts||0);
+    });
+  const clearFilters=()=>{setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setMaxPrice("");setSortBy("newest");setSearch("");};
   async function submitInquiry(){
     if(!inquiry)return;
     await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:inquiryMsg});
@@ -1319,27 +1341,61 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 16px",background:filter===f?C.primary:"transparent",border:`1px solid ${filter===f?C.primary:C.border}`,borderRadius:20,color:filter===f?C.white:C.textMid,fontSize:13,fontWeight:filter===f?600:400,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
           ))}
         </div>
+        <Card style={{padding:12,marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:8}}>
+            <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+              {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All stones":o}</option>)}
+            </select>
+            <select value={supplierFilter} onChange={e=>setSupplierFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+              {supplierOptions.map(o=><option key={o} value={o}>{o==="All"?"All suppliers":o}</option>)}
+            </select>
+            <select value={exportFilter} onChange={e=>setExportFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+              <option value="All">Export + domestic</option>
+              <option value="Export">Export ready</option>
+              <option value="Domestic">Domestic only</option>
+            </select>
+            <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="Max Rs/sqft" style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}/>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+              <option value="newest">Newest first</option>
+              <option value="priceLow">Price low-high</option>
+              <option value="priceHigh">Price high-low</option>
+              <option value="grade">Premium first</option>
+            </select>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}>
+            <div style={{fontSize:12,color:C.textDim,fontWeight:700}}>{filtered.length} of {insps.length} slabs shown</div>
+            <button onClick={clearFilters} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset filters</button>
+          </div>
+        </Card>
         {filtered.length===0?<div style={{background:"#fff",borderRadius:12,padding:"40px 24px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:10}}>🪨</div><div style={{fontSize:15,fontWeight:700}}>No slabs available yet</div></div>:
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
           {filtered.map(slab=>{
             const g=gradeConf(slab.grade);
             return (
               <div key={slab.id} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-                <div onClick={()=>setSelSlab(slab)} style={{cursor:"pointer"}}>
+                <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
                   <div style={{aspectRatio:"16/9",background:g.bg,position:"relative",overflow:"hidden"}}>
                     {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:
                     <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28}}>{g.emoji}</span></div>}
                     <div style={{position:"absolute",top:8,right:8,background:g.bg,border:`1px solid ${g.border}`,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,color:g.color}}>{slab.grade}</div>
                     <button onClick={e=>{e.stopPropagation();setQrSlab(slab);}} style={{position:"absolute",top:8,left:8,background:"rgba(255,255,255,0.9)",border:"none",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
+                    {slab.exportReady&&<div style={{position:"absolute",bottom:8,left:8,background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:800,color:C.green}}>Export ready</div>}
                   </div>
                   <div style={{padding:"12px 14px 8px"}}>
-                    <div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{slab.stone}</div>
-                    <div style={{fontSize:11,color:C.textDim,marginBottom:8}}>{slab.date}</div>
+                    <div style={{fontSize:14,fontWeight:800,marginBottom:3}}>{slab.stone}</div>
+                    <div style={{fontSize:11,color:C.textDim,marginBottom:8}}>{slab.date} · {slabDims(slab)}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                      {slab.supplier&&<span style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.textMid}}>{slab.supplier}</span>}
+                      {(slab.defects||[]).length===0?<span style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.green}}>No defects</span>:<span style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.amber}}>{slab.defects.length} defects</span>}
+                    </div>
                   </div>
                 </div>
                 <div style={{padding:"0 14px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${C.border}`,paddingTop:8}}>
                   <div style={{fontSize:16,fontWeight:800,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:11,fontWeight:400,color:C.textDim}}>/sqft</span></div>
-                  <button onClick={()=>{setInquiry(slab);setInquiryMsg("");setInquirySent(false);}} style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,padding:"5px 10px",color:C.primary,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>📩 Interested</button>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>View</button>
+                    <button onClick={()=>{setInquiry(slab);setInquiryMsg("");setInquirySent(false);}} style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,padding:"5px 10px",color:C.primary,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>📩 Interested</button>
+                  </div>
                 </div>
               </div>
             );
