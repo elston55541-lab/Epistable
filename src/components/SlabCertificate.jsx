@@ -37,6 +37,10 @@ export function SlabCertificate({slabId}) {
   const [inqBusy,setInqBusy]=useState(false);
   const [inqSent,setInqSent]=useState(false);
   const [inqError,setInqError]=useState("");
+  const [dispute,setDispute]=useState({name:"",company:"",email:"",phone:"",category:"wrong_grade",details:""});
+  const [disputeBusy,setDisputeBusy]=useState(false);
+  const [disputeSent,setDisputeSent]=useState(false);
+  const [disputeError,setDisputeError]=useState("");
   const {isMobile}=useBP();
 
   useEffect(()=>{
@@ -66,6 +70,7 @@ export function SlabCertificate({slabId}) {
   const photo=slab.photo || photos[0]?.src;
   const polish=measurements.polish ? Number(measurements.polish) : 0;
   const inquiryReady=inq.name.trim()&&(inq.email.trim()||inq.phone.trim());
+  const disputeReady=dispute.name.trim()&&(dispute.email.trim()||dispute.phone.trim())&&dispute.details.trim();
 
   async function submitInquiry(){
     if(!inquiryReady||inqBusy)return;
@@ -80,6 +85,21 @@ export function SlabCertificate({slabId}) {
     });
     if(error){setInqError(error.message||"Unable to send inquiry.");setInqBusy(false);return;}
     setInqSent(true);setInqBusy(false);
+  }
+
+  async function submitDispute(){
+    if(!disputeReady||disputeBusy)return;
+    setDisputeBusy(true);setDisputeError("");
+    const details=[dispute.details.trim(),dispute.email.trim()?`Email: ${dispute.email.trim()}`:"",dispute.phone.trim()?`Phone: ${dispute.phone.trim()}`:""].filter(Boolean).join("\n\n");
+    const {error}=await supabase.rpc("create_public_slab_dispute",{
+      slab_id:slab.id,
+      buyer_name:dispute.name.trim(),
+      buyer_company:dispute.company.trim(),
+      dispute_category:dispute.category,
+      dispute_details:details
+    });
+    if(error){setDisputeError(error.message||"Unable to report this issue.");setDisputeBusy(false);return;}
+    setDisputeSent(true);setDisputeBusy(false);
   }
 
   return (
@@ -186,6 +206,32 @@ export function SlabCertificate({slabId}) {
                 {inqError&&<div style={{fontSize:12,color:C.red,fontWeight:700}}>{inqError}</div>}
                 <Btn full disabled={!inquiryReady||inqBusy} onClick={submitInquiry}>{inqBusy?"Sending...":"Send Inquiry"}</Btn>
                 <div style={{fontSize:11,color:C.textDim,lineHeight:1.5}}>Name and either email or phone are required.</div>
+              </div>}
+            </Card>
+
+            <Card style={{padding:18}}>
+              <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Report an issue</div>
+              {disputeSent?<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:14}}>
+                <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Issue reported</div>
+                <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>The factory can now review your concern for slab {slab.id}.</div>
+              </div>:<div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{fontSize:12,color:C.textMid,lineHeight:1.5}}>Use this if the delivered slab does not match the certificate.</div>
+                <input value={dispute.name} onChange={e=>setDispute(p=>({...p,name:e.target.value}))} placeholder="Your name" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <input value={dispute.company} onChange={e=>setDispute(p=>({...p,company:e.target.value}))} placeholder="Company (optional)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                  <input value={dispute.email} onChange={e=>setDispute(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                  <input value={dispute.phone} onChange={e=>setDispute(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                </div>
+                <select value={dispute.category} onChange={e=>setDispute(p=>({...p,category:e.target.value}))} style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",background:C.white}}>
+                  <option value="wrong_grade">Wrong grade</option>
+                  <option value="defect_missed">Defect missed</option>
+                  <option value="measurement">Measurement issue</option>
+                  <option value="other">Other</option>
+                </select>
+                <textarea value={dispute.details} onChange={e=>setDispute(p=>({...p,details:e.target.value}))} rows={3} placeholder="Describe what does not match..." style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
+                {disputeError&&<div style={{fontSize:12,color:C.red,fontWeight:700}}>{disputeError}</div>}
+                <Btn full variant="secondary" disabled={!disputeReady||disputeBusy} onClick={submitDispute}>{disputeBusy?"Sending...":"Report Issue"}</Btn>
+                <div style={{fontSize:11,color:C.textDim,lineHeight:1.5}}>Name, contact, and issue details are required.</div>
               </div>}
             </Card>
           </div>
