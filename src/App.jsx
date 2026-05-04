@@ -1144,12 +1144,31 @@ function FacAnalytics({insps}) {
 }
 
 function FacSuppliers({fac}) {
-  const [suppliers,setSuppliers]=useState([]);const [show,setShow]=useState(false);const [sel,setSel]=useState(null);
+  const [suppliers,setSuppliers]=useState([]);const [insps,setInsps]=useState([]);const [show,setShow]=useState(false);const [sel,setSel]=useState(null);
   const [form,setForm]=useState({name:"",contact:"",phone:"",location:"",notes:""});
-  async function load(){setSuppliers(await DB.facSuppliers(fac?.id||""));}
+  async function load(){const [s,i]=await Promise.all([DB.facSuppliers(fac?.id||""),DB.facInsps(fac?.id||"")]);setSuppliers(s);setInsps(i);}
   useEffect(()=>{load();},[]);
   async function create(){if(!form.name)return;await DB.createSupplier({...form,factoryId:fac?.id});setForm({name:"",contact:"",phone:"",location:"",notes:""});setShow(false);load();}
-  async function getStats(s){const insps=await DB.supplierInsps(s.id);const total=insps.length;const pp=total?Math.round(insps.filter(i=>i.grade==="Premium").length/total*100):0;const rp=total?Math.round(insps.filter(i=>i.grade==="Rejected").length/total*100):0;return{total,pp,rp};}
+  function supplierRows(s){
+    return insps.filter(i=>i.supplierId===s.id||(!i.supplierId&&i.supplier===s.name));
+  }
+  function statsFor(s){
+    const rows=supplierRows(s);
+    const total=rows.length;
+    const byG=g=>rows.filter(i=>i.grade===g).length;
+    const premium=byG("Premium");const rejected=byG("Rejected");
+    const premiumPct=total?Math.round(premium/total*100):0;
+    const rejectPct=total?Math.round(rejected/total*100):0;
+    const score=total?Math.min(100,Math.max(0,Math.round((premiumPct*1.2)+(byG("Standard")/total*40)-(rejectPct*0.9)))):0;
+    const defects={};rows.forEach(i=>(i.defects||[]).forEach(d=>{defects[d]=(defects[d]||0)+1;}));
+    const topDefects=Object.entries(defects).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const recent=rows.slice(0,4);
+    return {rows,total,premium,premiumPct,rejected,rejectPct,score,topDefects,recent};
+  }
+  const ranked=suppliers.map(s=>({...s,_stats:statsFor(s)})).sort((a,b)=>b._stats.score-a._stats.score||b._stats.total-a._stats.total);
+  const best=ranked[0];
+  const mostScanned=[...ranked].sort((a,b)=>b._stats.total-a._stats.total)[0];
+  const mostRejected=[...ranked].sort((a,b)=>b._stats.rejected-a._stats.rejected)[0];
   return (
     <div>
       {show&&<Modal title="Add Supplier" onClose={()=>setShow(false)}>
@@ -1163,18 +1182,61 @@ function FacSuppliers({fac}) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setShow(false)}>Cancel</Btn><Btn onClick={create} disabled={!form.name}>Add</Btn></div>
         </div>
       </Modal>}
+      {sel&&(()=>{const st=sel._stats;return <Modal title={sel.name+" Scorecard"} onClose={()=>setSel(null)}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {[["Score",st.score,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red]].map(([l,v,c])=>(
+            <div key={l} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:18,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>
+          ))}
+        </div>
+        <Card style={{padding:14,marginBottom:12}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:10}}>Grade Distribution</div>
+          {GRADES.map(g=>{const count=st.rows.filter(i=>i.grade===g.id).length;const pct=st.total?Math.round(count/st.total*100):0;return(
+            <div key={g.id} style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:4}}><span>{g.id}</span><span style={{color:g.color}}>{count} ({pct}%)</span></div><PBar value={pct} color={g.color}/></div>
+          );})}
+        </Card>
+        <Card style={{padding:14,marginBottom:12}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:10}}>Top Defects</div>
+          {st.topDefects.length===0?<div style={{fontSize:13,color:C.green,fontWeight:800}}>No defects recorded</div>:st.topDefects.map(([d,c])=>(
+            <div key={d} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{textTransform:"capitalize",fontWeight:700}}>{d}</span><span style={{fontWeight:900,color:C.amber}}>{c}</span></div>
+          ))}
+        </Card>
+        <Card style={{padding:14}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:10}}>Recent Slabs</div>
+          {st.recent.length===0?<div style={{fontSize:13,color:C.textDim}}>No inspections yet.</div>:st.recent.map((r,i)=>{const g=gradeConf(r.grade);return(
+            <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<st.recent.length-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{width:34,height:34,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{g.emoji}</div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:800}}>{r.stone}</div><div style={{fontSize:10,color:C.textDim}}>{r.date} · {r.id}</div></div>
+              <span style={{fontSize:10,fontWeight:900,color:g.color,background:g.bg,border:`1px solid ${g.border}`,borderRadius:20,padding:"3px 8px"}}>{r.grade}</span>
+            </div>
+          );})}
+        </Card>
+      </Modal>;})()}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Suppliers</div><div style={{fontSize:12,color:C.textDim}}>{suppliers.length} registered</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Add</Btn>
       </div>
+      {suppliers.length>0&&<KpiGrid items={[
+        {label:"Best Supplier",value:best?.name||"—",icon:"🏆",color:C.green},
+        {label:"Most Scanned",value:mostScanned?mostScanned._stats.total:0,icon:"📦",color:C.primary},
+        {label:"Reject Watch",value:mostRejected?mostRejected._stats.rejected:0,icon:"⚠️",color:C.red},
+        {label:"Total Scans",value:insps.filter(i=>i.supplierId||i.supplier).length,icon:"🔍",color:C.teal},
+      ]}/>}
       {suppliers.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🏭</div><Btn onClick={()=>setShow(true)}>+ Add First Supplier</Btn></Card>:
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {suppliers.map(s=>(
-          <Card key={s.id} style={{padding:14}}>
-            <div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{s.name}</div>
-            <div style={{fontSize:11,color:C.textDim}}>{s.location||"—"} · {s.contact||"—"}</div>
+        {ranked.map(s=>{const st=s._stats;return(
+          <Card key={s.id} style={{padding:14,cursor:"pointer"}} onClick={()=>setSel(s)}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:10}}>
+              <div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:900,marginBottom:2}}>{s.name}</div><div style={{fontSize:11,color:C.textDim}}>{s.location||"—"} · {s.contact||"—"}</div></div>
+              <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:900,color:st.score>=70?C.green:st.score>=40?C.amber:C.red}}>{st.score}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>Score</div></div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
+              {[["Scans",st.total,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red]].map(([l,v,c])=><div key={l} style={{background:C.surface,borderRadius:8,padding:8,textAlign:"center"}}><div style={{fontSize:14,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>)}
+            </div>
+            {st.topDefects.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {st.topDefects.map(([d,c])=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:800,color:C.amber,textTransform:"capitalize"}}>{d} · {c}</span>)}
+            </div>}
           </Card>
-        ))}
+        );})}
       </div>}
     </div>
   );
