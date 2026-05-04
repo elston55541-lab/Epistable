@@ -2,8 +2,8 @@ import { useState } from "react";
 import { C } from "../lib/domain";
 import { useBP } from "../hooks/useBP";
 
-export const Card = ({children,style={},onClick}) =>
-  <div onClick={onClick} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:C.shadow,...style}}>{children}</div>;
+export const Card = ({children,style={},onClick,className}) =>
+  <div className={className} onClick={onClick} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:C.shadow,...style}}>{children}</div>;
 
 export const BillPill = ({status}) => {
   const m={paid:{c:C.green,bg:C.greenBg,b:C.greenBorder,l:"✓ Paid"},overdue:{c:C.red,bg:C.redBg,b:C.redBorder,l:"⚠ Overdue"},pending:{c:C.amber,bg:C.amberBg,b:C.amberBorder,l:"● Pending"}};

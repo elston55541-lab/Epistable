@@ -41,6 +41,7 @@ export function SlabCertificate({slabId}) {
   const [disputeBusy,setDisputeBusy]=useState(false);
   const [disputeSent,setDisputeSent]=useState(false);
   const [disputeError,setDisputeError]=useState("");
+  const [copied,setCopied]=useState(false);
   const {isMobile}=useBP();
 
   useEffect(()=>{
@@ -71,6 +72,17 @@ export function SlabCertificate({slabId}) {
   const polish=measurements.polish ? Number(measurements.polish) : 0;
   const inquiryReady=inq.name.trim()&&(inq.email.trim()||inq.phone.trim());
   const disputeReady=dispute.name.trim()&&(dispute.email.trim()||dispute.phone.trim())&&dispute.details.trim();
+  const certificateUrl=window.location.href;
+
+  async function copyLink(){
+    try {
+      await navigator.clipboard.writeText(certificateUrl);
+      setCopied(true);
+      setTimeout(()=>setCopied(false),1600);
+    } catch(e) {
+      window.prompt("Copy certificate link",certificateUrl);
+    }
+  }
 
   async function submitInquiry(){
     if(!inquiryReady||inqBusy)return;
@@ -104,8 +116,34 @@ export function SlabCertificate({slabId}) {
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .cert-actions, .cert-interactive { display: none !important; }
+          .cert-page { background: #fff !important; }
+          .cert-hero { border-radius: 0 !important; margin: 0 !important; }
+          .cert-main { max-width: none !important; padding: 12px 0 0 !important; }
+          .cert-grid { grid-template-columns: 1.05fr 0.95fr !important; gap: 12px !important; }
+          .cert-card { box-shadow: none !important; break-inside: avoid; page-break-inside: avoid; }
+          .cert-photo { max-height: 250px; object-fit: cover; }
+          .cert-print-footer { display: block !important; }
+        }
+      `}</style>
+      <div className="cert-actions" style={{position:"sticky",top:0,zIndex:50,background:"rgba(255,255,255,0.96)",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(8px)"}}>
+        <div style={{maxWidth:980,margin:"0 auto",padding:"10px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:900,color:C.text}}>Certificate {slab.id}</div>
+            <div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slab.stone} · {slab.factory_name}</div>
+          </div>
+          <div style={{display:"flex",gap:8,flexShrink:0}}>
+            <button onClick={copyLink} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{copied?"Copied":"Copy Link"}</button>
+            <button onClick={()=>window.print()} style={{padding:"9px 12px",border:"none",borderRadius:9,background:C.primary,color:C.white,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Print / Save PDF</button>
+          </div>
+        </div>
+      </div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,color:C.white}}>
-        <div style={{maxWidth:980,margin:"0 auto",padding:"18px 18px 24px"}}>
+        <div className="cert-hero" style={{maxWidth:980,margin:"0 auto",padding:"18px 18px 24px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:18}}>
             <div>
               <div style={{fontSize:22,fontWeight:900,letterSpacing:0}}>Epistable AI</div>
@@ -133,22 +171,22 @@ export function SlabCertificate({slabId}) {
         </div>
       </div>
 
-      <main style={{maxWidth:980,margin:"0 auto",padding:"16px 18px 48px"}}>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.1fr) minmax(280px,0.9fr)",gap:16}}>
+      <main className="cert-main" style={{maxWidth:980,margin:"0 auto",padding:"16px 18px 48px"}}>
+        <div className="cert-grid" style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.1fr) minmax(280px,0.9fr)",gap:16}}>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <Card style={{overflow:"hidden"}}>
+            <Card style={{overflow:"hidden"}} className="cert-card">
               <div style={{aspectRatio:"16/9",background:g.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {photo?<img src={photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{fontSize:18,fontWeight:800,color:g.color}}>No slab photo recorded</div>}
+                {photo?<img className="cert-photo" src={photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{fontSize:18,fontWeight:800,color:g.color}}>No slab photo recorded</div>}
               </div>
             </Card>
 
-            <Card style={{padding:18}}>
+            <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Inspection Summary</div>
               <div style={{fontSize:14,lineHeight:1.7,color:C.textMid}}>{slab.reason || "No grading reason was recorded for this slab."}</div>
               {slab.notes&&<div style={{marginTop:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,fontSize:13,lineHeight:1.6,color:C.textMid}}>{slab.notes}</div>}
             </Card>
 
-            {photos.length>1&&<Card style={{padding:18}}>
+            {photos.length>1&&<Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:12}}>Photo Evidence</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
                 {photos.slice(1,7).map((p,idx)=><div key={idx} style={{position:"relative"}}>
@@ -160,7 +198,7 @@ export function SlabCertificate({slabId}) {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <Card style={{padding:18}}>
+            <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Certificate Details</div>
               <Field label="Factory" value={slab.factory_name}/>
               <Field label="Supplier" value={slab.supplier}/>
@@ -169,7 +207,7 @@ export function SlabCertificate({slabId}) {
               <Field label="Export ready" value={slab.export_ready ? "Yes" : "No"}/>
             </Card>
 
-            <Card style={{padding:18}}>
+            <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Measurements</div>
               <Field label="Thickness" value={measurements.thickness ? `${measurements.thickness} mm` : ""}/>
               <Field label="Size" value={measurements.length && measurements.width ? `${measurements.length} x ${measurements.width} cm` : ""}/>
@@ -182,7 +220,7 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
 
-            <Card style={{padding:18}}>
+            <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:10}}>Defects</div>
               {defects.length===0?<div style={{fontSize:13,color:C.green,fontWeight:800}}>No defects recorded</div>:
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -190,7 +228,7 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
 
-            <Card style={{padding:18}}>
+            <Card className="cert-card cert-interactive" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Interested in this slab?</div>
               {inqSent?<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:14}}>
                 <div style={{fontSize:14,fontWeight:900,color:C.green,marginBottom:4}}>Inquiry sent</div>
@@ -209,7 +247,7 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
 
-            <Card style={{padding:18}}>
+            <Card className="cert-card cert-interactive" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Report an issue</div>
               {disputeSent?<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:14}}>
                 <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Issue reported</div>
@@ -235,6 +273,9 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
           </div>
+        </div>
+        <div className="cert-print-footer" style={{display:"none",marginTop:14,paddingTop:10,borderTop:`1px solid ${C.border}`,fontSize:10,color:C.textDim,lineHeight:1.5}}>
+          Verified by Epistable AI · Certificate ID {slab.id} · Generated from {certificateUrl}
         </div>
       </main>
     </div>
