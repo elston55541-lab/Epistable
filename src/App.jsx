@@ -862,18 +862,35 @@ function FacHome({user,fac,insps,sc,b,paused,setPage,openPortal}) {
   );
 }
 
+const PHOTO_SLOTS = [
+  {id:"front",label:"Full slab",hint:"Entire slab in one frame",required:true},
+  {id:"surface",label:"Surface close-up",hint:"Polish, stain, vein, color",required:true},
+  {id:"edge",label:"Edge/corner",hint:"Thickness, chips, corner condition",required:true},
+  {id:"defect",label:"Defect close-up",hint:"Required when defects are selected",required:false},
+];
+
 function FacScan({user,fac,paused,onSaved}) {
   const [step,setStep]=useState(0);
   const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});
   const [grade,setGrade]=useState(null);const [loading,setLoading]=useState(false);const [saved,setSaved]=useState(false);
-  const [photos,setPhotos]=useState([]);
+  const [photos,setPhotos]=useState({});
+  const [photoSlot,setPhotoSlot]=useState("front");
   const [suppliers,setSuppliers]=useState([]);
   const fileRef=useRef();const videoRef=useRef();const canvasRef=useRef();
   const [cameraOpen,setCameraOpen]=useState(false);const [cameraStream,setCameraStream]=useState(null);const [cameraError,setCameraError]=useState("");
   useEffect(()=>{if(fac)DB.facSuppliers(fac.id).then(setSuppliers);},[fac]);
   if(paused)return <div style={{textAlign:"center",padding:40}}><div style={{fontSize:48,marginBottom:12}}>🚫</div><div style={{fontSize:16,fontWeight:700}}>Account Paused</div></div>;
 
-  async function openCamera(){
+  const requiredPhotoSlots=PHOTO_SLOTS.filter(s=>s.required||(s.id==="defect"&&form.defects.length>0));
+  const completePhotoSlots=requiredPhotoSlots.filter(s=>photos[s.id]?.src).length;
+  const photoReady=completePhotoSlots===requiredPhotoSlots.length;
+  const photoEvidence=PHOTO_SLOTS.map(s=>photos[s.id]?{slot:s.id,label:s.label,src:photos[s.id].src}:null).filter(Boolean);
+  function setEvidencePhoto(slotId,src){setPhotos(p=>({...p,[slotId]:{src,label:PHOTO_SLOTS.find(s=>s.id===slotId)?.label||slotId}}));}
+  function removeEvidencePhoto(slotId){setPhotos(p=>{const n={...p};delete n[slotId];return n;});}
+  function chooseUpload(slotId){setPhotoSlot(slotId);setTimeout(()=>fileRef.current?.click(),0);}
+
+  async function openCamera(slotId=photoSlot){
+    setPhotoSlot(slotId);
     setCameraError("");setCameraOpen(true);
     try {
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
@@ -887,7 +904,7 @@ function FacScan({user,fac,paused,onSaved}) {
     const v=videoRef.current;const c=canvasRef.current;
     c.width=v.videoWidth;c.height=v.videoHeight;
     c.getContext("2d").drawImage(v,0,0);
-    setPhotos(p=>[...p,c.toDataURL("image/jpeg",0.85)]);
+    setEvidencePhoto(photoSlot,c.toDataURL("image/jpeg",0.85));
     stopCamera();
   }
   function toggleDefect(id){setForm(p=>({...p,defects:p.defects.includes(id)?p.defects.filter(d=>d!==id):[...p.defects,id]}));}
@@ -908,7 +925,7 @@ function FacScan({user,fac,paused,onSaved}) {
   async function save(){
     if(!grade)return;
     const supplierName=form.supplierId?suppliers.find(s=>s.id===form.supplierId)?.name||form.supplier:form.supplier;
-    const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:supplierName,supplierId:form.supplierId||null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photos[0]||null,photos:photos,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
+    const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:supplierName,supplierId:form.supplierId||null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
     await DB.saveInsp(insp);
     setSaved(true);
   }
@@ -920,7 +937,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade?.pricePerSqFt}/sqft</div>
       <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});setGrade(null);setSaved(false);setPhotos([]);}}>New Scan</Btn>
+        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
         <Btn onClick={onSaved}>View History</Btn>
       </div>
     </div>
@@ -929,6 +946,21 @@ function FacScan({user,fac,paused,onSaved}) {
   const steps=["Stone","Measurements","Defects","Grade"];
   return (
     <div>
+      <input ref={fileRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>setEvidencePhoto(photoSlot,ev.target.result);r.readAsDataURL(f);}e.target.value="";}} style={{display:"none"}}/>
+      <canvas ref={canvasRef} style={{display:"none"}}/>
+      {cameraOpen&&<div style={{position:"fixed",inset:0,background:"#000",zIndex:500,display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+          <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>✕ Cancel</button>
+          <div style={{color:"#fff",fontSize:13,fontWeight:800}}>{PHOTO_SLOTS.find(s=>s.id===photoSlot)?.label}</div>
+        </div>
+        {cameraError?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24,color:"#fff"}}>{cameraError}</div>:
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+          <video ref={videoRef} autoPlay playsInline muted style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        </div>}
+        <div style={{padding:"20px",display:"flex",justifyContent:"center",flexShrink:0}}>
+          <button onClick={capturePhoto} style={{width:72,height:72,borderRadius:"50%",background:"#fff",border:"4px solid rgba(255,255,255,0.4)",cursor:"pointer",fontSize:28,WebkitTapHighlightColor:"transparent"}}>📸</button>
+        </div>
+      </div>}
       <div style={{display:"flex",gap:4,marginBottom:20}}>
         {steps.map((s,i)=>(
           <div key={s} style={{flex:1,textAlign:"center"}}><div style={{height:4,borderRadius:2,background:i<=step?C.primary:C.border,marginBottom:4}}/><div style={{fontSize:10,color:i===step?C.primary:C.textDim,fontWeight:i===step?700:400}}>{s}</div></div>
@@ -946,39 +978,29 @@ function FacScan({user,fac,paused,onSaved}) {
         {suppliers.length>0?<Sel label="Supplier" value={form.supplierId} onChange={v=>setForm(p=>({...p,supplierId:v}))} options={[{value:"",label:"Select supplier…"},...suppliers.map(s=>({value:s.id,label:s.name}))]}/>
         :<Inp label="Supplier Name" value={form.supplier} onChange={v=>setForm(p=>({...p,supplier:v}))} placeholder="e.g. Shree Marble Exports"/>}
         <div>
-          <label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Photos (optional)</label>
-          <input ref={fileRef} type="file" accept="image/*" multiple onChange={e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>setPhotos(p=>[...p,ev.target.result]);r.readAsDataURL(f);});e.target.value="";}} style={{display:"none"}}/>
-          <canvas ref={canvasRef} style={{display:"none"}}/>
-          {cameraOpen&&<div style={{position:"fixed",inset:0,background:"#000",zIndex:500,display:"flex",flexDirection:"column"}}>
-            <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
-              <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>✕ Cancel</button>
-            </div>
-            {cameraError?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24,color:"#fff"}}>{cameraError}</div>:
-            <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-              <video ref={videoRef} autoPlay playsInline muted style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-            </div>}
-            <div style={{padding:"20px",display:"flex",justifyContent:"center",flexShrink:0}}>
-              <button onClick={capturePhoto} style={{width:72,height:72,borderRadius:"50%",background:"#fff",border:"4px solid rgba(255,255,255,0.4)",cursor:"pointer",fontSize:28,WebkitTapHighlightColor:"transparent"}}>📸</button>
-            </div>
-          </div>}
-          {photos.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
-            {photos.map((src,idx)=>(
-              <div key={idx} style={{position:"relative",borderRadius:10,overflow:"hidden",border:`2px solid ${C.primaryBorder}`,aspectRatio:"1"}}>
-                <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-                <button onClick={()=>setPhotos(p=>p.filter((_,i)=>i!==idx))} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.65)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <label style={{display:"block",fontSize:13,fontWeight:700}}>Photo Evidence</label>
+            <span style={{fontSize:11,fontWeight:800,color:photoReady?C.green:C.amber}}>{completePhotoSlots}/{requiredPhotoSlots.length} required</span>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            {PHOTO_SLOTS.slice(0,3).map(slot=>(
+              <div key={slot.id} style={{border:`1px solid ${photos[slot.id]?C.greenBorder:C.border}`,borderRadius:12,overflow:"hidden",background:photos[slot.id]?C.greenBg:C.white}}>
+                <div style={{aspectRatio:"4/3",background:C.surface,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {photos[slot.id]?<img src={photos[slot.id].src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{fontSize:11,color:C.textDim,fontWeight:700,textAlign:"center",padding:8}}>{slot.hint}</div>}
+                  {photos[slot.id]&&<button onClick={()=>removeEvidencePhoto(slot.id)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.65)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>}
+                </div>
+                <div style={{padding:9}}>
+                  <div style={{fontSize:12,fontWeight:800,color:C.text,marginBottom:6}}>{photos[slot.id]?"✓ ":""}{slot.label}</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    <button onClick={()=>openCamera(slot.id)} style={{padding:"7px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Camera</button>
+                    <button onClick={()=>chooseUpload(slot.id)} style={{padding:"7px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Upload</button>
+                  </div>
+                </div>
               </div>
             ))}
-          </div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <button onClick={openCamera} style={{padding:"16px 12px",background:C.surface,border:`2px dashed ${C.primaryBorder}`,borderRadius:12,cursor:"pointer",textAlign:"center",fontFamily:"sans-serif"}}>
-              <div style={{fontSize:24,marginBottom:4}}>📷</div><div style={{fontSize:13,fontWeight:700,color:C.primary}}>Camera</div>
-            </button>
-            <button onClick={()=>fileRef.current?.click()} style={{padding:"16px 12px",background:C.surface,border:`2px dashed ${C.border}`,borderRadius:12,cursor:"pointer",textAlign:"center",fontFamily:"sans-serif"}}>
-              <div style={{fontSize:24,marginBottom:4}}>🖼️</div><div style={{fontSize:13,fontWeight:700,color:C.textMid}}>Upload</div>
-            </button>
           </div>
         </div>
-        <Btn full onClick={()=>setStep(1)}>Next → Measurements</Btn>
+        <Btn full onClick={()=>setStep(1)} disabled={!photoReady}>Next → Measurements</Btn>
       </div>}
       {step===1&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Measurements</div>
@@ -1006,8 +1028,27 @@ function FacScan({user,fac,paused,onSaved}) {
           );})}
         </div>
         <button onClick={()=>setForm(p=>({...p,exportReady:!p.exportReady}))} style={{padding:"10px 18px",background:form.exportReady?C.greenBg:C.white,border:`2px solid ${form.exportReady?C.green:C.border}`,borderRadius:10,cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"sans-serif",color:form.exportReady?C.green:C.textMid,alignSelf:"flex-start"}}>{form.exportReady?"✅ Export Ready":"📦 Domestic Only"}</button>
+        {form.defects.length>0&&<Card style={{padding:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:800}}>Defect close-up required</div>
+              <div style={{fontSize:11,color:C.textDim,marginTop:2}}>Capture the most visible defect so buyers can verify the grade.</div>
+            </div>
+            <span style={{fontSize:11,fontWeight:800,color:photos.defect?C.green:C.red}}>{photos.defect?"Complete":"Missing"}</span>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,alignItems:"stretch"}}>
+            <div style={{aspectRatio:"1",background:C.surface,border:`1px solid ${photos.defect?C.greenBorder:C.border}`,borderRadius:10,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {photos.defect?<img src={photos.defect.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<span style={{fontSize:11,color:C.textDim,fontWeight:700,textAlign:"center",padding:8}}>Defect photo</span>}
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,justifyContent:"center"}}>
+              <button onClick={()=>openCamera("defect")} style={{padding:"10px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Camera</button>
+              <button onClick={()=>chooseUpload("defect")} style={{padding:"10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Upload</button>
+              {photos.defect&&<button onClick={()=>removeEvidencePhoto("defect")} style={{padding:"8px",background:"transparent",border:"none",color:C.red,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Remove</button>}
+            </div>
+          </div>
+        </Card>}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn onClick={()=>{setStep(3);gradeWithAI();}}>🤖 Grade with AI</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}>🤖 Grade with AI</Btn></div>
       </div>}
       {step===3&&<div>
         <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>AI Grade Result</div>

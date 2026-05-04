@@ -6,6 +6,7 @@ import { Btn, Card, Loader, PBar } from "./ui";
 
 const asList = value => Array.isArray(value) ? value : [];
 const asObject = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const normalizePhoto = (photo,idx) => typeof photo === "string" ? {src:photo,label:idx===0?"Primary photo":`Evidence ${idx+1}`} : photo;
 
 function Field({label,value}) {
   return (
@@ -51,14 +52,14 @@ export function SlabCertificate({slabId}) {
 
   const measurements=useMemo(()=>asObject(slab?.measurements),[slab]);
   const defects=useMemo(()=>asList(slab?.defects),[slab]);
-  const photos=useMemo(()=>asList(slab?.photos).filter(Boolean),[slab]);
+  const photos=useMemo(()=>asList(slab?.photos).map(normalizePhoto).filter(p=>p?.src),[slab]);
 
   if(loading)return <Loader/>;
   if(error)return <CertificateError title="Certificate unavailable" msg={error}/>;
 
   const g=gradeConf(slab.grade);
   const inspectedAt=[slab.date,slab.time].filter(Boolean).join(" at ");
-  const photo=slab.photo || photos[0];
+  const photo=slab.photo || photos[0]?.src;
   const polish=measurements.polish ? Number(measurements.polish) : 0;
 
   return (
@@ -110,7 +111,10 @@ export function SlabCertificate({slabId}) {
             {photos.length>1&&<Card style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:12}}>Photo Evidence</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
-                {photos.slice(1,7).map((src,idx)=><img key={idx} src={src} alt="" style={{width:"100%",aspectRatio:"1",objectFit:"cover",borderRadius:10,border:`1px solid ${C.border}`}}/>)}
+                {photos.slice(1,7).map((p,idx)=><div key={idx} style={{position:"relative"}}>
+                  <img src={p.src} alt="" style={{width:"100%",aspectRatio:"1",objectFit:"cover",borderRadius:10,border:`1px solid ${C.border}`,display:"block"}}/>
+                  {p.label&&<div style={{position:"absolute",left:6,bottom:6,right:6,background:"rgba(0,0,0,0.62)",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:800,color:"#fff",textAlign:"center"}}>{p.label}</div>}
+                </div>)}
               </div>
             </Card>}
           </div>
