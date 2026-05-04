@@ -33,6 +33,10 @@ export function SlabCertificate({slabId}) {
   const [slab,setSlab]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
+  const [inq,setInq]=useState({name:"",company:"",email:"",phone:"",message:""});
+  const [inqBusy,setInqBusy]=useState(false);
+  const [inqSent,setInqSent]=useState(false);
+  const [inqError,setInqError]=useState("");
   const {isMobile}=useBP();
 
   useEffect(()=>{
@@ -61,6 +65,22 @@ export function SlabCertificate({slabId}) {
   const inspectedAt=[slab.date,slab.time].filter(Boolean).join(" at ");
   const photo=slab.photo || photos[0]?.src;
   const polish=measurements.polish ? Number(measurements.polish) : 0;
+  const inquiryReady=inq.name.trim()&&(inq.email.trim()||inq.phone.trim());
+
+  async function submitInquiry(){
+    if(!inquiryReady||inqBusy)return;
+    setInqBusy(true);setInqError("");
+    const message=[inq.message.trim(),inq.phone.trim()?`Phone: ${inq.phone.trim()}`:""].filter(Boolean).join("\n\n");
+    const {error}=await supabase.rpc("create_public_slab_inquiry",{
+      slab_id:slab.id,
+      buyer_name:inq.name.trim(),
+      buyer_company:inq.company.trim(),
+      buyer_email:inq.email.trim(),
+      buyer_message:message
+    });
+    if(error){setInqError(error.message||"Unable to send inquiry.");setInqBusy(false);return;}
+    setInqSent(true);setInqBusy(false);
+  }
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
@@ -151,9 +171,22 @@ export function SlabCertificate({slabId}) {
             </Card>
 
             <Card style={{padding:18}}>
-              <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Contact Factory</div>
-              <div style={{fontSize:13,color:C.textMid,lineHeight:1.6,marginBottom:12}}>Use this certificate ID when contacting the factory about this slab.</div>
-              {slab.factory_contact_email?<Btn full onClick={()=>window.location.href=`mailto:${slab.factory_contact_email}?subject=Inquiry about slab ${slab.id}`}>Email Factory</Btn>:<Btn full onClick={()=>window.print()}>Print Certificate</Btn>}
+              <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Interested in this slab?</div>
+              {inqSent?<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:14}}>
+                <div style={{fontSize:14,fontWeight:900,color:C.green,marginBottom:4}}>Inquiry sent</div>
+                <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>The factory has received your interest in slab {slab.id}.</div>
+              </div>:<div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <input value={inq.name} onChange={e=>setInq(p=>({...p,name:e.target.value}))} placeholder="Your name" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <input value={inq.company} onChange={e=>setInq(p=>({...p,company:e.target.value}))} placeholder="Company (optional)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                  <input value={inq.email} onChange={e=>setInq(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                  <input value={inq.phone} onChange={e=>setInq(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                </div>
+                <textarea value={inq.message} onChange={e=>setInq(p=>({...p,message:e.target.value}))} rows={3} placeholder="Message (quantity, timeline, destination...)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
+                {inqError&&<div style={{fontSize:12,color:C.red,fontWeight:700}}>{inqError}</div>}
+                <Btn full disabled={!inquiryReady||inqBusy} onClick={submitInquiry}>{inqBusy?"Sending...":"Send Inquiry"}</Btn>
+                <div style={{fontSize:11,color:C.textDim,lineHeight:1.5}}>Name and either email or phone are required.</div>
+              </div>}
             </Card>
           </div>
         </div>
