@@ -56,7 +56,8 @@ const DB = {
     return requireData(await supabase.from("profiles").update(u).eq("id",id).select().single());
   },
   async facUsers(fid) {
-    return rows(await supabase.from("profiles").select().eq("factory_id",fid).neq("role","buyer"));
+  return rows(await supabase.from("profiles").select().eq("factory_id",fid));
+},;
   },
   async allUsers() {
     return rows(await supabase.from("profiles").select().neq("role","buyer").order("created_at",{ascending:false}));
