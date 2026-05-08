@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
-import { signInWithEmail, signOut } from "./lib/auth";
+import { getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
 import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
 import { useBP } from "./hooks/useBP";
@@ -1552,8 +1552,23 @@ function BuyerPortal({factoryId,onBack,buyer}) {
 export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const [session,setSession]=useState(null);
+  const [booting,setBooting]=useState(true);
+  function profileSession(profile){
+    if(profile.role==="owner")return {type:"owner"};
+    if(profile.role==="buyer")return {type:"buyer",buyer:profile};
+    return {type:"factory",user:profile};
+  }
+  useEffect(()=>{
+    let active=true;
+    getSessionProfile()
+      .then(profile=>{if(active&&profile)setSession(profileSession(profile));})
+      .catch(e=>console.error("Session restore failed",e))
+      .finally(()=>{if(active)setBooting(false);});
+    return ()=>{active=false;};
+  },[]);
   async function logout(){try{await signOut();}catch(e){}setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
+  if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
     :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewPortal={()=>setSession({...session,showPortal:true})}/>)
