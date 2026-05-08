@@ -59,7 +59,7 @@ const DB = {
     return rows(await supabase.from("profiles").select().eq("factory_id",fid));
   },
   async allUsers() {
-    return rows(await supabase.from("profiles").select().neq("role","buyer").order("created_at",{ascending:false}));
+    return rows(await supabase.from("profiles").select().order("created_at",{ascending:false}));
   },
 
   // Buyers
