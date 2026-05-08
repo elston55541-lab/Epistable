@@ -56,8 +56,7 @@ const DB = {
     return requireData(await supabase.from("profiles").update(u).eq("id",id).select().single());
   },
   async facUsers(fid) {
-  return rows(await supabase.from("profiles").select().eq("factory_id",fid));
-},;
+    return rows(await supabase.from("profiles").select().eq("factory_id",fid));
   },
   async allUsers() {
     return rows(await supabase.from("profiles").select().neq("role","buyer").order("created_at",{ascending:false}));
@@ -437,9 +436,14 @@ function Owner({onLogout}) {
 
   async function load(){
     setLoading(true);
-    const [f,u,i]=await Promise.all([DB.allFacs(),DB.allUsers(),DB.allInsps()]);
-    setFacs(f);setUsers(u.filter(u=>u.role!=="owner"));setInsps(i);
-    setLoading(false);
+    try {
+      const [f,u,i]=await Promise.all([DB.allFacs(),DB.allUsers(),DB.allInsps()]);
+      setFacs(f);setUsers(u.filter(u=>u.role!=="owner"));setInsps(i);
+    } catch(e) {
+      console.error("Owner load failed",e);
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(()=>{load();},[]);
   if(loading)return <Loader/>;
@@ -650,18 +654,23 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
   );
 }
 
-function UserFormModal({title,onClose,onSubmit,facs,isBuyer}) {
+function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
   const [form,setForm]=useState({name:"",email:"",authUserId:"",role:"inspector",factoryId:facs?.[0]?.id||"",company:""});
-  const [busy,setBusy]=useState(false);const [done,setDone]=useState(null);
+  const [busy,setBusy]=useState(false);const [done,setDone]=useState(null);const [err,setErr]=useState("");
   async function submit(){
     if(!form.name||!form.email)return;
-    setBusy(true);
-    const result=await onSubmit(form);
-    setDone(result);
+    setBusy(true);setErr("");
+    try {
+      const result=await onSubmit(form);
+      setDone(result);
+    } catch(e) {
+      setErr(e.message||"Could not create profile.");
+    }
     setBusy(false);
   }
+  function finish(){(onDone||onClose)();}
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
       {done?<div>
         <div style={{textAlign:"center",marginBottom:14}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={{fontSize:18,fontWeight:800}}>Created!</div></div>
         <div style={{background:C.primaryBg,border:`2px solid ${C.primaryBorder}`,borderRadius:12,padding:16,marginBottom:12}}>
@@ -670,15 +679,16 @@ function UserFormModal({title,onClose,onSubmit,facs,isBuyer}) {
           ))}
         </div>
         <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>Create or invite this email in Supabase Auth, then link its user ID here for login.</div>
-        <Btn full onClick={onClose}>Done</Btn>
+        <Btn full onClick={finish}>Done</Btn>
       </div>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Rajesh Kumar"/>
         {isBuyer&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Al-Rashid Stone Trading, Dubai"/>}
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
         <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional until Auth user is created" hint="Credentials are managed in Supabase Auth, not stored in this app."/>
         {!isBuyer&&<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={[{value:"inspector",label:"Inspector"},{value:"manager",label:"Manager"},{value:"admin",label:"Admin"}]}/>}
+        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:700}}>{err}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
+          <Btn variant="secondary" onClick={onClose} disabled={busy}>Cancel</Btn>
           <Btn onClick={submit} disabled={busy||!form.name||!form.email}>{busy?"Creating…":"Create Profile"}</Btn>
         </div>
       </div>}
@@ -695,7 +705,7 @@ function OwnerUsers({users,facs,onRefresh}) {
   }
   return (
     <div>
-      {show&&<UserFormModal title="Create User" facs={facs} onClose={()=>{setShow(false);onRefresh();}} onSubmit={createUser}/>}
+      {show&&<UserFormModal title="Create User" facs={facs} onClose={()=>setShow(false)} onDone={()=>{setShow(false);onRefresh();}} onSubmit={createUser}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>All Users</div><div style={{fontSize:12,color:C.textDim}}>{users.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>

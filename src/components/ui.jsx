@@ -73,9 +73,9 @@ export function Sel({label,value,onChange,options,hint}) {
   );
 }
 
-export function Modal({title,onClose,children}) {
+export function Modal({title,onClose,children,closeOnBackdrop=true}) {
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={closeOnBackdrop?onClose:undefined}>
       <div style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,maxHeight:"92vh",overflow:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
         <div style={{padding:"10px 0 0",display:"flex",justifyContent:"center"}}><div style={{width:40,height:4,borderRadius:2,background:C.border}}/></div>
         <div style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
