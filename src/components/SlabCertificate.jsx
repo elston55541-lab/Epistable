@@ -7,6 +7,11 @@ import { Btn, Card, Loader, PBar } from "./ui";
 const asList = value => Array.isArray(value) ? value : [];
 const asObject = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 const normalizePhoto = (photo,idx) => typeof photo === "string" ? {src:photo,label:idx===0?"Primary photo":`Evidence ${idx+1}`} : photo;
+const invConf = status => ({
+  available:{label:"Available",color:C.green,bg:C.greenBg,border:C.greenBorder},
+  reserved:{label:"Reserved",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+  sold:{label:"Sold",color:C.red,bg:C.redBg,border:C.redBorder},
+}[status]||{label:"Available",color:C.green,bg:C.greenBg,border:C.greenBorder});
 
 function Field({label,value}) {
   return (
@@ -73,6 +78,8 @@ export function SlabCertificate({slabId}) {
   const inquiryReady=inq.name.trim()&&(inq.email.trim()||inq.phone.trim());
   const disputeReady=dispute.name.trim()&&(dispute.email.trim()||dispute.phone.trim())&&dispute.details.trim();
   const certificateUrl=window.location.href;
+  const inventory=invConf(slab.inventory_status||"available");
+  const canInquire=(slab.inventory_status||"available")==="available";
 
   async function copyLink(){
     try {
@@ -166,6 +173,7 @@ export function SlabCertificate({slabId}) {
                 <div style={{background:g.bg,border:`1px solid ${g.border}`,color:g.color,borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:900}}>{g.label}</div>
               </div>
               <div style={{fontSize:26,fontWeight:900}}>Rs {slab.price_per_sq_ft || 0}<span style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)"}}> / sq ft</span></div>
+              <div style={{display:"inline-flex",marginTop:10,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:900,color:inventory.color}}>{inventory.label}</div>
             </div>
           </div>
         </div>
@@ -205,6 +213,7 @@ export function SlabCertificate({slabId}) {
               <Field label="Inspector" value={slab.inspector}/>
               <Field label="Inspected" value={inspectedAt}/>
               <Field label="Export ready" value={slab.export_ready ? "Yes" : "No"}/>
+              <Field label="Inventory status" value={inventory.label}/>
             </Card>
 
             <Card className="cert-card" style={{padding:18}}>
@@ -230,7 +239,10 @@ export function SlabCertificate({slabId}) {
 
             <Card className="cert-card cert-interactive" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Interested in this slab?</div>
-              {inqSent?<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:14}}>
+              {!canInquire?<div style={{background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:10,padding:14}}>
+                <div style={{fontSize:14,fontWeight:900,color:inventory.color,marginBottom:4}}>{inventory.label}</div>
+                <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>This slab is not currently marked available. Contact the factory for alternatives.</div>
+              </div>:inqSent?<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:14}}>
                 <div style={{fontSize:14,fontWeight:900,color:C.green,marginBottom:4}}>Inquiry sent</div>
                 <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>The factory has received your interest in slab {slab.id}.</div>
               </div>:<div style={{display:"flex",flexDirection:"column",gap:10}}>

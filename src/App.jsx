@@ -8,7 +8,7 @@ import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loa
 import { SlabCertificate } from "./components/SlabCertificate";
 
 // ── DB (Supabase) ──
-const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,measurements,defects,notes,photo,ts,date,time";
+const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
 
 const DB = {
   // Factories
@@ -100,7 +100,7 @@ const DB = {
       factory_name:insp.factoryName, inspector:insp.inspector,
       stone:insp.stone, supplier:insp.supplier, supplier_id:insp.supplierId,
       grade:insp.grade, reason:insp.reason, price_per_sq_ft:insp.pricePerSqFt,
-      export_ready:insp.exportReady, measurements:insp.measurements,
+      export_ready:insp.exportReady, inventory_status:insp.inventoryStatus||"available", measurements:insp.measurements,
       defects:insp.defects, notes:insp.notes, photo:insp.photo,
       photos:insp.photos, ts:insp.ts, date:insp.date, time:insp.time
     }));
@@ -115,19 +115,22 @@ const DB = {
   async getInsp(id) {
     const data=await maybeOne(await supabase.from("inspections").select().eq("id",id).maybeSingle());
     if(!data)return null;
-    return {...data,userId:data.user_id,factoryId:data.factory_id,factoryName:data.factory_name,supplierId:data.supplier_id,pricePerSqFt:data.price_per_sq_ft,exportReady:data.export_ready};
+    return {...data,userId:data.user_id,factoryId:data.factory_id,factoryName:data.factory_name,supplierId:data.supplier_id,pricePerSqFt:data.price_per_sq_ft,exportReady:data.export_ready,inventoryStatus:data.inventory_status||"available"};
   },
   async userInsps(uid) {
     const data=await rows(await supabase.from("inspections").select(INSP_LIST_SELECT).eq("user_id",uid).order("ts",{ascending:false}).limit(200));
-    return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
+    return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready,inventoryStatus:d.inventory_status||"available"}));
   },
   async facInsps(fid) {
     const data=await rows(await supabase.from("inspections").select(INSP_LIST_SELECT).eq("factory_id",fid).order("ts",{ascending:false}).limit(300));
-    return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
+    return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready,inventoryStatus:d.inventory_status||"available"}));
   },
   async allInsps() {
     const data=await rows(await supabase.from("inspections").select("id,factory_id,grade,ts").order("ts",{ascending:false}).limit(1000));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
+  },
+  async updInspStatus(id,status) {
+    return requireData(await supabase.from("inspections").update({inventory_status:status}).eq("id",id).select().single());
   },
 
   // Suppliers
@@ -290,6 +293,17 @@ function ActivityList({items=[],compact=false}) {
       ))}
     </Card>
   );
+}
+
+const INV_STATUS = {
+  available:{label:"Available",color:C.green,bg:C.greenBg,border:C.greenBorder},
+  reserved:{label:"Reserved",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+  sold:{label:"Sold",color:C.red,bg:C.redBg,border:C.redBorder},
+};
+const invConf=status=>INV_STATUS[status]||INV_STATUS.available;
+function InventoryPill({status}) {
+  const s=invConf(status);
+  return <span style={{background:s.bg,border:`1px solid ${s.border}`,color:s.color,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:900,whiteSpace:"nowrap"}}>{s.label}</span>;
 }
 
 function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}) {
@@ -1362,8 +1376,9 @@ function FacScan({user,fac,paused,onSaved}) {
   );
 }
 
-function FactorySlabDetailModal({slab,onClose,onQr}) {
+function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
   const [copied,setCopied]=useState(false);
+  const [statusBusy,setStatusBusy]=useState(false);
   const g=gradeConf(slab.grade);
   const measurements=slab.measurements||{};
   const defects=Array.isArray(slab.defects)?slab.defects:[];
@@ -1377,6 +1392,12 @@ function FactorySlabDetailModal({slab,onClose,onQr}) {
     } catch(e) {
       window.prompt("Copy certificate link",certificateUrl);
     }
+  }
+  async function changeStatus(status){
+    if(status===(slab.inventoryStatus||"available")||statusBusy)return;
+    setStatusBusy(true);
+    await onStatus?.(slab,status);
+    setStatusBusy(false);
   }
   return (
     <Modal title="Slab Details" onClose={onClose}>
@@ -1392,6 +1413,20 @@ function FactorySlabDetailModal({slab,onClose,onQr}) {
           </div>
           <div style={{fontSize:24,fontWeight:900,color:C.green}}>Rs {slab.pricePerSqFt||0}<span style={{fontSize:12,fontWeight:600,color:C.textDim}}> / sq ft</span></div>
         </div>
+        <Card style={{padding:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:900}}>Inventory Status</div>
+              <div style={{fontSize:11,color:C.textDim,marginTop:2}}>Controls whether buyers should treat this slab as purchasable.</div>
+            </div>
+            <InventoryPill status={slab.inventoryStatus}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            {Object.entries(INV_STATUS).map(([id,c])=>(
+              <button key={id} disabled={statusBusy} onClick={()=>changeStatus(id)} style={{padding:"9px 6px",background:(slab.inventoryStatus||"available")===id?c.bg:C.white,border:`1px solid ${(slab.inventoryStatus||"available")===id?c.border:C.border}`,borderRadius:8,color:(slab.inventoryStatus||"available")===id?c.color:C.textMid,fontSize:12,fontWeight:900,cursor:statusBusy?"not-allowed":"pointer",fontFamily:"sans-serif"}}>{c.label}</button>
+            ))}
+          </div>
+        </Card>
         {(slab.photo||photos.length>0)&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
           {[slab.photo?{src:slab.photo,label:"Primary"}:null,...photos].filter(Boolean).slice(0,6).map((p,idx)=>(
             <div key={idx} style={{position:"relative",borderRadius:10,overflow:"hidden",border:`1px solid ${C.border}`,aspectRatio:"1"}}>
@@ -1424,11 +1459,18 @@ function FactorySlabDetailModal({slab,onClose,onQr}) {
 
 function FacHistory({insps}) {
   const [search,setSearch]=useState("");const [filterG,setFilterG]=useState("All");const [qrSlab,setQrSlab]=useState(null);const [detailSlab,setDetailSlab]=useState(null);
-  const filtered=insps.filter(i=>(filterG==="All"||i.grade===filterG)&&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())));
+  const [statusOverrides,setStatusOverrides]=useState({});
+  const withStatus=insps.map(i=>({...i,inventoryStatus:statusOverrides[i.id]||i.inventoryStatus||"available"}));
+  const filtered=withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())));
+  async function updateStatus(slab,status){
+    await DB.updInspStatus(slab.id,status);
+    setStatusOverrides(p=>({...p,[slab.id]:status}));
+    setDetailSlab(p=>p?.id===slab.id?{...p,inventoryStatus:status}:p);
+  }
   return (
     <div>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
-      {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
+      {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onStatus={updateStatus} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
       <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Scan History</div>
       <div style={{marginBottom:10}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="🔍"/></div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
@@ -1444,6 +1486,7 @@ function FacHistory({insps}) {
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{r.stone}</div><div style={{fontSize:11,color:C.textDim}}>{r.date} · {r.time}</div></div>
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}>
             <span style={{fontSize:11,fontWeight:700,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
+            <InventoryPill status={r.inventoryStatus}/>
             <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
           </div>
         </div>
@@ -1891,7 +1934,7 @@ function slabDims(slab) {
 
 function BuyerPortal({factoryId,onBack,buyer}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
-  const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");
+  const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");const [statusFilter,setStatusFilter]=useState("available");
   const [maxPrice,setMaxPrice]=useState("");const [sortBy,setSortBy]=useState("newest");
   const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
   const [qrSlab,setQrSlab]=useState(null);
@@ -1906,6 +1949,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       &&(stoneFilter==="All"||i.stone===stoneFilter)
       &&(supplierFilter==="All"||i.supplier===supplierFilter)
       &&(exportFilter==="All"||(exportFilter==="Export"&&i.exportReady)||(exportFilter==="Domestic"&&!i.exportReady))
+      &&(statusFilter==="All"||(i.inventoryStatus||"available")===statusFilter)
       &&(!maxPrice||Number(i.pricePerSqFt||0)<=Number(maxPrice))
       &&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())||i.supplier?.toLowerCase().includes(search.toLowerCase())))
     .sort((a,b)=>{
@@ -1914,7 +1958,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       if(sortBy==="grade")return (a.grade==="Premium"?0:1)-(b.grade==="Premium"?0:1);
       return Number(b.ts||0)-Number(a.ts||0);
     });
-  const clearFilters=()=>{setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setMaxPrice("");setSortBy("newest");setSearch("");};
+  const clearFilters=()=>{setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setStatusFilter("available");setMaxPrice("");setSortBy("newest");setSearch("");};
   async function submitInquiry(){
     if(!inquiry)return;
     await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:inquiryMsg});
@@ -1944,7 +1988,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
           ))}
         </div>
         <Card style={{padding:12,marginBottom:14}}>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
             <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
               {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All stones":o}</option>)}
             </select>
@@ -1955,6 +1999,12 @@ function BuyerPortal({factoryId,onBack,buyer}) {
               <option value="All">Export + domestic</option>
               <option value="Export">Export ready</option>
               <option value="Domestic">Domestic only</option>
+            </select>
+            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+              <option value="available">Available only</option>
+              <option value="reserved">Reserved</option>
+              <option value="sold">Sold</option>
+              <option value="All">All statuses</option>
             </select>
             <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="Max Rs/sqft" style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}/>
             <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
@@ -1973,6 +2023,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
           {filtered.map(slab=>{
             const g=gradeConf(slab.grade);
+            const inv=slab.inventoryStatus||"available";
+            const canInquire=inv==="available";
             return (
               <div key={slab.id} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
@@ -1981,7 +2033,10 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                     <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28}}>{g.emoji}</span></div>}
                     <div style={{position:"absolute",top:8,right:8,background:g.bg,border:`1px solid ${g.border}`,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,color:g.color}}>{slab.grade}</div>
                     <button onClick={e=>{e.stopPropagation();setQrSlab(slab);}} style={{position:"absolute",top:8,left:8,background:"rgba(255,255,255,0.9)",border:"none",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
-                    {slab.exportReady&&<div style={{position:"absolute",bottom:8,left:8,background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:800,color:C.green}}>Export ready</div>}
+                    <div style={{position:"absolute",bottom:8,left:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+                      <InventoryPill status={inv}/>
+                      {slab.exportReady&&<span style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:800,color:C.green}}>Export ready</span>}
+                    </div>
                   </div>
                   <div style={{padding:"12px 14px 8px"}}>
                     <div style={{fontSize:14,fontWeight:800,marginBottom:3}}>{slab.stone}</div>
@@ -1996,7 +2051,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   <div style={{fontSize:16,fontWeight:800,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:11,fontWeight:400,color:C.textDim}}>/sqft</span></div>
                   <div style={{display:"flex",gap:6}}>
                     <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>View</button>
-                    <button onClick={()=>{setInquiry(slab);setInquiryMsg("");setInquirySent(false);}} style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,padding:"5px 10px",color:C.primary,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>📩 Interested</button>
+                    <button disabled={!canInquire} onClick={()=>{if(!canInquire)return;setInquiry(slab);setInquiryMsg("");setInquirySent(false);}} style={{background:canInquire?C.primaryBg:C.surface,border:`1px solid ${canInquire?C.primaryBorder:C.border}`,borderRadius:8,padding:"5px 10px",color:canInquire?C.primary:C.textDim,fontSize:11,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"📩 Interested":invConf(inv).label}</button>
                   </div>
                 </div>
               </div>
