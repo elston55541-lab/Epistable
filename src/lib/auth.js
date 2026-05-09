@@ -67,13 +67,24 @@ export async function getSessionProfile() {
 
 export async function acceptInviteWithPassword(email, password, mode = "signup") {
   const normalizedEmail = email.trim().toLowerCase();
-  const result = mode === "signin"
-    ? await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
-    : await supabase.auth.signUp({ email: normalizedEmail, password });
+  const authRequest = mode === "signin"
+    ? supabase.auth.signInWithPassword({ email: normalizedEmail, password })
+    : supabase.auth.signUp({ email: normalizedEmail, password });
+  const result = await withTimeout(authRequest, "Supabase Auth took too long. Please try again.");
   const auth = requireData(result, "Could not accept invite");
+  if (!auth.session) {
+    throw new Error("Account created. Check your email to confirm it, then return here and choose 'I Have Login'.");
+  }
   const linked = requireData(
-    await supabase.rpc("accept_profile_invite"),
+    await withTimeout(supabase.rpc("accept_profile_invite"), "Invite linking took too long. Please try again."),
     "Could not link invite"
   );
   return { auth, profile: linked?.[0] || linked };
+}
+
+function withTimeout(promise, message, ms = 15000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ]);
 }
