@@ -1362,12 +1362,73 @@ function FacScan({user,fac,paused,onSaved}) {
   );
 }
 
+function FactorySlabDetailModal({slab,onClose,onQr}) {
+  const [copied,setCopied]=useState(false);
+  const g=gradeConf(slab.grade);
+  const measurements=slab.measurements||{};
+  const defects=Array.isArray(slab.defects)?slab.defects:[];
+  const photos=(Array.isArray(slab.photos)?slab.photos:[]).map((p,idx)=>typeof p==="string"?{src:p,label:idx===0?"Primary photo":`Evidence ${idx+1}`}:p).filter(p=>p?.src);
+  const certificateUrl=`${window.location.origin}/slab/${encodeURIComponent(slab.id)}`;
+  async function copyLink(){
+    try {
+      await navigator.clipboard.writeText(certificateUrl);
+      setCopied(true);
+      setTimeout(()=>setCopied(false),1500);
+    } catch(e) {
+      window.prompt("Copy certificate link",certificateUrl);
+    }
+  }
+  return (
+    <Modal title="Slab Details" onClose={onClose}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{background:g.bg,border:`1px solid ${g.border}`,borderRadius:12,padding:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:11,fontFamily:"monospace",color:C.textDim,marginBottom:4}}>{slab.id}</div>
+              <div style={{fontSize:18,fontWeight:900,color:C.text,marginBottom:3}}>{slab.stone}</div>
+              <div style={{fontSize:12,color:C.textMid}}>{slab.date} · {slab.time}</div>
+            </div>
+            <span style={{fontSize:12,fontWeight:900,color:g.color,background:C.white,border:`1px solid ${g.border}`,borderRadius:20,padding:"5px 10px",flexShrink:0}}>{slab.grade}</span>
+          </div>
+          <div style={{fontSize:24,fontWeight:900,color:C.green}}>Rs {slab.pricePerSqFt||0}<span style={{fontSize:12,fontWeight:600,color:C.textDim}}> / sq ft</span></div>
+        </div>
+        {(slab.photo||photos.length>0)&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+          {[slab.photo?{src:slab.photo,label:"Primary"}:null,...photos].filter(Boolean).slice(0,6).map((p,idx)=>(
+            <div key={idx} style={{position:"relative",borderRadius:10,overflow:"hidden",border:`1px solid ${C.border}`,aspectRatio:"1"}}>
+              <img src={p.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              {p.label&&<div style={{position:"absolute",left:4,right:4,bottom:4,background:"rgba(0,0,0,0.62)",borderRadius:5,padding:"3px 4px",fontSize:9,fontWeight:800,color:"#fff",textAlign:"center"}}>{p.label}</div>}
+            </div>
+          ))}
+        </div>}
+        <Card style={{padding:14}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Inspection</div>
+          {[["Supplier",slab.supplier],["Inspector",slab.inspector],["Thickness",measurements.thickness?`${measurements.thickness} mm`:""],["Size",measurements.length&&measurements.width?`${measurements.length} x ${measurements.width} cm`:""],["Sound",measurements.soundTest],["Edge",measurements.edgeCondition],["Finish",measurements.surfaceFinish],["Export Ready",slab.exportReady?"Yes":"No"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:700}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:800,textAlign:"right"}}>{v||"Not recorded"}</span></div>
+          ))}
+        </Card>
+        <Card style={{padding:14}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Grade Reason</div>
+          <div style={{fontSize:13,lineHeight:1.6,color:C.textMid}}>{slab.reason||"No reason recorded."}</div>
+          {defects.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>{defects.map(d=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"4px 9px",fontSize:11,fontWeight:800,color:C.amber,textTransform:"capitalize"}}>{d}</span>)}</div>}
+          {slab.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 10px",fontSize:12,color:C.textMid,lineHeight:1.5,marginTop:10}}>{slab.notes}</div>}
+        </Card>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Btn variant="secondary" onClick={copyLink}>{copied?"Copied":"Copy Link"}</Btn>
+          <Btn variant="secondary" onClick={onQr}>Share QR</Btn>
+          <Btn style={{gridColumn:"1 / -1"}} onClick={()=>window.open(certificateUrl,"_blank","noopener,noreferrer")}>View Certificate</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function FacHistory({insps}) {
-  const [search,setSearch]=useState("");const [filterG,setFilterG]=useState("All");const [qrSlab,setQrSlab]=useState(null);
+  const [search,setSearch]=useState("");const [filterG,setFilterG]=useState("All");const [qrSlab,setQrSlab]=useState(null);const [detailSlab,setDetailSlab]=useState(null);
   const filtered=insps.filter(i=>(filterG==="All"||i.grade===filterG)&&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())));
   return (
     <div>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
+      {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
       <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Scan History</div>
       <div style={{marginBottom:10}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="🔍"/></div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
@@ -1377,13 +1438,13 @@ function FacHistory({insps}) {
       </div>
       {filtered.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📋</div><div style={{fontWeight:600}}>No inspections yet</div></Card>:
       <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);return(
-        <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
+        <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
           <div style={{width:44,height:44,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.emoji}</div>}
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{r.stone}</div><div style={{fontSize:11,color:C.textDim}}>{r.date} · {r.time}</div></div>
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}>
             <span style={{fontSize:11,fontWeight:700,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
-            <button onClick={()=>setQrSlab(r)} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
+            <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
           </div>
         </div>
       );})}
