@@ -1414,30 +1414,64 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
 
 function FacSuppliers({fac}) {
   const [suppliers,setSuppliers]=useState([]);const [insps,setInsps]=useState([]);const [show,setShow]=useState(false);const [sel,setSel]=useState(null);
+  const [windowDays,setWindowDays]=useState("90");const [sortBy,setSortBy]=useState("score");
   const [form,setForm]=useState({name:"",contact:"",phone:"",location:"",notes:""});
   async function load(){const [s,i]=await Promise.all([DB.facSuppliers(fac?.id||""),DB.facInsps(fac?.id||"")]);setSuppliers(s);setInsps(i);}
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{load();},[fac?.id]);
   async function create(){if(!form.name)return;await DB.createSupplier({...form,factoryId:fac?.id});setForm({name:"",contact:"",phone:"",location:"",notes:""});setShow(false);load();}
+  const normalize=v=>(v||"").trim().toLowerCase();
+  const cutoff=windowDays==="all"?0:Date.now()-(Number(windowDays)||90)*86400000;
+  const trackedInsps=insps.filter(i=>(i.supplierId||i.supplier)&&(windowDays==="all"||i.ts>=cutoff));
+  const supplierNames=new Set(suppliers.map(s=>normalize(s.name)));
   function supplierRows(s){
-    return insps.filter(i=>i.supplierId===s.id||(!i.supplierId&&i.supplier===s.name));
+    if(s._manual)return trackedInsps.filter(i=>!i.supplierId&&i.supplier&&!supplierNames.has(normalize(i.supplier)));
+    return trackedInsps.filter(i=>i.supplierId===s.id||(!i.supplierId&&normalize(i.supplier)===normalize(s.name)));
   }
   function statsFor(s){
     const rows=supplierRows(s);
     const total=rows.length;
     const byG=g=>rows.filter(i=>i.grade===g).length;
-    const premium=byG("Premium");const rejected=byG("Rejected");
+    const premium=byG("Premium");const standard=byG("Standard");const commercial=byG("Commercial");const rejected=byG("Rejected");
     const premiumPct=total?Math.round(premium/total*100):0;
+    const standardPct=total?Math.round(standard/total*100):0;
+    const commercialPct=total?Math.round(commercial/total*100):0;
     const rejectPct=total?Math.round(rejected/total*100):0;
-    const score=total?Math.min(100,Math.max(0,Math.round((premiumPct*1.2)+(byG("Standard")/total*40)-(rejectPct*0.9)))):0;
+    const exportReady=rows.filter(i=>i.exportReady).length;
+    const exportReadyPct=total?Math.round(exportReady/total*100):0;
+    const defectSlabs=rows.filter(i=>(i.defects||[]).length>0).length;
+    const defectRate=total?Math.round(defectSlabs/total*100):0;
+    const avgPrice=total?Math.round(rows.reduce((sum,i)=>sum+(Number(i.pricePerSqFt)||0),0)/total):0;
+    const volumeBonus=Math.min(10,Math.round(total/5));
+    const score=total?Math.min(100,Math.max(0,Math.round((premiumPct*0.75)+(standardPct*0.28)+(exportReadyPct*0.12)+volumeBonus-(rejectPct*0.7)-(defectRate*0.22)))):0;
     const defects={};rows.forEach(i=>(i.defects||[]).forEach(d=>{defects[d]=(defects[d]||0)+1;}));
-    const topDefects=Object.entries(defects).sort((a,b)=>b[1]-a[1]).slice(0,3);
-    const recent=rows.slice(0,4);
-    return {rows,total,premium,premiumPct,rejected,rejectPct,score,topDefects,recent};
+    const topDefects=Object.entries(defects).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const recent=rows.slice(0,6);
+    const lastScan=rows[0]?.ts||null;
+    const risk=total===0?{label:"No Data",color:C.textDim,bg:C.surface,border:C.border}
+      :rejectPct>=20||defectRate>=55?{label:"Review",color:C.red,bg:C.redBg,border:C.redBorder}
+      :score>=70&&rejectPct<=8?{label:"Preferred",color:C.green,bg:C.greenBg,border:C.greenBorder}
+      :{label:"Monitor",color:C.amber,bg:C.amberBg,border:C.amberBorder};
+    const recommendation=total===0?"Scan slabs from this supplier to build a reliable scorecard."
+      :rejectPct>=20?"Review recent rejected slabs before placing the next order."
+      :defectRate>=45?"Ask for tighter pre-dispatch checks around the recurring defects."
+      :premiumPct>=55&&rejectPct<=8?"Prioritize this supplier for premium/export-ready orders."
+      :"Keep monitoring before changing purchasing preference.";
+    return {rows,total,premium,standard,commercial,premiumPct,standardPct,commercialPct,rejected,rejectPct,exportReadyPct,defectRate,avgPrice,score,topDefects,recent,lastScan,risk,recommendation};
   }
-  const ranked=suppliers.map(s=>({...s,_stats:statsFor(s)})).sort((a,b)=>b._stats.score-a._stats.score||b._stats.total-a._stats.total);
-  const best=ranked[0];
+  const manualSupplier={id:"manual-suppliers",name:"Unregistered Suppliers",location:"Manual scan entries",contact:"Add suppliers to separate these",_manual:true};
+  const manualStats=statsFor(manualSupplier);
+  const scorecards=[...suppliers,...(manualStats.total>0?[manualSupplier]:[])].map(s=>({...s,_stats:statsFor(s)}));
+  const ranked=[...scorecards].sort((a,b)=>{
+    if(sortBy==="premium")return b._stats.premiumPct-a._stats.premiumPct||b._stats.total-a._stats.total;
+    if(sortBy==="reject")return b._stats.rejectPct-a._stats.rejectPct||b._stats.rejected-a._stats.rejected;
+    if(sortBy==="volume")return b._stats.total-a._stats.total||b._stats.score-a._stats.score;
+    return b._stats.score-a._stats.score||b._stats.total-a._stats.total;
+  });
+  const scored=ranked.filter(s=>s._stats.total>0);
+  const best=scored[0];
   const mostScanned=[...ranked].sort((a,b)=>b._stats.total-a._stats.total)[0];
-  const mostRejected=[...ranked].sort((a,b)=>b._stats.rejected-a._stats.rejected)[0];
+  const mostRejected=[...scored].sort((a,b)=>b._stats.rejectPct-a._stats.rejectPct||b._stats.rejected-a._stats.rejected)[0];
+  const totalSupplierScans=trackedInsps.length;
   return (
     <div>
       {show&&<Modal title="Add Supplier" onClose={()=>setShow(false)}>
@@ -1455,6 +1489,12 @@ function FacSuppliers({fac}) {
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
           {[["Score",st.score,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red]].map(([l,v,c])=>(
             <div key={l} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:18,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>
+          ))}
+        </div>
+        <div style={{background:st.risk.bg,border:`1px solid ${st.risk.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:800,color:st.risk.color,marginBottom:12}}>{st.risk.label}: {st.recommendation}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          {[["Defect Rate",st.defectRate+"%",C.amber],["Export Ready",st.exportReadyPct+"%",C.teal],["Avg Price","Rs "+st.avgPrice,C.green]].map(([l,v,c])=>(
+            <div key={l} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>
           ))}
         </div>
         <Card style={{padding:14,marginBottom:12}}>
@@ -1481,25 +1521,35 @@ function FacSuppliers({fac}) {
         </Card>
       </Modal>;})()}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Suppliers</div><div style={{fontSize:12,color:C.textDim}}>{suppliers.length} registered</div></div>
-        <Btn size="sm" onClick={()=>setShow(true)}>+ Add</Btn>
+        <div><div style={{fontSize:18,fontWeight:800}}>Supplier Scorecards</div><div style={{fontSize:12,color:C.textDim}}>{suppliers.length} registered suppliers</div></div>
+        <div style={{display:"flex",gap:8}}><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ Add</Btn></div>
       </div>
-      {suppliers.length>0&&<KpiGrid items={[
-        {label:"Best Supplier",value:best?.name||"—",icon:"🏆",color:C.green},
-        {label:"Most Scanned",value:mostScanned?mostScanned._stats.total:0,icon:"📦",color:C.primary},
-        {label:"Reject Watch",value:mostRejected?mostRejected._stats.rejected:0,icon:"⚠️",color:C.red},
-        {label:"Total Scans",value:insps.filter(i=>i.supplierId||i.supplier).length,icon:"🔍",color:C.teal},
+      {scorecards.length>0&&<KpiGrid items={[
+        {label:"Best Score",value:best?best._stats.score:"-",icon:"Top",color:C.green},
+        {label:"Most Scanned",value:mostScanned?mostScanned._stats.total:0,icon:"Vol",color:C.primary},
+        {label:"Reject Watch",value:mostRejected?mostRejected._stats.rejectPct+"%":"0%",icon:"Risk",color:C.red},
+        {label:"Supplier Scans",value:totalSupplierScans,icon:"Scan",color:C.teal},
       ]}/>}
-      {suppliers.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🏭</div><Btn onClick={()=>setShow(true)}>+ Add First Supplier</Btn></Card>:
+      <Card style={{padding:12,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Sel label="Scan Window" value={windowDays} onChange={setWindowDays} options={[{value:"30",label:"Last 30 days"},{value:"90",label:"Last 90 days"},{value:"180",label:"Last 180 days"},{value:"all",label:"All time"}]}/>
+          <Sel label="Rank By" value={sortBy} onChange={setSortBy} options={[{value:"score",label:"Quality score"},{value:"premium",label:"Premium rate"},{value:"reject",label:"Rejection risk"},{value:"volume",label:"Scan volume"}]}/>
+        </div>
+      </Card>
+      {scorecards.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,marginBottom:12}}>Suppliers</div><Btn onClick={()=>setShow(true)}>+ Add First Supplier</Btn></Card>:
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {ranked.map(s=>{const st=s._stats;return(
           <Card key={s.id} style={{padding:14,cursor:"pointer"}} onClick={()=>setSel(s)}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:10}}>
               <div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:900,marginBottom:2}}>{s.name}</div><div style={{fontSize:11,color:C.textDim}}>{s.location||"—"} · {s.contact||"—"}</div></div>
-              <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:900,color:st.score>=70?C.green:st.score>=40?C.amber:C.red}}>{st.score}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>Score</div></div>
+              <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:900,color:st.risk.color}}>{st.score}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>Score</div></div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
-              {[["Scans",st.total,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red]].map(([l,v,c])=><div key={l} style={{background:C.surface,borderRadius:8,padding:8,textAlign:"center"}}><div style={{fontSize:14,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>)}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+              {[["Scans",st.total,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red],["Defects",st.defectRate+"%",C.amber]].map(([l,v,c])=><div key={l} style={{background:C.surface,borderRadius:8,padding:8,textAlign:"center"}}><div style={{fontSize:14,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>)}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:st.topDefects.length>0?10:0}}>
+              <span style={{background:st.risk.bg,border:`1px solid ${st.risk.border}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:900,color:st.risk.color}}>{st.risk.label}</span>
+              <span style={{fontSize:10,fontWeight:700,color:C.textDim}}>{st.lastScan?`Last scan ${fmtD(st.lastScan)}`:"No scans yet"}</span>
             </div>
             {st.topDefects.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {st.topDefects.map(([d,c])=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:800,color:C.amber,textTransform:"capitalize"}}>{d} · {c}</span>)}
