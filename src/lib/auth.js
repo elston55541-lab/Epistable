@@ -67,24 +67,36 @@ export async function getSessionProfile() {
 
 export async function acceptInviteWithPassword(email, password, mode = "signup") {
   const normalizedEmail = email.trim().toLowerCase();
-  const inviteRedirectTo = `${window.location.origin}/invite`;
-  const authRequest = mode === "signin"
-    ? supabase.auth.signInWithPassword({ email: normalizedEmail, password })
-    : supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: { emailRedirectTo: inviteRedirectTo }
-      });
-  const result = await withTimeout(authRequest, "Supabase Auth took too long. Please try again.");
-  const auth = requireData(result, "Could not accept invite");
-  if (!auth.session) {
-    throw new Error("Account created. Check your email to confirm it, then return here and choose 'I Have Login'.");
+
+  if (mode === "signup") {
+    const inviteResult = requireData(
+      await withTimeout(
+        supabase.functions.invoke("accept-invite", {
+          body: { email: normalizedEmail, password }
+        }),
+        "Invite setup took too long. Please try again."
+      ),
+      "Could not create invite login"
+    );
+    if (!inviteResult?.profile?.id) throw new Error("No pending invite found for this email.");
   }
-  const linked = requireData(
-    await withTimeout(supabase.rpc("accept_profile_invite"), "Invite linking took too long. Please try again."),
-    "Could not link invite"
+
+  const auth = requireData(
+    await withTimeout(
+      supabase.auth.signInWithPassword({ email: normalizedEmail, password }),
+      "Supabase Auth took too long. Please try again."
+    ),
+    "Could not sign in"
   );
-  return { auth, profile: linked?.[0] || linked };
+
+  const profile = mode === "signin"
+    ? requireData(
+        await withTimeout(supabase.rpc("accept_profile_invite"), "Invite linking took too long. Please try again."),
+        "Could not link invite"
+      )
+    : await loadProfileForAuthUser(auth.user?.id, normalizedEmail);
+
+  return { auth, profile: profile?.[0] || profile };
 }
 
 function withTimeout(promise, message, ms = 15000) {
