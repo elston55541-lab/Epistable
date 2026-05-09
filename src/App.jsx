@@ -794,6 +794,12 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
     setBusy(false);
   }
   function finish(){(onDone||onClose)();}
+  function sendInviteEmail(profile){
+    const inviteUrl=`${window.location.origin}/invite`;
+    const subject=encodeURIComponent("You're invited to Epistable AI");
+    const body=encodeURIComponent(`Hi ${profile.name || ""},\n\nYou've been invited to Epistable AI.\n\nUse this link to accept your access and create your login:\n${inviteUrl}\n\nUse this email address when accepting the invite: ${profile.email}\n\nThanks,\nEpistable AI`);
+    window.location.href=`mailto:${encodeURIComponent(profile.email)}?subject=${subject}&body=${body}`;
+  }
   return (
     <Modal title={title} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
       {done?<div>
@@ -804,7 +810,10 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
           ))}
         </div>
         <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>Send them this link to accept access: {window.location.origin}/invite</div>
-        <Btn full onClick={finish}>Done</Btn>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Btn variant="secondary" onClick={()=>sendInviteEmail(done)}>Send Invite Email</Btn>
+          <Btn onClick={finish}>Done</Btn>
+        </div>
       </div>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Rajesh Kumar"/>
         {isBuyer&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Al-Rashid Stone Trading, Dubai"/>}
