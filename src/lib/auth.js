@@ -64,3 +64,16 @@ export async function getSessionProfile() {
   if (!user?.id) return null;
   return loadProfileForAuthUser(user.id, user.email);
 }
+
+export async function acceptInviteWithPassword(email, password, mode = "signup") {
+  const normalizedEmail = email.trim().toLowerCase();
+  const result = mode === "signin"
+    ? await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
+    : await supabase.auth.signUp({ email: normalizedEmail, password });
+  const auth = requireData(result, "Could not accept invite");
+  const linked = requireData(
+    await supabase.rpc("accept_profile_invite"),
+    "Could not link invite"
+  );
+  return { auth, profile: linked?.[0] || linked };
+}

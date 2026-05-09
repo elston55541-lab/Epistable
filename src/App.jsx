@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
-import { getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
+import { acceptInviteWithPassword, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
 import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
 import { useBP } from "./hooks/useBP";
@@ -40,7 +40,7 @@ const DB = {
     factory_id:d.factoryId,
     factory_name:d.factoryName,
     avatar:d.avatar,
-    status:"active",
+    status:d.status||"pending",
     scans_total:0,
     last_active:null,
     created_at:Date.now()
@@ -76,7 +76,7 @@ const DB = {
     company:d.company||"",
     factory_id:d.factoryId,
     factory_name:d.factoryName,
-    status:"active",
+    status:d.status||"pending",
     last_active:null,
     created_at:Date.now()
   };
@@ -495,6 +495,45 @@ function Login({onOwner,onFactory,onBuyer}) {
 }
 
 // ── OWNER ──
+function InviteAccept({onAccepted}) {
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [mode,setMode]=useState("signup");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+  async function submit(){
+    if(!email||!pass){setErr("Enter your invited email and password.");return;}
+    setLoading(true);setErr("");
+    try {
+      const {profile}=await acceptInviteWithPassword(email,pass,mode);
+      if(!profile)throw new Error("No pending invite found for this email.");
+      onAccepted(profile);
+    } catch(e) {
+      setErr(e.message||"Could not accept invite.");
+      setLoading(false);
+    }
+  }
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif",padding:24}}>
+      <Card style={{width:"100%",maxWidth:430,padding:22}}>
+        <div style={{fontSize:22,fontWeight:900,color:C.text,marginBottom:6}}>Accept Epistable Invite</div>
+        <div style={{fontSize:13,color:C.textDim,marginBottom:18}}>Use the same email your admin invited. New users can create a password here; existing users can sign in.</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+          <Btn variant={mode==="signup"?"primary":"secondary"} size="sm" onClick={()=>setMode("signup")}>Create Login</Btn>
+          <Btn variant={mode==="signin"?"primary":"secondary"} size="sm" onClick={()=>setMode("signin")}>I Have Login</Btn>
+        </div>
+        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:700,marginBottom:12}}>{err}</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <Inp label="Invited Email" value={email} onChange={setEmail} type="email" required/>
+          <Inp label="Password" value={pass} onChange={setPass} type="password" required hint={mode==="signup"?"Choose a password for this login.":"Enter your existing password."}/>
+          <Btn full onClick={submit} disabled={loading}>{loading?"Accepting...":"Accept Invite"}</Btn>
+          <Btn full variant="secondary" onClick={()=>window.location.assign("/")}>Back to Login</Btn>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function Owner({onLogout}) {
   const [page,setPage]=useState("overview");
   const [facs,setFacs]=useState([]);
@@ -764,13 +803,13 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:l==="Auth ID"?"monospace":"inherit",textAlign:"right"}}>{v}</span></div>
           ))}
         </div>
-        <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>Create or invite this email in Supabase Auth, then link its user ID here for login.</div>
+        <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>Send them this link to accept access: {window.location.origin}/invite</div>
         <Btn full onClick={finish}>Done</Btn>
       </div>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Rajesh Kumar"/>
         {isBuyer&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Al-Rashid Stone Trading, Dubai"/>}
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
-        <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional until Auth user is created" hint="Credentials are managed in Supabase Auth, not stored in this app."/>
+        <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional" hint="Leave blank for invite flow. The user links this by accepting /invite."/>
         {!isBuyer&&<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={[{value:"inspector",label:"Inspector"},{value:"manager",label:"Manager"},{value:"admin",label:"Admin"}]}/>}
         {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:700}}>{err}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -1773,6 +1812,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
 // ── ROOT ──
 export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
+  const inviteMatch=window.location.pathname==="/invite";
   const [session,setSession]=useState(null);
   const [booting,setBooting]=useState(true);
   function profileSession(profile){
@@ -1790,6 +1830,7 @@ export default function App() {
   },[]);
   async function logout(){try{await signOut();}catch(e){}setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
+  if(inviteMatch)return <InviteAccept onAccepted={profile=>setSession(profileSession(profile))}/>;
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
