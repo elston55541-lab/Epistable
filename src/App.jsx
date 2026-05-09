@@ -1104,6 +1104,10 @@ function FacScan({user,fac,paused,onSaved}) {
   const [photos,setPhotos]=useState({});
   const [photoSlot,setPhotoSlot]=useState("front");
   const [suppliers,setSuppliers]=useState([]);
+  const [supplierMode,setSupplierMode]=useState("registered");
+  const [quickSupplier,setQuickSupplier]=useState("");
+  const [supplierBusy,setSupplierBusy]=useState(false);
+  const [supplierErr,setSupplierErr]=useState("");
   const fileRef=useRef();const videoRef=useRef();const canvasRef=useRef();
   const [cameraOpen,setCameraOpen]=useState(false);const [cameraStream,setCameraStream]=useState(null);const [cameraError,setCameraError]=useState("");
   useEffect(()=>{if(fac)DB.facSuppliers(fac.id).then(setSuppliers);},[fac]);
@@ -1113,9 +1117,33 @@ function FacScan({user,fac,paused,onSaved}) {
   const completePhotoSlots=requiredPhotoSlots.filter(s=>photos[s.id]?.src).length;
   const photoReady=completePhotoSlots===requiredPhotoSlots.length;
   const photoEvidence=PHOTO_SLOTS.map(s=>photos[s.id]?{slot:s.id,label:s.label,src:photos[s.id].src}:null).filter(Boolean);
+  const selectedSupplier=suppliers.find(s=>s.id===form.supplierId);
+  const supplierReady=supplierMode==="unknown"||(supplierMode==="registered"&&!!form.supplierId)||(supplierMode==="manual"&&!!form.supplier.trim());
+  const supplierName=()=>supplierMode==="unknown"?"Unknown supplier":supplierMode==="registered"?(selectedSupplier?.name||""):form.supplier.trim();
   function setEvidencePhoto(slotId,src){setPhotos(p=>({...p,[slotId]:{src,label:PHOTO_SLOTS.find(s=>s.id===slotId)?.label||slotId}}));}
   function removeEvidencePhoto(slotId){setPhotos(p=>{const n={...p};delete n[slotId];return n;});}
   function chooseUpload(slotId){setPhotoSlot(slotId);setTimeout(()=>fileRef.current?.click(),0);}
+  function chooseSupplierMode(mode){
+    setSupplierMode(mode);setSupplierErr("");
+    if(mode==="registered")setForm(p=>({...p,supplier:""}));
+    if(mode==="manual")setForm(p=>({...p,supplierId:""}));
+    if(mode==="unknown")setForm(p=>({...p,supplierId:"",supplier:"Unknown supplier"}));
+  }
+  async function addQuickSupplier(){
+    const name=quickSupplier.trim();
+    if(!name){setSupplierErr("Enter a supplier name.");return;}
+    setSupplierBusy(true);setSupplierErr("");
+    try {
+      const s=await DB.createSupplier({name,contact:"",phone:"",location:"",notes:"Created during scan",factoryId:fac?.id});
+      setSuppliers(prev=>[s,...prev]);
+      setForm(p=>({...p,supplierId:s.id,supplier:""}));
+      setSupplierMode("registered");
+      setQuickSupplier("");
+    } catch(e) {
+      setSupplierErr(e.message||"Could not add supplier.");
+    }
+    setSupplierBusy(false);
+  }
 
   async function openCamera(slotId=photoSlot){
     setPhotoSlot(slotId);
@@ -1141,8 +1169,7 @@ function FacScan({user,fac,paused,onSaved}) {
   async function gradeWithAI(){
     setLoading(true);setGrade(null);
     try {
-      const supplierName=form.supplierId?suppliers.find(s=>s.id===form.supplierId)?.name||form.supplier:form.supplier;
-      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName||"Unknown"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
+      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName()||"Unknown"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
       const data=await res.json();
       let text=data.content?.[0]?.text||"{}";text=text.replace(/```json|```/g,"").trim();
       setGrade(JSON.parse(text));
@@ -1152,8 +1179,8 @@ function FacScan({user,fac,paused,onSaved}) {
 
   async function save(){
     if(!grade)return;
-    const supplierName=form.supplierId?suppliers.find(s=>s.id===form.supplierId)?.name||form.supplier:form.supplier;
-    const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:supplierName,supplierId:form.supplierId||null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
+    const capturedSupplier=supplierName();
+    const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:capturedSupplier,supplierId:supplierMode==="registered"?form.supplierId||null:null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
     await DB.saveInsp(insp);
     setSaved(true);
   }
@@ -1165,7 +1192,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade?.pricePerSqFt}/sqft</div>
       <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
+        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
         <Btn onClick={onSaved}>View History</Btn>
       </div>
     </div>
@@ -1203,8 +1230,31 @@ function FacScan({user,fac,paused,onSaved}) {
             </button>
           ))}
         </div>
-        {suppliers.length>0?<Sel label="Supplier" value={form.supplierId} onChange={v=>setForm(p=>({...p,supplierId:v}))} options={[{value:"",label:"Select supplier…"},...suppliers.map(s=>({value:s.id,label:s.name}))]}/>
-        :<Inp label="Supplier Name" value={form.supplier} onChange={v=>setForm(p=>({...p,supplier:v}))} placeholder="e.g. Shree Marble Exports"/>}
+        <Card style={{padding:14,borderColor:supplierReady?C.greenBorder:C.amberBorder,background:supplierReady?C.white:C.amberBg}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:900}}>Supplier Source</div>
+              <div style={{fontSize:11,color:C.textDim,marginTop:2}}>This powers supplier scorecards and purchasing decisions.</div>
+            </div>
+            <span style={{fontSize:11,fontWeight:900,color:supplierReady?C.green:C.amber}}>{supplierReady?"Captured":"Required"}</span>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+            {[["registered","Registered"],["manual","Typed"],["unknown","Unknown"]].map(([mode,label])=>(
+              <button key={mode} onClick={()=>chooseSupplierMode(mode)} style={{padding:"9px 6px",background:supplierMode===mode?C.primary:C.white,border:`1px solid ${supplierMode===mode?C.primary:C.border}`,borderRadius:8,color:supplierMode===mode?C.white:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{label}</button>
+            ))}
+          </div>
+          {supplierMode==="registered"&&<>
+            {suppliers.length>0?<Sel label="Select Supplier" value={form.supplierId} onChange={v=>setForm(p=>({...p,supplierId:v}))} options={[{value:"",label:"Select supplier..."},...suppliers.map(s=>({value:s.id,label:s.name}))]}/>
+            :<div style={{fontSize:12,color:C.textMid,marginBottom:10}}>No registered suppliers yet. Add one below or use Typed/Unknown.</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:10}}>
+              <input value={quickSupplier} onChange={e=>setQuickSupplier(e.target.value)} placeholder="Quick add supplier" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif"}}/>
+              <Btn size="sm" variant="secondary" onClick={addQuickSupplier} disabled={supplierBusy}>{supplierBusy?"Adding...":"+ Add"}</Btn>
+            </div>
+          </>}
+          {supplierMode==="manual"&&<Inp label="Supplier Name" value={form.supplier} onChange={v=>setForm(p=>({...p,supplier:v}))} placeholder="e.g. Shree Marble Exports" hint="This will appear under unregistered suppliers until added as a supplier record."/>}
+          {supplierMode==="unknown"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.textMid,fontWeight:700}}>Use only when the slab source is genuinely unavailable.</div>}
+          {supplierErr&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.red,fontWeight:800,marginTop:10}}>{supplierErr}</div>}
+        </Card>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <label style={{display:"block",fontSize:13,fontWeight:700}}>Photo Evidence</label>
@@ -1228,7 +1278,7 @@ function FacScan({user,fac,paused,onSaved}) {
             ))}
           </div>
         </div>
-        <Btn full onClick={()=>setStep(1)} disabled={!photoReady}>Next → Measurements</Btn>
+        <Btn full onClick={()=>setStep(1)} disabled={!photoReady||!supplierReady}>Next → Measurements</Btn>
       </div>}
       {step===1&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Measurements</div>
