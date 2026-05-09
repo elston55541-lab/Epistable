@@ -1839,7 +1839,7 @@ export default function App() {
   },[]);
   async function logout(){try{await signOut();}catch(e){}setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
-  if(inviteMatch)return <InviteAccept onAccepted={profile=>setSession(profileSession(profile))}/>;
+  if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");setSession(profileSession(profile));}}/>;
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
