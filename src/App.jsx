@@ -8,6 +8,8 @@ import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loa
 import { SlabCertificate } from "./components/SlabCertificate";
 
 // ── DB (Supabase) ──
+const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,measurements,defects,notes,photo,ts,date,time";
+
 const DB = {
   // Factories
   async createFac(d) {
@@ -116,15 +118,15 @@ const DB = {
     return {...data,userId:data.user_id,factoryId:data.factory_id,factoryName:data.factory_name,supplierId:data.supplier_id,pricePerSqFt:data.price_per_sq_ft,exportReady:data.export_ready};
   },
   async userInsps(uid) {
-    const data=await rows(await supabase.from("inspections").select().eq("user_id",uid).order("ts",{ascending:false}).limit(200));
+    const data=await rows(await supabase.from("inspections").select(INSP_LIST_SELECT).eq("user_id",uid).order("ts",{ascending:false}).limit(200));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
   async facInsps(fid) {
-    const data=await rows(await supabase.from("inspections").select().eq("factory_id",fid).order("ts",{ascending:false}).limit(300));
+    const data=await rows(await supabase.from("inspections").select(INSP_LIST_SELECT).eq("factory_id",fid).order("ts",{ascending:false}).limit(300));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
   async allInsps() {
-    const data=await rows(await supabase.from("inspections").select().order("ts",{ascending:false}));
+    const data=await rows(await supabase.from("inspections").select("id,factory_id,grade,ts").order("ts",{ascending:false}).limit(1000));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
 
@@ -299,7 +301,8 @@ function ChatBot({role,ctxData}) {
       const {facs,insps,users}=ctxData;
       const mon=curMon();
       const tb=facs.reduce((s,f)=>{const sc=f.current_month===mon?f.current_month_scans||0:0;return s+calcBill(f.plan||"Starter",sc).total;},0);
-      return `You are Epistable's owner assistant.\nPlatform: ${facs.length} factories, ${users.length} users, ${insps.length} inspections, ₹${tb} billed.\nAnswer concisely. Hindi if asked.`;
+      const totalScans=facs.reduce((s,f)=>s+(f.scans_total||0),0)||insps.length;
+      return `You are Epistable's owner assistant.\nPlatform: ${facs.length} factories, ${users.length} users, ${totalScans} inspections, ₹${tb} billed.\nAnswer concisely. Hindi if asked.`;
     }
     const {fac,insps,user}=ctxData;
     const mon=curMon();
@@ -487,13 +490,14 @@ function Owner({onLogout}) {
 function OwnerOverview({facs,users,insps,totalBill,overdue,setPage,pickFac}) {
   const mon=curMon();
   const ms=facs.reduce((s,f)=>s+(f.current_month===mon?f.current_month_scans||0:0),0);
+  const totalScans=facs.reduce((s,f)=>s+(f.scans_total||0),0)||insps.length;
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,borderRadius:14,padding:"20px",marginBottom:18,color:C.white}}>
         <div style={{fontSize:18,fontWeight:800,marginBottom:4}}>Owner Console</div>
         <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginBottom:14}}>Full platform visibility</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-          {[["₹"+totalBill,"Billed This Month"],[insps.length,"Total Scans"],[facs.filter(f=>f.status==="active").length,"Active Factories"],[overdue,"Overdue"]].map(([v,l])=>(
+          {[["₹"+totalBill,"Billed This Month"],[totalScans,"Total Scans"],[facs.filter(f=>f.status==="active").length,"Active Factories"],[overdue,"Overdue"]].map(([v,l])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"12px"}}><div style={{fontSize:20,fontWeight:800}}>{v}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.7)"}}>{l}</div></div>
           ))}
         </div>
