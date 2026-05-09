@@ -196,7 +196,49 @@ const DB = {
   async readAll(uid) {
     requireData(await supabase.from("notifications").update({read:true}).eq("user_id",uid));
   },
+
+  // Activity
+  async addActivity(a) {
+    const row={id:genId("ACT"),ts:Date.now(),...a};
+    try {
+      requireData(await supabase.from("activity_logs").insert(row));
+      return row;
+    } catch(e) {
+      console.warn("Activity log skipped",e);
+      return null;
+    }
+  },
+  async allActivity() {
+    try {
+      return rows(await supabase.from("activity_logs").select().order("ts",{ascending:false}).limit(30));
+    } catch(e) {
+      console.warn("Activity log load skipped",e);
+      return [];
+    }
+  },
+  async facActivity(fid) {
+    try {
+      return rows(await supabase.from("activity_logs").select().eq("factory_id",fid).order("ts",{ascending:false}).limit(30));
+    } catch(e) {
+      console.warn("Activity log load skipped",e);
+      return [];
+    }
+  },
 };
+
+function activityForProfile(action,actor,target,details={}) {
+  return {
+    action,
+    actor_id:actor?.id||null,
+    actor_name:actor?.name||"Epistable Owner",
+    factory_id:target.factory_id||details.factory_id||null,
+    factory_name:target.factory_name||details.factory_name||"",
+    target_type:"profile",
+    target_id:target.id,
+    target_name:target.name||target.email||target.id,
+    details
+  };
+}
 
 function SlabQRModal({slab,onClose}) {
   const g=gradeConf(slab.grade);
@@ -218,6 +260,30 @@ function SlabQRModal({slab,onClose}) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+function ActivityList({items=[],compact=false}) {
+  const labels={
+    profile_created:"created access",
+    profile_updated:"updated access",
+    profile_suspended:"suspended access",
+    profile_restored:"restored access"
+  };
+  return (
+    <Card style={{marginTop:compact?12:14}}>
+      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,fontSize:14,fontWeight:800}}>Recent Activity</div>
+      {items.length===0?<div style={{padding:"24px 16px",textAlign:"center",fontSize:13,color:C.textDim}}>No activity yet</div>:
+      items.slice(0,compact?5:8).map((a,i)=>(
+        <div key={a.id} style={{display:"flex",gap:10,padding:"12px 16px",borderBottom:i<Math.min(items.length,compact?5:8)-1?`1px solid ${C.border}`:"none"}}>
+          <div style={{width:32,height:32,borderRadius:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>↻</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:800,color:C.text}}>{a.actor_name||"Someone"} {labels[a.action]||a.action} for {a.target_name}</div>
+            <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{a.factory_name||"Platform"} · {fmtD(a.ts)} · {fmtT(a.ts)}</div>
+          </div>
+        </div>
+      ))}
+    </Card>
   );
 }
 
@@ -434,14 +500,15 @@ function Owner({onLogout}) {
   const [facs,setFacs]=useState([]);
   const [users,setUsers]=useState([]);
   const [insps,setInsps]=useState([]);
+  const [activity,setActivity]=useState([]);
   const [selFac,setSelFac]=useState(null);
   const [loading,setLoading]=useState(true);
 
   async function load(){
     setLoading(true);
     try {
-      const [f,u,i]=await Promise.all([DB.allFacs(),DB.allUsers(),DB.allInsps()]);
-      setFacs(f);setUsers(u.filter(u=>u.role!=="owner"));setInsps(i);
+      const [f,u,i,a]=await Promise.all([DB.allFacs(),DB.allUsers(),DB.allInsps(),DB.allActivity()]);
+      setFacs(f);setUsers(u.filter(u=>u.role!=="owner"));setInsps(i);setActivity(a);
     } catch(e) {
       console.error("Owner load failed",e);
     } finally {
@@ -466,7 +533,7 @@ function Owner({onLogout}) {
   ];
 
   const pages={
-    overview:<OwnerOverview facs={facs} users={users} insps={insps} totalBill={totalBill} overdue={overdue} setPage={setPage} pickFac={f=>{setSelFac(f);setPage("fac");}}/>,
+    overview:<OwnerOverview facs={facs} users={users} insps={insps} activity={activity} totalBill={totalBill} overdue={overdue} setPage={setPage} pickFac={f=>{setSelFac(f);setPage("fac");}}/>,
     billing:<OwnerBilling facs={facs} onRefresh={load}/>,
     factories:<OwnerFacs facs={facs} users={users} pickFac={f=>{setSelFac(f);setPage("fac");}} onRefresh={load}/>,
     fac:selFac?<OwnerFacDetail fac={selFac} onBack={()=>setPage("factories")} onRefresh={load}/>:null,
@@ -487,7 +554,7 @@ function Owner({onLogout}) {
   );
 }
 
-function OwnerOverview({facs,users,insps,totalBill,overdue,setPage,pickFac}) {
+function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pickFac}) {
   const mon=curMon();
   const ms=facs.reduce((s,f)=>s+(f.current_month===mon?f.current_month_scans||0:0),0);
   const totalScans=facs.reduce((s,f)=>s+(f.scans_total||0),0)||insps.length;
@@ -519,6 +586,7 @@ function OwnerOverview({facs,users,insps,totalBill,overdue,setPage,pickFac}) {
           </div>;
         })}
       </Card>
+      <ActivityList items={activity}/>
     </div>
   );
 }
@@ -615,6 +683,7 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
 
   async function createUser(form){
     const u=await DB.createUser({...form,factoryId:fac.id,factoryName:fac.name,avatar:form.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()});
+    await DB.addActivity(activityForProfile("profile_created",null,u,{role:u.role,status:u.status}));
     load();return u;
   }
   async function createBuyer(form){
@@ -626,10 +695,12 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
       factoryId:fac.id,
       factoryName:fac.name
     });
+    await DB.addActivity(activityForProfile("profile_created",null,b,{role:"buyer",status:b.status}));
     return b;
    }
   async function saveUser(user,updates){
     await DB.updUser(user.id,updates);
+    await DB.addActivity(activityForProfile(updates.status==="suspended"?"profile_suspended":user.status==="suspended"&&updates.status==="active"?"profile_restored":"profile_updated",null,{...user,...updates},{role:updates.role,status:updates.status}));
     setUsers(prev=>prev.map(u=>u.id===user.id?{...u,...updates}:u));
     onRefresh();
   }
@@ -786,10 +857,13 @@ function OwnerUsers({users,facs,onRefresh}) {
   const filtered=users.filter(u=>u.name?.toLowerCase().includes(search.toLowerCase())||u.email?.toLowerCase().includes(search.toLowerCase())||u.factory_name?.toLowerCase().includes(search.toLowerCase()));
   async function createUser(form){
     const fac=facs.find(f=>f.id===form.factoryId);
-    return DB.createUser({...form,factoryName:fac?.name||"Unknown",avatar:form.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()});
+    const u=await DB.createUser({...form,factoryName:fac?.name||"Unknown",avatar:form.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()});
+    await DB.addActivity(activityForProfile("profile_created",null,u,{role:u.role,status:u.status}));
+    return u;
   }
   async function saveUser(user,updates){
     await DB.updUser(user.id,updates);
+    await DB.addActivity(activityForProfile(updates.status==="suspended"?"profile_suspended":user.status==="suspended"&&updates.status==="active"?"profile_restored":"profile_updated",null,{...user,...updates},{role:updates.role,status:updates.status}));
     onRefresh();
   }
   return (
@@ -873,13 +947,14 @@ function FactoryApp({user,onLogout}) {
   const [insps,setInsps]=useState([]);
   const [fac,setFac]=useState(null);
   const [notifs,setNotifs]=useState([]);
+  const [activity,setActivity]=useState([]);
   const [loading,setLoading]=useState(true);
   const [viewPortal,setViewPortal]=useState(false);
 
   async function load(){
     setLoading(true);
-    const [i,f,n]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id)]);
-    setInsps(i);setFac(f);setNotifs(n);
+    const [i,f,n,a]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id)]);
+    setInsps(i);setFac(f);setNotifs(n);setActivity(a);
     setLoading(false);
   }
   useEffect(()=>{load();},[]);
@@ -907,7 +982,7 @@ function FactoryApp({user,onLogout}) {
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{team:<FacTeam fac={fac}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac}/>,inquiries:<FacInquiries fac={fac}/>,disputes:<FacDisputes fac={fac}/>}:{}),
+    ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
 
@@ -1248,7 +1323,7 @@ function FacAnalytics({insps}) {
   );
 }
 
-function FacTeam({fac}) {
+function FacTeam({fac,actor,activity=[],onActivity}) {
   const [users,setUsers]=useState([]);
   const [manage,setManage]=useState(null);
   const [search,setSearch]=useState("");
@@ -1259,7 +1334,9 @@ function FacTeam({fac}) {
   useEffect(()=>{load();},[fac?.id]);
   async function saveUser(user,updates){
     await DB.updUser(user.id,{...updates,factory_id:fac.id,factory_name:fac.name});
+    await DB.addActivity(activityForProfile(updates.status==="suspended"?"profile_suspended":user.status==="suspended"&&updates.status==="active"?"profile_restored":"profile_updated",actor,{...user,...updates,factory_id:fac.id,factory_name:fac.name},{role:updates.role,status:updates.status}));
     setUsers(prev=>prev.map(u=>u.id===user.id?{...u,...updates,factory_id:fac.id,factory_name:fac.name}:u));
+    onActivity?.();
   }
   const filtered=users.filter(u=>!search||u.name?.toLowerCase().includes(search.toLowerCase())||u.email?.toLowerCase().includes(search.toLowerCase())||u.role?.toLowerCase().includes(search.toLowerCase()));
   return (
@@ -1282,6 +1359,7 @@ function FacTeam({fac}) {
           </div>
         </div>
       ))}</Card>}
+      <ActivityList items={activity} compact/>
     </div>
   );
 }
@@ -1385,12 +1463,13 @@ function FacSuppliers({fac}) {
   );
 }
 
-function FacBuyers({fac}) {
+function FacBuyers({fac,actor,onActivity}) {
   const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);const [manage,setManage]=useState(null);
   async function load(){const b=await DB.facBuyers(fac?.id||"");setBuyers(b);}
   useEffect(()=>{load();},[fac?.id]);
   async function createBuyer(form){
     const b=await DB.createBuyer({name:form.name,email:form.email,authUserId:form.authUserId,company:form.company||"",factoryId:fac.id,factoryName:fac.name});
+    await DB.addActivity(activityForProfile("profile_created",actor,b,{role:"buyer",status:b.status}));
     setBuyers(prev=>prev.some(x=>x.id===b.id)?prev:[b,...prev]);
     return b;
   }
@@ -1400,7 +1479,9 @@ function FacBuyers({fac}) {
   }
   async function saveBuyer(buyer,updates){
     await DB.updUser(buyer.id,{...updates,role:"buyer",factory_id:fac.id,factory_name:fac.name});
+    await DB.addActivity(activityForProfile(updates.status==="suspended"?"profile_suspended":buyer.status==="suspended"&&updates.status==="active"?"profile_restored":"profile_updated",actor,{...buyer,...updates,role:"buyer",factory_id:fac.id,factory_name:fac.name},{role:"buyer",status:updates.status}));
     setBuyers(prev=>prev.map(b=>b.id===buyer.id?{...b,...updates,role:"buyer",factory_id:fac.id,factory_name:fac.name}:b));
+    onActivity?.();
   }
   return (
     <div>
