@@ -67,9 +67,14 @@ export async function getSessionProfile() {
 
 export async function acceptInviteWithPassword(email, password, mode = "signup") {
   const normalizedEmail = email.trim().toLowerCase();
+  const inviteRedirectTo = `${window.location.origin}/invite`;
   const authRequest = mode === "signin"
     ? supabase.auth.signInWithPassword({ email: normalizedEmail, password })
-    : supabase.auth.signUp({ email: normalizedEmail, password });
+    : supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: { emailRedirectTo: inviteRedirectTo }
+      });
   const result = await withTimeout(authRequest, "Supabase Auth took too long. Please try again.");
   const auth = requireData(result, "Could not accept invite");
   if (!auth.session) {
