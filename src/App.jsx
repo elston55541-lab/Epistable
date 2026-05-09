@@ -147,6 +147,11 @@ const DB = {
     const data=await rows(await supabase.from("inspections").select().eq("supplier_id",sid).order("ts",{ascending:false}));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
   },
+  async linkInspectionsToSupplier(ids,supplier) {
+    if(!ids.length)return [];
+    const data=await rows(await supabase.from("inspections").update({supplier_id:supplier.id,supplier:supplier.name}).in("id",ids).select());
+    return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
+  },
 
   // Disputes
   async createDispute(d) {
@@ -1465,6 +1470,7 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
 function FacSuppliers({fac}) {
   const [suppliers,setSuppliers]=useState([]);const [insps,setInsps]=useState([]);const [show,setShow]=useState(false);const [sel,setSel]=useState(null);
   const [windowDays,setWindowDays]=useState("90");const [sortBy,setSortBy]=useState("score");
+  const [cleanup,setCleanup]=useState({name:"",supplierId:"",busy:false,error:""});
   const [form,setForm]=useState({name:"",contact:"",phone:"",location:"",notes:""});
   async function load(){const [s,i]=await Promise.all([DB.facSuppliers(fac?.id||""),DB.facInsps(fac?.id||"")]);setSuppliers(s);setInsps(i);}
   useEffect(()=>{load();},[fac?.id]);
@@ -1522,6 +1528,28 @@ function FacSuppliers({fac}) {
   const mostScanned=[...ranked].sort((a,b)=>b._stats.total-a._stats.total)[0];
   const mostRejected=[...scored].sort((a,b)=>b._stats.rejectPct-a._stats.rejectPct||b._stats.rejected-a._stats.rejected)[0];
   const totalSupplierScans=trackedInsps.length;
+  const manualGroups=Object.values(supplierRows(manualSupplier).reduce((acc,row)=>{
+    const name=row.supplier||"Unknown supplier";
+    const key=normalize(name);
+    if(!acc[key])acc[key]={name,rows:[]};
+    acc[key].rows.push(row);
+    return acc;
+  },{})).sort((a,b)=>b.rows.length-a.rows.length||a.name.localeCompare(b.name));
+  async function cleanupManualSupplier(group,mode){
+    setCleanup(p=>({...p,name:group.name,busy:true,error:""}));
+    try {
+      const supplier=mode==="create"
+        ? await DB.createSupplier({name:group.name,contact:"",phone:"",location:"",notes:"Created from unregistered scan cleanup",factoryId:fac?.id})
+        : suppliers.find(s=>s.id===cleanup.supplierId);
+      if(!supplier)throw new Error("Select a supplier to link.");
+      await DB.linkInspectionsToSupplier(group.rows.map(r=>r.id),supplier);
+      setCleanup({name:"",supplierId:"",busy:false,error:""});
+      await load();
+      setSel(null);
+    } catch(e) {
+      setCleanup(p=>({...p,busy:false,error:e.message||"Could not clean up supplier scans."}));
+    }
+  }
   return (
     <div>
       {show&&<Modal title="Add Supplier" onClose={()=>setShow(false)}>
@@ -1542,6 +1570,26 @@ function FacSuppliers({fac}) {
           ))}
         </div>
         <div style={{background:st.risk.bg,border:`1px solid ${st.risk.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:800,color:st.risk.color,marginBottom:12}}>{st.risk.label}: {st.recommendation}</div>
+        {sel._manual&&<Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:4}}>Clean Up Typed Supplier Names</div>
+          <div style={{fontSize:12,color:C.textDim,lineHeight:1.5,marginBottom:12}}>Convert typed scan entries into registered suppliers so future scorecards stay accurate.</div>
+          {cleanup.error&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.red,fontWeight:800,marginBottom:10}}>{cleanup.error}</div>}
+          {manualGroups.map(group=>(
+            <div key={group.name} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:8}}>
+                <div style={{minWidth:0}}><div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{group.name}</div><div style={{fontSize:11,color:C.textDim}}>{group.rows.length} scan{group.rows.length===1?"":"s"} to clean up</div></div>
+                <Btn size="sm" variant="ghost" disabled={cleanup.busy&&cleanup.name===group.name} onClick={()=>cleanupManualSupplier(group,"create")}>{cleanup.busy&&cleanup.name===group.name?"Working...":"Create"}</Btn>
+              </div>
+              {suppliers.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
+                <select value={cleanup.name===group.name?cleanup.supplierId:""} onChange={e=>setCleanup({name:group.name,supplierId:e.target.value,busy:false,error:""})} style={{width:"100%",padding:"9px 10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+                  <option value="">Link to existing...</option>
+                  {suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <Btn size="sm" variant="secondary" disabled={cleanup.busy||cleanup.name!==group.name||!cleanup.supplierId} onClick={()=>cleanupManualSupplier(group,"link")}>Link</Btn>
+              </div>}
+            </div>
+          ))}
+        </Card>}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
           {[["Defect Rate",st.defectRate+"%",C.amber],["Export Ready",st.exportReadyPct+"%",C.teal],["Avg Price","Rs "+st.avgPrice,C.green]].map(([l,v,c])=>(
             <div key={l} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>
