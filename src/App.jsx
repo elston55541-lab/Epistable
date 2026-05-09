@@ -1026,9 +1026,8 @@ function FactoryApp({user,onLogout}) {
   }
   useEffect(()=>{load();},[]);
   if(loading)return <Loader/>;
-  if(viewPortal&&fac)return <BuyerPortal factoryId={fac.id} onBack={()=>setViewPortal(false)} buyer={null}/>;
-
   const isAdmin=user.role==="admin"||user.role==="manager";
+  if(viewPortal&&fac&&isAdmin)return <BuyerPortal factoryId={fac.id} onBack={()=>setViewPortal(false)} buyer={null}/>;
   const unread=notifs.filter(n=>!n.read).length;
   const mon=curMon();
   const sc=fac?.current_month===mon?fac?.current_month_scans||0:0;
@@ -1045,7 +1044,7 @@ function FactoryApp({user,onLogout}) {
   ];
 
   const pages={
-    home:<FacHome user={user} fac={fac} insps={insps} sc={sc} b={b} paused={paused} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
+    home:<FacHome user={user} fac={fac} insps={insps} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
@@ -1065,7 +1064,7 @@ function FactoryApp({user,onLogout}) {
   );
 }
 
-function FacHome({user,fac,insps,sc,b,paused,setPage,openPortal}) {
+function FacHome({user,fac,insps,sc,b,paused,isAdmin,setPage,openPortal}) {
   const today=insps.filter(i=>Date.now()-i.ts<86400000);
   const byG=g=>insps.filter(i=>i.grade===g).length;
   const pp=insps.length?Math.round(byG("Premium")/insps.length*100):0;
@@ -1088,9 +1087,13 @@ function FacHome({user,fac,insps,sc,b,paused,setPage,openPortal}) {
         <button onClick={()=>setPage("scan")} disabled={paused} style={{background:paused?"#e2e8f0":`linear-gradient(135deg,${C.primary},${C.teal})`,border:"none",borderRadius:14,padding:"20px 16px",cursor:paused?"not-allowed":"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
           <div style={{fontSize:28,marginBottom:8}}>🔍</div><div style={{fontSize:15,fontWeight:800,color:paused?C.textDim:C.white}}>New Scan</div>
         </button>
-        <button onClick={openPortal} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 16px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
-          <div style={{fontSize:28,marginBottom:8}}>🌐</div><div style={{fontSize:15,fontWeight:800,color:C.text}}>Buyer View</div>
-        </button>
+        {isAdmin?
+          <button onClick={openPortal} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 16px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
+            <div style={{fontSize:28,marginBottom:8}}>🌐</div><div style={{fontSize:15,fontWeight:800,color:C.text}}>Public Inventory Preview</div>
+          </button>:
+          <button onClick={()=>setPage("history")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 16px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
+            <div style={{fontSize:28,marginBottom:8}}>📋</div><div style={{fontSize:15,fontWeight:800,color:C.text}}>Slab Certificates</div>
+          </button>}
       </div>
       {today.length>0&&<Card>
         <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
