@@ -189,6 +189,11 @@ const DB = {
     const data=await rows(await supabase.from("inquiries").select().eq("factory_id",fid).order("created_at",{ascending:false}));
     return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
   },
+  async buyerInquiries(email,fid) {
+    if(!email)return [];
+    const data=await rows(await supabase.from("inquiries").select().eq("buyer_email",email.toLowerCase()).eq("factory_id",fid).order("created_at",{ascending:false}).limit(20));
+    return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
+  },
   async allInquiries() {
     const data=await rows(await supabase.from("inquiries").select().order("created_at",{ascending:false}));
     return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
@@ -1813,6 +1818,7 @@ function FacInquiries({fac}) {
   async function load(){setInquiries(await DB.facInquiries(fac?.id||""));}
   useEffect(()=>{load();},[]);
   async function updStatus(id,status){await DB.updInquiry(id,{status});setSel(null);load();}
+  async function reserveInquiry(q){await DB.updInquiry(q.id,{status:"reserved"});await DB.updInspStatus(q.slabId,"reserved");setSel(null);load();}
   return (
     <div>
       {sel&&<Modal title="Buyer Inquiry" onClose={()=>setSel(null)}>
@@ -1822,9 +1828,10 @@ function FacInquiries({fac}) {
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:12,fontWeight:600}}>{v}</span></div>
           ))}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>📞 Contacted</Btn>
-          <Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>✅ Close</Btn>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          <Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>Contacted</Btn>
+          <Btn variant="ghost" onClick={()=>reserveInquiry(sel)}>Reserve</Btn>
+          <Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn>
         </div>
       </Modal>}
       <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Buyer Inquiries</div>
@@ -1888,12 +1895,12 @@ function FacNotifs({notifs,onRead}) {
 
 // ── BUYER ──
 function BuyerHome({buyer,onLogout,onViewPortal}) {
-  const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);
+  const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);
   useEffect(()=>{
-    Promise.all([DB.getFac(buyer.factory_id),DB.facInsps(buyer.factory_id)]).then(([f,i])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));});
+    Promise.all([DB.getFac(buyer.factory_id),DB.facInsps(buyer.factory_id),DB.buyerInquiries(buyer.email,buyer.factory_id)]).then(([f,i,q])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);});
   },[]);
-  const premiumCount=insps.filter(i=>i.grade==="Premium").length;
-  const pp=insps.length?Math.round(premiumCount/insps.length*100):0;
+  const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
+  const reservedInquiries=inquiries.filter(q=>q.status==="reserved").length;
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"20px 18px 24px"}}>
@@ -1909,7 +1916,7 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
           <div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-            {[["Available",insps.length,"📦"],["Premium",premiumCount,"🏆"],["Premium%",pp+"%","📊"]].map(([l,v,icon])=>(
+            {[["Available",insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Reserved",reservedInquiries,"Hold"]].map(([l,v,icon])=>(
               <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:11}}>{icon}</div><div style={{fontSize:18,fontWeight:800,color:C.white,lineHeight:1,marginBottom:2}}>{v}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
             ))}
           </div>
@@ -1925,6 +1932,21 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
           <span style={{fontSize:18,flexShrink:0}}>🛡️</span>
           <div><div style={{fontSize:13,fontWeight:700,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{fontSize:12,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
         </div>
+        {inquiries.length>0&&<Card style={{marginTop:14}}>
+          <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:14,fontWeight:800}}>My Inquiries</div>
+            <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Browse slabs</button>
+          </div>
+          {inquiries.slice(0,4).map((q,i)=>(
+            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(inquiries.length,4)-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone}</div>
+                <div style={{fontSize:11,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
+              </div>
+              <InqPill status={q.status}/>
+            </div>
+          ))}
+        </Card>}
       </div>
     </div>
   );

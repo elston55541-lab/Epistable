@@ -24,6 +24,7 @@ export const DisputeStatusPill = ({status}) => {
 };
 
 export const InqPill = ({status}) => {
+  if(status==="reserved")return <span style={{background:C.purpleBg,border:`1px solid ${C.purpleBorder}`,color:C.purple,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>Reserved</span>;
   const m={new:{c:C.primary,bg:C.primaryBg,b:C.primaryBorder,l:"🔔 New"},contacted:{c:C.amber,bg:C.amberBg,b:C.amberBorder,l:"📞 Contacted"},closed:{c:C.green,bg:C.greenBg,b:C.greenBorder,l:"✅ Closed"}};
   const s=m[status]||m.new;
   return <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{s.l}</span>;
