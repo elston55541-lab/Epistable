@@ -80,6 +80,7 @@ export function SlabCertificate({slabId}) {
   const certificateUrl=window.location.href;
   const inventory=invConf(slab.inventory_status||"available");
   const canInquire=(slab.inventory_status||"available")==="available";
+  const scrollTo=id=>document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
 
   async function copyLink(){
     try {
@@ -163,6 +164,10 @@ export function SlabCertificate({slabId}) {
               <div style={{fontSize:13,color:"rgba(255,255,255,0.72)",fontFamily:"monospace",marginBottom:7}}>{slab.id}</div>
               <div style={{fontSize:30,fontWeight:900,lineHeight:1.08,marginBottom:8}}>{slab.stone}</div>
               <div style={{fontSize:14,color:"rgba(255,255,255,0.78)",lineHeight:1.5}}>{slab.factory_name}{slab.factory_location ? `, ${slab.factory_location}` : ""}</div>
+              <div className="cert-interactive" style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:16}}>
+                <button onClick={()=>scrollTo("certificate-inquiry")} disabled={!canInquire} style={{padding:"10px 14px",border:"none",borderRadius:10,background:canInquire?C.white:"rgba(255,255,255,0.18)",color:canInquire?C.primary:"rgba(255,255,255,0.62)",fontSize:13,fontWeight:900,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"Interested in this slab":inventory.label}</button>
+                <button onClick={()=>scrollTo("certificate-dispute")} style={{padding:"10px 14px",border:"1px solid rgba(255,255,255,0.28)",borderRadius:10,background:"rgba(255,255,255,0.1)",color:C.white,fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Report mismatch</button>
+              </div>
             </div>
             <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8}}>
@@ -209,6 +214,7 @@ export function SlabCertificate({slabId}) {
             <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Certificate Details</div>
               <Field label="Factory" value={slab.factory_name}/>
+              <Field label="Factory contact" value={slab.factory_contact_email}/>
               <Field label="Supplier" value={slab.supplier}/>
               <Field label="Inspector" value={slab.inspector}/>
               <Field label="Inspected" value={inspectedAt}/>
@@ -237,7 +243,7 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
 
-            <Card className="cert-card cert-interactive" style={{padding:18}}>
+            <Card id="certificate-inquiry" className="cert-card cert-interactive" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Interested in this slab?</div>
               {!canInquire?<div style={{background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:10,padding:14}}>
                 <div style={{fontSize:14,fontWeight:900,color:inventory.color,marginBottom:4}}>{inventory.label}</div>
@@ -259,7 +265,7 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
 
-            <Card className="cert-card cert-interactive" style={{padding:18}}>
+            <Card id="certificate-dispute" className="cert-card cert-interactive" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Report an issue</div>
               {disputeSent?<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:14}}>
                 <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Issue reported</div>
