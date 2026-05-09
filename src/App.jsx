@@ -58,7 +58,7 @@ const DB = {
     return requireData(await supabase.from("profiles").update(u).eq("id",id).select().single());
   },
   async facUsers(fid) {
-    return rows(await supabase.from("profiles").select().eq("factory_id",fid));
+    return rows(await supabase.from("profiles").select().eq("factory_id",fid).order("created_at",{ascending:false}));
   },
   async allUsers() {
     return rows(await supabase.from("profiles").select().order("created_at",{ascending:false}));
@@ -606,6 +606,7 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
   const [users,setUsers]=useState([]);
   const [show,setShow]=useState(false);
   const [showBuyer,setShowBuyer]=useState(false);
+  const [manage,setManage]=useState(null);
   const mon=curMon();
   async function load(){const u=await DB.facUsers(fac.id);setUsers(u);}
   useEffect(()=>{load();},[]);
@@ -627,12 +628,18 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
     });
     return b;
    }
+  async function saveUser(user,updates){
+    await DB.updUser(user.id,updates);
+    setUsers(prev=>prev.map(u=>u.id===user.id?{...u,...updates}:u));
+    onRefresh();
+  }
 
   return (
     <div>
       {show&&<UserFormModal title={"Add User — "+fac.name} facs={[fac]} onClose={()=>setShow(false)} onSubmit={createUser}/>}
       {showBuyer&&<UserFormModal title={"Add Buyer — "+fac.name} isBuyer onClose={()=>setShowBuyer(false)} onSubmit={createBuyer}/>}
       <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:"sans-serif"}}>← Back</button>
+      {manage&&<UserAccessModal user={manage} facs={[fac]} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
       <Card style={{marginBottom:14,padding:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
           <div><div style={{fontSize:16,fontWeight:800}}>{fac.name}</div><div style={{fontSize:12,color:C.textDim}}>{fac.location}</div></div>
@@ -650,7 +657,11 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
           <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<users.length-1?`1px solid ${C.border}`:"none"}}>
             <Avi initials={u.avatar||"??"} size={36}/>
             <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{u.name}</div><div style={{fontSize:11,color:C.textDim}}>{u.email}</div></div>
-            <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"2px 7px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+              <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"2px 7px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
+              <StatPill status={u.status||"active"}/>
+              <Btn size="sm" variant="secondary" onClick={()=>setManage(u)}>Manage</Btn>
+            </div>
           </div>
         ))}
       </Card>
@@ -700,16 +711,91 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
   );
 }
 
+function UserAccessModal({user,facs,onClose,onSave,ownerMode=false,fixedRole=null}) {
+  const [form,setForm]=useState({
+    name:user.name||"",
+    email:user.email||"",
+    authUserId:user.auth_user_id||"",
+    role:fixedRole||user.role||"inspector",
+    factoryId:user.factory_id||facs?.[0]?.id||"",
+    company:user.company||"",
+    status:user.status||"active"
+  });
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const roleOptions=ownerMode
+    ? [{value:"admin",label:"Admin"},{value:"manager",label:"Manager"},{value:"inspector",label:"Inspector"},{value:"buyer",label:"Buyer"}]
+    : [{value:"admin",label:"Admin"},{value:"manager",label:"Manager"},{value:"inspector",label:"Inspector"},{value:"buyer",label:"Buyer"}];
+  const facOptions=(facs||[]).map(f=>({value:f.id,label:f.name}));
+  async function submit(nextStatus=form.status){
+    if(!form.name||!form.email)return;
+    setBusy(true);setErr("");
+    try {
+      const fac=(facs||[]).find(f=>f.id===form.factoryId);
+      await onSave(user,{
+        name:form.name.trim(),
+        email:form.email.trim().toLowerCase(),
+        auth_user_id:form.authUserId.trim()||null,
+        role:fixedRole||form.role,
+        factory_id:form.factoryId||null,
+        factory_name:fac?.name||user.factory_name||"",
+        company:(fixedRole||form.role)==="buyer"?(form.company||""):"",
+        status:nextStatus,
+        avatar:form.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()
+      });
+      onClose();
+    } catch(e) {
+      setErr(e.message||"Could not update access.");
+    }
+    setBusy(false);
+  }
+  const suspended=form.status==="suspended";
+  return (
+    <Modal title={"Manage Access"} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
+          <Avi initials={(user.avatar||user.name||"??").slice(0,2).toUpperCase()} size={38}/>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:800,color:C.text}}>{user.name}</div><div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div></div>
+          <StatPill status={form.status}/>
+        </div>
+        <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required/>
+        <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
+        <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} hint="This links the profile to Supabase Auth login."/>
+        <div style={{display:"grid",gridTemplateColumns:ownerMode?"1fr 1fr":"1fr",gap:12}}>
+          {fixedRole?<div><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Role</label><div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"12px 14px",fontSize:13,fontWeight:800,color:C.primary,textTransform:"capitalize"}}>{fixedRole}</div></div>:<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={roleOptions}/>}
+          {ownerMode&&<Sel label="Factory" value={form.factoryId} onChange={v=>setForm(p=>({...p,factoryId:v}))} options={facOptions}/>}
+        </div>
+        {(fixedRole||form.role)==="buyer"&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))}/>}
+        <Sel label="Access Status" value={form.status} onChange={v=>setForm(p=>({...p,status:v}))} options={[{value:"active",label:"Active"},{value:"suspended",label:"Suspended"},{value:"inactive",label:"Inactive"}]}/>
+        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:700}}>{err}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Btn variant="secondary" onClick={onClose} disabled={busy}>Cancel</Btn>
+          <Btn onClick={()=>submit()} disabled={busy||!form.name||!form.email}>{busy?"Saving...":"Save Changes"}</Btn>
+        </div>
+        <Btn variant={suspended?"green":"red"} onClick={()=>submit(suspended?"active":"suspended")} disabled={busy} full>
+          {suspended?"Restore Access":"Suspend Access"}
+        </Btn>
+      </div>
+    </Modal>
+  );
+}
+
 function OwnerUsers({users,facs,onRefresh}) {
   const [show,setShow]=useState(false);const [search,setSearch]=useState("");
+  const [manage,setManage]=useState(null);
   const filtered=users.filter(u=>u.name?.toLowerCase().includes(search.toLowerCase())||u.email?.toLowerCase().includes(search.toLowerCase())||u.factory_name?.toLowerCase().includes(search.toLowerCase()));
   async function createUser(form){
     const fac=facs.find(f=>f.id===form.factoryId);
     return DB.createUser({...form,factoryName:fac?.name||"Unknown",avatar:form.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()});
   }
+  async function saveUser(user,updates){
+    await DB.updUser(user.id,updates);
+    onRefresh();
+  }
   return (
     <div>
       {show&&<UserFormModal title="Create User" facs={facs} onClose={()=>setShow(false)} onDone={()=>{setShow(false);onRefresh();}} onSubmit={createUser}/>}
+      {manage&&<UserAccessModal user={manage} facs={facs} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>All Users</div><div style={{fontSize:12,color:C.textDim}}>{users.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
@@ -720,7 +806,11 @@ function OwnerUsers({users,facs,onRefresh}) {
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||"??"} size={36}/>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{u.name}</div><div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.factory_name} · {u.email}</div></div>
-          <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize",flexShrink:0}}>{u.role}</span>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
+            <StatPill status={u.status||"active"}/>
+            <Btn size="sm" variant="secondary" onClick={()=>setManage(u)}>Manage</Btn>
+          </div>
         </div>
       ))}</Card>}
     </div>
@@ -808,7 +898,7 @@ function FactoryApp({user,onLogout}) {
     {id:"scan",label:"Scan",icon:"🔍"},
     {id:"history",label:"History",icon:"📋"},
     {id:"analytics",label:"Analytics",icon:"📊"},
-    ...(isAdmin?[{id:"suppliers",label:"Suppliers",icon:"🏭"},{id:"buyers",label:"Buyers",icon:"🌐"},{id:"inquiries",label:"Inquiries",icon:"📩"},{id:"disputes",label:"Disputes",icon:"⚠️"}]:[]),
+    ...(isAdmin?[{id:"team",label:"Team",icon:"👥"},{id:"suppliers",label:"Suppliers",icon:"🏭"},{id:"buyers",label:"Buyers",icon:"🌐"},{id:"inquiries",label:"Inquiries",icon:"📩"},{id:"disputes",label:"Disputes",icon:"⚠️"}]:[]),
     {id:"notifs",label:"Alerts",icon:"🔔",badge:unread||undefined},
   ];
 
@@ -817,7 +907,7 @@ function FactoryApp({user,onLogout}) {
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac}/>,inquiries:<FacInquiries fac={fac}/>,disputes:<FacDisputes fac={fac}/>}:{}),
+    ...(isAdmin?{team:<FacTeam fac={fac}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac}/>,inquiries:<FacInquiries fac={fac}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
 
@@ -1158,6 +1248,44 @@ function FacAnalytics({insps}) {
   );
 }
 
+function FacTeam({fac}) {
+  const [users,setUsers]=useState([]);
+  const [manage,setManage]=useState(null);
+  const [search,setSearch]=useState("");
+  async function load(){
+    const u=await DB.facUsers(fac?.id||"");
+    setUsers((u||[]).filter(x=>x.role!=="owner"));
+  }
+  useEffect(()=>{load();},[fac?.id]);
+  async function saveUser(user,updates){
+    await DB.updUser(user.id,{...updates,factory_id:fac.id,factory_name:fac.name});
+    setUsers(prev=>prev.map(u=>u.id===user.id?{...u,...updates,factory_id:fac.id,factory_name:fac.name}:u));
+  }
+  const filtered=users.filter(u=>!search||u.name?.toLowerCase().includes(search.toLowerCase())||u.email?.toLowerCase().includes(search.toLowerCase())||u.role?.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div>
+      {manage&&<UserAccessModal user={manage} facs={[fac]} onClose={()=>setManage(null)} onSave={saveUser}/>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div><div style={{fontSize:18,fontWeight:800}}>Team Access</div><div style={{fontSize:12,color:C.textDim}}>{users.length} profiles</div></div>
+        <Btn size="sm" variant="secondary" onClick={load}>↺</Btn>
+      </div>
+      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="🔍"/></div>
+      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{fontSize:32,marginBottom:12}}>👥</div><div style={{fontWeight:600}}>No profiles found</div></Card>:
+      <Card>{filtered.map((u,i)=>(
+        <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
+          <Avi initials={u.avatar||u.name?.slice(0,2).toUpperCase()||"??"} size={36}/>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{u.name}</div><div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}{u.company?" · "+u.company:""}</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
+            <StatPill status={u.status||"active"}/>
+            <Btn size="sm" variant="secondary" onClick={()=>setManage(u)}>Manage</Btn>
+          </div>
+        </div>
+      ))}</Card>}
+    </div>
+  );
+}
+
 function FacSuppliers({fac}) {
   const [suppliers,setSuppliers]=useState([]);const [insps,setInsps]=useState([]);const [show,setShow]=useState(false);const [sel,setSel]=useState(null);
   const [form,setForm]=useState({name:"",contact:"",phone:"",location:"",notes:""});
@@ -1258,7 +1386,7 @@ function FacSuppliers({fac}) {
 }
 
 function FacBuyers({fac}) {
-  const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);
+  const [buyers,setBuyers]=useState([]);const [show,setShow]=useState(false);const [manage,setManage]=useState(null);
   async function load(){const b=await DB.facBuyers(fac?.id||"");setBuyers(b);}
   useEffect(()=>{load();},[fac?.id]);
   async function createBuyer(form){
@@ -1270,17 +1398,26 @@ function FacBuyers({fac}) {
     setShow(false);
     load();
   }
+  async function saveBuyer(buyer,updates){
+    await DB.updUser(buyer.id,{...updates,role:"buyer",factory_id:fac.id,factory_name:fac.name});
+    setBuyers(prev=>prev.map(b=>b.id===buyer.id?{...b,...updates,role:"buyer",factory_id:fac.id,factory_name:fac.name}:b));
+  }
   return (
     <div>
 {show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>setShow(false)} onDone={closeAfterCreate} onSubmit={createBuyer}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Buyers</div><div style={{fontSize:12,color:C.textDim}}>{buyers.length} accounts</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
+      {manage&&<UserAccessModal user={manage} facs={[fac]} fixedRole="buyer" onClose={()=>setManage(null)} onSave={saveBuyer}/>}
       {buyers.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🌐</div><Btn onClick={()=>setShow(true)}>+ Add First Buyer</Btn></Card>:
       <Card>{buyers.map((b,i)=>(
         <div key={b.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<buyers.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={b.name.slice(0,2).toUpperCase()} size={36} color={C.teal} bg="#e0f7fa" border="#80deea"/>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{b.name}</div><div style={{fontSize:11,color:C.textDim}}>{b.company?b.company+" · ":""}{b.email}</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            <StatPill status={b.status||"active"}/>
+            <Btn size="sm" variant="secondary" onClick={()=>setManage(b)}>Manage</Btn>
+          </div>
         </div>
       ))}</Card>}
     </div>
