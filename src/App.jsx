@@ -2017,7 +2017,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
     const map={
       sent:{label:"Sent",c:C.primary,bg:C.primaryBg,b:C.primaryBorder},
       accepted:{label:"Accepted",c:C.green,bg:C.greenBg,b:C.greenBorder},
-      revision_requested:{label:"Changes",c:C.amber,bg:C.amberBg,b:C.amberBorder},
+      revision_requested:{label:"Changes requested",c:C.amber,bg:C.amberBg,b:C.amberBorder},
       revised:{label:"Revised",c:C.textDim,bg:C.surface,b:C.border},
       expired:{label:"Expired",c:C.red,bg:C.redBg,b:C.redBorder},
       sold:{label:"Sold",c:C.green,bg:C.greenBg,b:C.greenBorder},
@@ -2103,7 +2103,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
         </div>
       </Modal>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Quotes</div><div style={{fontSize:12,color:C.textDim}}>Search, filter, revise, and close buyer quotes</div></div>
+        <div><div style={{fontSize:18,fontWeight:800}}>Quotes</div><div style={{fontSize:12,color:C.textDim}}>Manage sent quotes, buyer decisions, revisions, and sold status</div></div>
       </div>
       <KpiGrid items={[{label:"Total Quotes",value:quotes.length,icon:"All",color:C.text},{label:"Needs Action",value:actionCount,icon:"Now",color:actionCount?C.amber:C.textDim},{label:"Sent",value:counts.sent||0,icon:"Sent",color:C.primary},{label:"Sold Value",value:"Rs "+soldValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
       <Card style={{padding:12,marginBottom:14}}>
@@ -2123,11 +2123,11 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
           {["sent","accepted","revision_requested","revised","expired","sold"].map(s=>{const cfg=statusStyle(s);return <button key={s} onClick={()=>setStatusFilter(statusFilter===s?"all":s)} style={{padding:"5px 10px",background:statusFilter===s?cfg.bg:C.white,border:`1px solid ${statusFilter===s?cfg.b:C.border}`,borderRadius:20,color:statusFilter===s?cfg.c:C.textDim,fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{cfg.label} ({counts[s]||0})</button>;})}
         </div>
       </Card>
-      {filtered.length===0?<Card style={{padding:"44px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,marginBottom:5}}>No quotes found</div><div style={{fontSize:12,color:C.textDim}}>Create quotes from buyer inquiries to manage them here.</div></Card>:
+      {filtered.length===0?<Card style={{padding:"44px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,marginBottom:5}}>No quotes found</div><div style={{fontSize:12,color:C.textDim}}>Quotes created from inquiries will appear here for follow-up and closing.</div></Card>:
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {filtered.map(q=>{const status=effectiveStatus(q);const cfg=statusStyle(status);const canRevise=status==="revision_requested";const canSell=status==="accepted";return(
           <Card key={q.id} style={{padding:14,borderColor:canRevise?C.amberBorder:canSell?C.greenBorder:C.border}}>
-            <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:10,flexWrap:"wrap"}}>
               <div style={{minWidth:0}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
                   <span style={{fontSize:12,fontFamily:"monospace",fontWeight:900,color:C.text}}>{q.id}</span>
@@ -2158,10 +2158,6 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
 }
 
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
-  const [saleBusy,setSaleBusy]=useState("");
-  const [reviseQuote,setReviseQuote]=useState(null);
-  const [reviseForm,setReviseForm]=useState({areaSqFt:"",pricePerSqFt:"",validityDate:"",notes:""});
-  const [reviseBusy,setReviseBusy]=useState(false);
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -2184,89 +2180,17 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
   const wonValue=soldQuotes.reduce((sum,q)=>sum+Number(q.totalAmount||q.total_amount||0),0);
   const decidedQuotes=quotes.filter(q=>q.status==="accepted"||q.status==="revision_requested").slice(0,5);
   const revisionRequests=quotes.filter(q=>q.status==="revision_requested").slice(0,5);
-  function openRevision(q){
-    setReviseQuote(q);
-    setReviseForm({
-      areaSqFt:String(q.areaSqFt||q.area_sq_ft||""),
-      pricePerSqFt:String(q.pricePerSqFt||q.price_per_sq_ft||""),
-      validityDate:q.validityTs||q.validity_ts?new Date(q.validityTs||q.validity_ts).toISOString().slice(0,10):"",
-      notes:q.notes||""
-    });
-  }
-  async function markQuoteSold(q){
-    if(saleBusy)return;
-    setSaleBusy(q.id);
-    try {
-      await DB.updInspStatus(q.slabId||q.slab_id,"sold");
-      if(q.inquiryId||q.inquiry_id)await DB.updInquiry(q.inquiryId||q.inquiry_id,{status:"closed"});
-      await onChange?.();
-    } finally {
-      setSaleBusy("");
-    }
-  }
-  async function createRevision(){
-    if(!reviseQuote||reviseBusy)return;
-    const area=Number(reviseForm.areaSqFt||0);
-    const price=Number(reviseForm.pricePerSqFt||0);
-    if(!area||!price)return;
-    setReviseBusy(true);
-    try {
-      const q=await DB.createQuote({
-        inquiryId:reviseQuote.inquiryId||reviseQuote.inquiry_id,
-        slabId:reviseQuote.slabId||reviseQuote.slab_id,
-        factoryId:reviseQuote.factoryId||reviseQuote.factory_id,
-        factoryName:reviseQuote.factoryName||reviseQuote.factory_name,
-        buyerName:reviseQuote.buyerName||reviseQuote.buyer_name,
-        buyerCompany:reviseQuote.buyerCompany||reviseQuote.buyer_company,
-        buyerEmail:reviseQuote.buyerEmail||reviseQuote.buyer_email,
-        stone:reviseQuote.stone,
-        grade:reviseQuote.grade,
-        pricePerSqFt:price,
-        areaSqFt:area,
-        totalAmount:Math.round(area*price),
-        validityTs:reviseForm.validityDate?new Date(`${reviseForm.validityDate}T23:59:59`).getTime():null,
-        notes:reviseForm.notes,
-        parentQuoteId:reviseQuote.parentQuoteId||reviseQuote.parent_quote_id||reviseQuote.id,
-        revisionNumber:Number(reviseQuote.revisionNumber||reviseQuote.revision_number||1)+1,
-        status:"sent"
-      });
-      await DB.updQuote(reviseQuote.id,{status:"revised"});
-      try{await DB.notifyBuyerRevisedQuote(q.id);}catch(e){console.warn("Buyer quote notification skipped",e);}
-      setReviseQuote(null);await onChange?.();
-      window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank");
-    } finally {
-      setReviseBusy(false);
-    }
-  }
   return (
     <div>
-      {reviseQuote&&<Modal title="Create Revised Quote" onClose={()=>setReviseQuote(null)}>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:12}}>
-            <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:4}}>Buyer requested changes</div>
-            <div style={{fontSize:12,color:C.textMid,lineHeight:1.5}}>{reviseQuote.buyerMessage||reviseQuote.buyer_message||"No buyer note provided."}</div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Inp label="Area (sq ft)" value={reviseForm.areaSqFt} onChange={v=>setReviseForm(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))}/>
-            <Inp label="Price / sq ft" value={reviseForm.pricePerSqFt} onChange={v=>setReviseForm(p=>({...p,pricePerSqFt:v.replace(/[^0-9.]/g,"")}))}/>
-          </div>
-          <Inp label="Valid until" type="date" value={reviseForm.validityDate} onChange={v=>setReviseForm(p=>({...p,validityDate:v}))}/>
-          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-            <div style={{fontSize:13,fontWeight:900,color:C.green}}>Total: Rs {Math.round(Number(reviseForm.areaSqFt||0)*Number(reviseForm.pricePerSqFt||0)).toLocaleString("en-IN")}</div>
-            <Btn onClick={createRevision} disabled={reviseBusy||!Number(reviseForm.areaSqFt||0)||!Number(reviseForm.pricePerSqFt||0)}>{reviseBusy?"Creating...":"Create Revision"}</Btn>
-          </div>
-        </div>
-      </Modal>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, reservations, and follow-ups</div></div>
-        <Btn size="sm" variant="ghost" onClick={()=>setPage("inquiries")}>Open Inquiries</Btn>
+        <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, quote movement, and follow-ups</div></div>
+        <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
       </div>
       <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
       {revisionRequests.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.amberBorder,background:C.amberBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
-          <div><div style={{fontSize:14,fontWeight:900,color:C.amber}}>Quote revisions requested</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Create a revised quote and send the buyer a fresh link.</div></div>
-          <div style={{fontSize:18,fontWeight:900,color:C.amber}}>{revisionRequests.length}</div>
+          <div><div style={{fontSize:14,fontWeight:900,color:C.amber}}>Quote changes requested</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Handle these in Quotes so revisions stay tracked in one place.</div></div>
+          <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>{revisionRequests.length} to review</Btn>
         </div>
         {revisionRequests.map((q,i)=>(
           <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.amberBorder}`:"none",borderBottom:i<revisionRequests.length-1?`1px solid ${C.amberBorder}`:"none"}}>
@@ -2275,14 +2199,14 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
               <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
               {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:4}}>{q.buyerMessage}</div>}
             </div>
-            <Btn size="sm" variant="ghost" onClick={()=>openRevision(q)}>Revise</Btn>
+            <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Review</Btn>
           </div>
         ))}
       </Card>}
       {acceptedActionItems.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.greenBorder,background:C.greenBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
-          <div><div style={{fontSize:14,fontWeight:900,color:C.green}}>Accepted quotes ready to close</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Mark sold after payment or dispatch is confirmed.</div></div>
-          <Btn size="sm" variant="ghost" onClick={()=>setPage("history")}>View Inventory</Btn>
+          <div><div style={{fontSize:14,fontWeight:900,color:C.green}}>Accepted quotes ready to close</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Confirm payment or dispatch, then mark sold from Quotes.</div></div>
+          <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
         </div>
         {acceptedActionItems.map((q,i)=>(
           <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.greenBorder}`:"none",borderBottom:i<acceptedActionItems.length-1?`1px solid ${C.greenBorder}`:"none"}}>
@@ -2290,7 +2214,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
               <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
               <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
             </div>
-            <Btn size="sm" variant="green" disabled={saleBusy===q.id} onClick={()=>markQuoteSold(q)}>{saleBusy===q.id?"Closing...":"Mark Sold"}</Btn>
+            <Btn size="sm" variant="green" onClick={()=>setPage("quotes")}>Close</Btn>
           </div>
         ))}
       </Card>}
@@ -2330,14 +2254,14 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           ))}
         </Card>
         <Card style={{padding:16}}>
-          <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Quote Decisions</div>
-          {decidedQuotes.length===0?<div style={{fontSize:13,color:C.textDim}}>No quote decisions yet</div>:decidedQuotes.map((q,i)=>{
+          <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Latest Quote Updates</div>
+          {decidedQuotes.length===0?<div style={{fontSize:13,color:C.textDim}}>No accepted quotes or change requests yet.</div>:decidedQuotes.map((q,i)=>{
             const accepted=q.status==="accepted";
             return (
               <div key={q.id} style={{padding:"10px 0",borderBottom:i<decidedQuotes.length-1?`1px solid ${C.border}`:"none"}}>
                 <div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:4}}>
                   <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-                  <span style={{fontSize:10,fontWeight:900,color:accepted?C.green:C.amber,background:accepted?C.greenBg:C.amberBg,border:`1px solid ${accepted?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{accepted?"Accepted":"Changes"}</span>
+                  <span style={{fontSize:10,fontWeight:900,color:accepted?C.green:C.amber,background:accepted?C.greenBg:C.amberBg,border:`1px solid ${accepted?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{accepted?"Accepted":"Changes requested"}</span>
                 </div>
                 <div style={{fontSize:11,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
                 {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45}}>{q.buyerMessage}</div>}
@@ -2386,7 +2310,7 @@ function FacNotifs({notifs,onRead}) {
   return (
     <div>
       <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Alerts</div>
-      {notifs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔔</div><div style={{fontWeight:600}}>No notifications</div></Card>:
+      {notifs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔔</div><div style={{fontWeight:600,marginBottom:5}}>No alerts yet</div><div style={{fontSize:12,color:C.textDim}}>Quote updates, buyer decisions, and follow-ups will appear here.</div></Card>:
       <Card>{notifs.map((n,i)=>(
         <div key={n.id} style={{display:"flex",gap:12,padding:"14px 16px",borderBottom:i<notifs.length-1?`1px solid ${C.border}`:"none",background:n.read?C.white:C.primaryBg}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{n.icon||"🔔"}</div>
@@ -2742,21 +2666,21 @@ function PublicQuotePage({quoteId}) {
             </div>}
             {quote.status==="accepted"&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:900,color:C.green,marginBottom:4}}>Quote accepted</div>
-              <div style={{fontSize:12,color:C.textMid}}>The factory can now move this slab toward sale confirmation.</div>
+              <div style={{fontSize:12,color:C.textMid}}>We recorded your acceptance. The factory will follow up to confirm payment, dispatch, or next steps.</div>
               {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
             </div>}
             {quote.status==="revision_requested"&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Changes requested</div>
-              <div style={{fontSize:12,color:C.textMid}}>The factory can review the buyer note and send a revised quote.</div>
+              <div style={{fontSize:12,color:C.textMid}}>We sent your note to the factory. They can respond with a revised quote link.</div>
               {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
             </div>}
             {quote.status==="revised"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:900,color:C.textMid,marginBottom:4}}>Revised quote sent</div>
-              <div style={{fontSize:12,color:C.textMid}}>This quote has been replaced by a newer quote from the factory.</div>
+              <div style={{fontSize:12,color:C.textMid}}>This quote has been replaced by a newer quote. Please use the latest revised quote link from the factory.</div>
             </div>}
             {canDecide&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
-              <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Buyer decision</div>
-              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory (optional)" style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+              <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Respond to this quote</div>
+              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory, such as delivery terms, quantity, or pricing questions (optional)" style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
               {decisionError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",marginBottom:10}}>{decisionError}</div>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <button onClick={()=>submitDecision("revision_requested")} disabled={!!decisionBusy} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:decisionBusy?0.65:1}}>{decisionBusy==="revision_requested"?"Sending...":"Request Changes"}</button>
