@@ -664,9 +664,6 @@ function Owner({onLogout}) {
     {id:"inquiries",label:"Inquiries",icon:"📩"},
     {id:"settings",label:"Settings",icon:"⚙"},
   ];
-
-  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"₹"});
-
   const pages={
     overview:<OwnerOverview facs={facs} users={users} insps={insps} activity={activity} totalBill={totalBill} overdue={overdue} setPage={setPage} pickFac={f=>{setSelFac(f);setPage("fac");}}/>,
     billing:<OwnerBilling facs={facs} onRefresh={load}/>,
@@ -1125,6 +1122,7 @@ function FactoryApp({user,onLogout}) {
     {id:"notifs",label:"Alerts",icon:"🔔",badge:unread||undefined},
   ];
   if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"₹"});
+  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(5,0,{id:"quotes",label:"Quotes",icon:"Q"});
 
   const pages={
     home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
@@ -1132,6 +1130,7 @@ function FactoryApp({user,onLogout}) {
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
     ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage} onChange={load}/>}:{ }),
+    ...(isAdmin?{quotes:<FacQuotesPage quotes={quotes} insps={salesInsps} onChange={load}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
@@ -1985,6 +1984,175 @@ function FacInquiries({fac,onChange}) {
           </div>
         </div>
       ))}</Card>}
+    </div>
+  );
+}
+
+function FacQuotesPage({quotes=[],insps=[],onChange}) {
+  const [search,setSearch]=useState("");
+  const [statusFilter,setStatusFilter]=useState("all");
+  const [copied,setCopied]=useState("");
+  const [saleBusy,setSaleBusy]=useState("");
+  const [reviseQuote,setReviseQuote]=useState(null);
+  const [reviseForm,setReviseForm]=useState({areaSqFt:"",pricePerSqFt:"",validityDate:"",notes:""});
+  const [reviseBusy,setReviseBusy]=useState(false);
+  const soldSlabIds=new Set(insps.filter(i=>(i.inventoryStatus||"available")==="sold").map(i=>i.id));
+  function effectiveStatus(q){
+    if(q.status==="sent"&&q.validityTs&&q.validityTs<Date.now())return "expired";
+    if(q.status==="accepted"&&soldSlabIds.has(q.slabId||q.slab_id))return "sold";
+    return q.status||"sent";
+  }
+  const counts=quotes.reduce((acc,q)=>{const s=effectiveStatus(q);acc[s]=(acc[s]||0)+1;return acc;},{});
+  const actionCount=quotes.filter(q=>["accepted","revision_requested"].includes(effectiveStatus(q))).length;
+  const soldValue=quotes.filter(q=>effectiveStatus(q)==="sold").reduce((s,q)=>s+Number(q.totalAmount||q.total_amount||0),0);
+  const filtered=quotes.filter(q=>{
+    const hay=[q.id,q.buyerName,q.buyer_name,q.buyerCompany,q.buyer_company,q.stone,q.slabId,q.slab_id,q.grade].filter(Boolean).join(" ").toLowerCase();
+    const status=effectiveStatus(q);
+    return (statusFilter==="all"||status===statusFilter)&&(!search||hay.includes(search.toLowerCase()));
+  }).sort((a,b)=>{
+    const rank={revision_requested:0,accepted:1,sent:2,expired:3,revised:4,sold:5};
+    return (rank[effectiveStatus(a)]??9)-(rank[effectiveStatus(b)]??9)||Number(b.created_at||0)-Number(a.created_at||0);
+  });
+  function statusStyle(status){
+    const map={
+      sent:{label:"Sent",c:C.primary,bg:C.primaryBg,b:C.primaryBorder},
+      accepted:{label:"Accepted",c:C.green,bg:C.greenBg,b:C.greenBorder},
+      revision_requested:{label:"Changes",c:C.amber,bg:C.amberBg,b:C.amberBorder},
+      revised:{label:"Revised",c:C.textDim,bg:C.surface,b:C.border},
+      expired:{label:"Expired",c:C.red,bg:C.redBg,b:C.redBorder},
+      sold:{label:"Sold",c:C.green,bg:C.greenBg,b:C.greenBorder},
+    };
+    return map[status]||map.sent;
+  }
+  async function copyQuote(q){
+    const url=`${window.location.origin}/quote/${encodeURIComponent(q.id)}`;
+    try{await navigator.clipboard.writeText(url);setCopied(q.id);setTimeout(()=>setCopied(""),1400);}catch(e){window.prompt("Copy quote link",url);}
+  }
+  function openRevision(q){
+    setReviseQuote(q);
+    setReviseForm({
+      areaSqFt:String(q.areaSqFt||q.area_sq_ft||""),
+      pricePerSqFt:String(q.pricePerSqFt||q.price_per_sq_ft||""),
+      validityDate:q.validityTs||q.validity_ts?new Date(q.validityTs||q.validity_ts).toISOString().slice(0,10):"",
+      notes:q.notes||""
+    });
+  }
+  async function markQuoteSold(q){
+    if(saleBusy)return;
+    setSaleBusy(q.id);
+    try {
+      await DB.updInspStatus(q.slabId||q.slab_id,"sold");
+      if(q.inquiryId||q.inquiry_id)await DB.updInquiry(q.inquiryId||q.inquiry_id,{status:"closed"});
+      await onChange?.();
+    } finally {
+      setSaleBusy("");
+    }
+  }
+  async function createRevision(){
+    if(!reviseQuote||reviseBusy)return;
+    const area=Number(reviseForm.areaSqFt||0);
+    const price=Number(reviseForm.pricePerSqFt||0);
+    if(!area||!price)return;
+    setReviseBusy(true);
+    try {
+      const q=await DB.createQuote({
+        inquiryId:reviseQuote.inquiryId||reviseQuote.inquiry_id,
+        slabId:reviseQuote.slabId||reviseQuote.slab_id,
+        factoryId:reviseQuote.factoryId||reviseQuote.factory_id,
+        factoryName:reviseQuote.factoryName||reviseQuote.factory_name,
+        buyerName:reviseQuote.buyerName||reviseQuote.buyer_name,
+        buyerCompany:reviseQuote.buyerCompany||reviseQuote.buyer_company,
+        buyerEmail:reviseQuote.buyerEmail||reviseQuote.buyer_email,
+        stone:reviseQuote.stone,
+        grade:reviseQuote.grade,
+        pricePerSqFt:price,
+        areaSqFt:area,
+        totalAmount:Math.round(area*price),
+        validityTs:reviseForm.validityDate?new Date(`${reviseForm.validityDate}T23:59:59`).getTime():null,
+        notes:reviseForm.notes,
+        parentQuoteId:reviseQuote.parentQuoteId||reviseQuote.parent_quote_id||reviseQuote.id,
+        revisionNumber:Number(reviseQuote.revisionNumber||reviseQuote.revision_number||1)+1,
+        status:"sent"
+      });
+      await DB.updQuote(reviseQuote.id,{status:"revised"});
+      try{await DB.notifyBuyerRevisedQuote(q.id);}catch(e){console.warn("Buyer quote notification skipped",e);}
+      setReviseQuote(null);await onChange?.();
+      window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank");
+    } finally {
+      setReviseBusy(false);
+    }
+  }
+  return (
+    <div>
+      {reviseQuote&&<Modal title="Create Revised Quote" onClose={()=>setReviseQuote(null)}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:12}}>
+            <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:4}}>Buyer requested changes</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.5}}>{reviseQuote.buyerMessage||reviseQuote.buyer_message||"No buyer note provided."}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Area (sq ft)" value={reviseForm.areaSqFt} onChange={v=>setReviseForm(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))}/>
+            <Inp label="Price / sq ft" value={reviseForm.pricePerSqFt} onChange={v=>setReviseForm(p=>({...p,pricePerSqFt:v.replace(/[^0-9.]/g,"")}))}/>
+          </div>
+          <Inp label="Valid until" type="date" value={reviseForm.validityDate} onChange={v=>setReviseForm(p=>({...p,validityDate:v}))}/>
+          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <div style={{fontSize:13,fontWeight:900,color:C.green}}>Total: Rs {Math.round(Number(reviseForm.areaSqFt||0)*Number(reviseForm.pricePerSqFt||0)).toLocaleString("en-IN")}</div>
+            <Btn onClick={createRevision} disabled={reviseBusy||!Number(reviseForm.areaSqFt||0)||!Number(reviseForm.pricePerSqFt||0)}>{reviseBusy?"Creating...":"Create Revision"}</Btn>
+          </div>
+        </div>
+      </Modal>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
+        <div><div style={{fontSize:18,fontWeight:800}}>Quotes</div><div style={{fontSize:12,color:C.textDim}}>Search, filter, revise, and close buyer quotes</div></div>
+      </div>
+      <KpiGrid items={[{label:"Total Quotes",value:quotes.length,icon:"All",color:C.text},{label:"Needs Action",value:actionCount,icon:"Now",color:actionCount?C.amber:C.textDim},{label:"Sent",value:counts.sent||0,icon:"Sent",color:C.primary},{label:"Sold Value",value:"Rs "+soldValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      <Card style={{padding:12,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, buyer, stone, slab..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}/>
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}>
+            <option value="all">All statuses</option>
+            <option value="sent">Sent</option>
+            <option value="accepted">Accepted</option>
+            <option value="revision_requested">Changes requested</option>
+            <option value="revised">Revised</option>
+            <option value="expired">Expired</option>
+            <option value="sold">Sold</option>
+          </select>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+          {["sent","accepted","revision_requested","revised","expired","sold"].map(s=>{const cfg=statusStyle(s);return <button key={s} onClick={()=>setStatusFilter(statusFilter===s?"all":s)} style={{padding:"5px 10px",background:statusFilter===s?cfg.bg:C.white,border:`1px solid ${statusFilter===s?cfg.b:C.border}`,borderRadius:20,color:statusFilter===s?cfg.c:C.textDim,fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{cfg.label} ({counts[s]||0})</button>;})}
+        </div>
+      </Card>
+      {filtered.length===0?<Card style={{padding:"44px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,marginBottom:5}}>No quotes found</div><div style={{fontSize:12,color:C.textDim}}>Create quotes from buyer inquiries to manage them here.</div></Card>:
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(q=>{const status=effectiveStatus(q);const cfg=statusStyle(status);const canRevise=status==="revision_requested";const canSell=status==="accepted";return(
+          <Card key={q.id} style={{padding:14,borderColor:canRevise?C.amberBorder:canSell?C.greenBorder:C.border}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:10}}>
+              <div style={{minWidth:0}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                  <span style={{fontSize:12,fontFamily:"monospace",fontWeight:900,color:C.text}}>{q.id}</span>
+                  <span style={{fontSize:10,fontWeight:900,color:cfg.c,background:cfg.bg,border:`1px solid ${cfg.b}`,borderRadius:20,padding:"2px 8px"}}>{cfg.label}</span>
+                  {(q.revisionNumber||q.revision_number)>1&&<span style={{fontSize:10,fontWeight:900,color:C.purple,background:C.purpleBg,border:`1px solid ${C.purpleBorder}`,borderRadius:20,padding:"2px 8px"}}>Rev {q.revisionNumber||q.revision_number}</span>}
+                </div>
+                <div style={{fontSize:14,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
+                <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} · {q.grade} · {q.slabId||q.slab_id}</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:18,fontWeight:900,color:C.green}}>Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                <div style={{fontSize:11,color:C.textDim}}>{q.validityTs||q.validity_ts?`Valid ${fmtD(q.validityTs||q.validity_ts)}`:"No validity"}</div>
+              </div>
+            </div>
+            {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.textMid,lineHeight:1.45,marginBottom:10}}>Buyer note: {q.buyerMessage||q.buyer_message}</div>}
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+              <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open</Btn>
+              <Btn size="sm" variant="secondary" onClick={()=>copyQuote(q)}>{copied===q.id?"Copied":"Copy"}</Btn>
+              {(q.slabId||q.slab_id)&&<Btn size="sm" variant="secondary" onClick={()=>window.open(`/slab/${encodeURIComponent(q.slabId||q.slab_id)}`,"_blank","noopener,noreferrer")}>Slab</Btn>}
+              {canRevise&&<Btn size="sm" variant="ghost" onClick={()=>openRevision(q)}>Revise</Btn>}
+              {canSell&&<Btn size="sm" variant="green" disabled={saleBusy===q.id} onClick={()=>markQuoteSold(q)}>{saleBusy===q.id?"Closing...":"Mark Sold"}</Btn>}
+            </div>
+          </Card>
+        );})}
+      </div>}
     </div>
   );
 }
