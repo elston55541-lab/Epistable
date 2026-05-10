@@ -608,6 +608,8 @@ function Owner({onLogout}) {
     {id:"settings",label:"Settings",icon:"⚙"},
   ];
 
+  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"₹"});
+
   const pages={
     overview:<OwnerOverview facs={facs} users={users} insps={insps} activity={activity} totalBill={totalBill} overdue={overdue} setPage={setPage} pickFac={f=>{setSelFac(f);setPage("fac");}}/>,
     billing:<OwnerBilling facs={facs} onRefresh={load}/>,
@@ -1034,14 +1036,16 @@ function FactoryApp({user,onLogout}) {
   const [notifs,setNotifs]=useState([]);
   const [activity,setActivity]=useState([]);
   const [inquiries,setInquiries]=useState([]);
+  const [salesInsps,setSalesInsps]=useState([]);
+  const [disputes,setDisputes]=useState([]);
   const [loading,setLoading]=useState(true);
   const [viewPortal,setViewPortal]=useState(false);
 
   async function load(){
     setLoading(true);
     const canManage=user.role==="admin"||user.role==="manager";
-    const [i,f,n,a,q]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([])]);
-    setInsps(i);setFac(f);setNotifs(n);setActivity(a);setInquiries(q);
+    const [i,f,n,a,q,fi,d]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([]),canManage?DB.facInsps(user.factory_id):Promise.resolve([]),canManage?DB.facDisputes(user.factory_id):Promise.resolve([])]);
+    setInsps(i);setFac(f);setNotifs(n);setActivity(a);setInquiries(q);setSalesInsps(canManage?fi:i);setDisputes(d);
     setLoading(false);
   }
   useEffect(()=>{load();},[]);
@@ -1068,6 +1072,7 @@ function FactoryApp({user,onLogout}) {
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
+    ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} setPage={setPage}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
@@ -1891,6 +1896,70 @@ function FacInquiries({fac,onChange}) {
           </div>
         </div>
       ))}</Card>}
+    </div>
+  );
+}
+
+function FacSalesDashboard({inquiries=[],insps=[],disputes=[],setPage}) {
+  const active=inquiries.filter(q=>q.status!=="closed");
+  const byStatus=s=>inquiries.filter(q=>q.status===s).length;
+  const reservedSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="reserved").length;
+  const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
+  const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
+  const maxFunnel=Math.max(1,...funnel.map(x=>x[1]));
+  const slabInterest=Object.values(inquiries.reduce((acc,q)=>{
+    const id=q.slabId||q.slab_id||"unknown";
+    acc[id]=acc[id]||{id,stone:q.stone,grade:q.grade,count:0,latest:0};
+    acc[id].count+=1;acc[id].latest=Math.max(acc[id].latest,q.created_at||0);
+    return acc;
+  },{})).sort((a,b)=>b.count-a.count||b.latest-a.latest).slice(0,5);
+  const recent=[
+    ...inquiries.slice(0,8).map(q=>({kind:"Inquiry",title:q.buyerName||q.buyer_name||"Buyer",sub:`${q.stone} · ${q.status}`,ts:q.created_at||0,color:q.status==="new"?C.primary:q.status==="reserved"?C.purple:C.textMid})),
+    ...disputes.slice(0,5).map(d=>({kind:"Dispute",title:d.buyerName||d.buyer_name||"Buyer",sub:`${d.stone} · ${d.status}`,ts:d.created_at||0,color:d.status==="open"?C.red:C.textMid})),
+  ].sort((a,b)=>b.ts-a.ts).slice(0,8);
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, reservations, and follow-ups</div></div>
+        <Btn size="sm" variant="ghost" onClick={()=>setPage("inquiries")}>Open Inquiries</Btn>
+      </div>
+      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Hot Inquiries",value:active.filter(q=>(q.priority||"warm")==="hot").length,icon:"Hot",color:C.red},{label:"Reserved Slabs",value:reservedSlabs,icon:"Hold",color:C.purple},{label:"Overdue Follow-ups",value:overdue.length,icon:"Due",color:overdue.length?C.red:C.textDim}]}/>
+      {overdue.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div><div style={{fontSize:14,fontWeight:900,color:C.red}}>Follow up now</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdue.slice(0,3).map(q=>q.buyerName||q.buyer_name).join(", ")}</div></div>
+          <Btn size="sm" variant="red" onClick={()=>setPage("inquiries")}>Review</Btn>
+        </div>
+      </Card>}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
+        <Card style={{padding:16}}>
+          <div style={{fontSize:15,fontWeight:900,marginBottom:14}}>Inquiry Funnel</div>
+          {funnel.map(([label,count,color])=>(
+            <div key={label} style={{marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:5}}><span>{label}</span><span style={{color}}>{count}</span></div>
+              <PBar value={count/maxFunnel*100} color={color} h={8}/>
+            </div>
+          ))}
+        </Card>
+        <Card style={{padding:16}}>
+          <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Top Interested Slabs</div>
+          {slabInterest.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer interest yet</div>:slabInterest.map((s,i)=>(
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<slabInterest.length-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{width:28,height:28,borderRadius:8,background:C.primaryBg,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900}}>{i+1}</div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.stone||s.id}</div><div style={{fontSize:11,color:C.textDim}}>{s.grade||"Grade"} · {s.id}</div></div>
+              <div style={{fontSize:13,fontWeight:900,color:C.primary}}>{s.count}</div>
+            </div>
+          ))}
+        </Card>
+        <Card style={{padding:16}}>
+          <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Recent Buyer Activity</div>
+          {recent.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer activity yet</div>:recent.map((a,i)=>(
+            <div key={`${a.kind}-${a.ts}-${i}`} style={{display:"flex",gap:10,padding:"10px 0",borderBottom:i<recent.length-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{width:9,height:9,borderRadius:"50%",background:a.color,marginTop:5,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:800}}>{a.kind}: {a.title}</div><div style={{fontSize:11,color:C.textDim}}>{a.sub} · {fmtD(a.ts)}</div></div>
+            </div>
+          ))}
+        </Card>
+      </div>
     </div>
   );
 }
