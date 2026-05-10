@@ -262,6 +262,11 @@ const DB = {
     const data=await rows(await supabase.from("quotes").select().eq("factory_id",fid).order("created_at",{ascending:false}));
     return (data||[]).map(mapQuote);
   },
+  async buyerQuotes(email,fid) {
+    if(!email)return [];
+    const data=await rows(await supabase.from("quotes").select().eq("buyer_email",email.toLowerCase()).eq("factory_id",fid).order("created_at",{ascending:false}).limit(30));
+    return (data||[]).map(mapQuote);
+  },
   async updQuote(id,u) {
     requireData(await supabase.from("quotes").update({...u,updated_at:Date.now()}).eq("id",id));
   },
@@ -2322,13 +2327,25 @@ function FacNotifs({notifs,onRead}) {
 }
 
 // ── BUYER ──
+function quoteStatusConf(status) {
+  const m={
+    sent:{label:"Sent",c:C.primary,bg:C.primaryBg,b:C.primaryBorder},
+    accepted:{label:"Accepted",c:C.green,bg:C.greenBg,b:C.greenBorder},
+    revision_requested:{label:"Changes requested",c:C.amber,bg:C.amberBg,b:C.amberBorder},
+    revised:{label:"Revised",c:C.textDim,bg:C.surface,b:C.border},
+    expired:{label:"Expired",c:C.red,bg:C.redBg,b:C.redBorder},
+    sold:{label:"Sold",c:C.green,bg:C.greenBg,b:C.greenBorder},
+  };
+  return m[status]||m.sent;
+}
+
 function BuyerHome({buyer,onLogout,onViewPortal}) {
-  const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);
+  const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
   useEffect(()=>{
-    Promise.all([DB.getFac(buyer.factory_id),DB.facInsps(buyer.factory_id),DB.buyerInquiries(buyer.email,buyer.factory_id)]).then(([f,i,q])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);});
+    Promise.all([DB.getFac(buyer.factory_id),DB.facInsps(buyer.factory_id),DB.buyerInquiries(buyer.email,buyer.factory_id),DB.buyerQuotes(buyer.email,buyer.factory_id)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
   },[]);
   const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
-  const reservedInquiries=inquiries.filter(q=>q.status==="reserved").length;
+  const activeQuotes=quotes.filter(q=>!["revised","expired","sold"].includes(q.status)).length;
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"20px 18px 24px"}}>
@@ -2344,7 +2361,7 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
           <div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-            {[["Available",insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Reserved",reservedInquiries,"Hold"]].map(([l,v,icon])=>(
+            {[["Available",insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
               <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:11}}>{icon}</div><div style={{fontSize:18,fontWeight:800,color:C.white,lineHeight:1,marginBottom:2}}>{v}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
             ))}
           </div>
@@ -2360,6 +2377,22 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
           <span style={{fontSize:18,flexShrink:0}}>🛡️</span>
           <div><div style={{fontSize:13,fontWeight:700,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{fontSize:12,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
         </div>
+        {quotes.length>0&&<Card style={{marginTop:14}}>
+          <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <div><div style={{fontSize:14,fontWeight:800}}>My Quotes</div><div style={{fontSize:11,color:C.textDim,marginTop:2}}>Track quotes sent by the factory</div></div>
+            <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Browse slabs</button>
+          </div>
+          {quotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);return(
+            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(quotes.length,5)-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                <div style={{fontSize:11,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
+              </div>
+              <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{s.label}</span>
+              <button onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Open</button>
+            </div>
+          );})}
+        </Card>}
         {inquiries.length>0&&<Card style={{marginTop:14}}>
           <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:800}}>My Inquiries</div>
