@@ -1124,7 +1124,7 @@ function FactoryApp({user,onLogout}) {
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage}/>}:{ }),
+    ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage} onChange={load}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
@@ -1982,7 +1982,8 @@ function FacInquiries({fac,onChange}) {
   );
 }
 
-function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage}) {
+function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
+  const [saleBusy,setSaleBusy]=useState("");
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -1997,16 +1998,46 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage}
     ...inquiries.slice(0,8).map(q=>({kind:"Inquiry",title:q.buyerName||q.buyer_name||"Buyer",sub:`${q.stone} · ${q.status}`,ts:q.created_at||0,color:q.status==="new"?C.primary:q.status==="reserved"?C.purple:C.textMid})),
     ...disputes.slice(0,5).map(d=>({kind:"Dispute",title:d.buyerName||d.buyer_name||"Buyer",sub:`${d.stone} · ${d.status}`,ts:d.created_at||0,color:d.status==="open"?C.red:C.textMid})),
   ].sort((a,b)=>b.ts-a.ts).slice(0,8);
+  const soldSlabIds=new Set(insps.filter(i=>(i.inventoryStatus||"available")==="sold").map(i=>i.id));
   const sentQuotes=quotes.filter(q=>q.status==="sent").length;
   const acceptedQuotes=quotes.filter(q=>q.status==="accepted").length;
+  const soldQuotes=quotes.filter(q=>q.status==="accepted"&&soldSlabIds.has(q.slabId||q.slab_id));
+  const acceptedActionItems=quotes.filter(q=>q.status==="accepted"&&!soldSlabIds.has(q.slabId||q.slab_id)).slice(0,5);
+  const wonValue=soldQuotes.reduce((sum,q)=>sum+Number(q.totalAmount||q.total_amount||0),0);
   const decidedQuotes=quotes.filter(q=>q.status==="accepted"||q.status==="revision_requested").slice(0,5);
+  async function markQuoteSold(q){
+    if(saleBusy)return;
+    setSaleBusy(q.id);
+    try {
+      await DB.updInspStatus(q.slabId||q.slab_id,"sold");
+      if(q.inquiryId||q.inquiry_id)await DB.updInquiry(q.inquiryId||q.inquiry_id,{status:"closed"});
+      await onChange?.();
+    } finally {
+      setSaleBusy("");
+    }
+  }
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, reservations, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("inquiries")}>Open Inquiries</Btn>
       </div>
-      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Overdue Follow-ups",value:overdue.length,icon:"Due",color:overdue.length?C.red:C.textDim}]}/>
+      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      {acceptedActionItems.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.greenBorder,background:C.greenBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+          <div><div style={{fontSize:14,fontWeight:900,color:C.green}}>Accepted quotes ready to close</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Mark sold after payment or dispatch is confirmed.</div></div>
+          <Btn size="sm" variant="ghost" onClick={()=>setPage("history")}>View Inventory</Btn>
+        </div>
+        {acceptedActionItems.map((q,i)=>(
+          <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.greenBorder}`:"none",borderBottom:i<acceptedActionItems.length-1?`1px solid ${C.greenBorder}`:"none"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
+              <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+            </div>
+            <Btn size="sm" variant="green" disabled={saleBusy===q.id} onClick={()=>markQuoteSold(q)}>{saleBusy===q.id?"Closing...":"Mark Sold"}</Btn>
+          </div>
+        ))}
+      </Card>}
       {overdue.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
           <div><div style={{fontSize:14,fontWeight:900,color:C.red}}>Follow up now</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdue.slice(0,3).map(q=>q.buyerName||q.buyer_name).join(", ")}</div></div>
