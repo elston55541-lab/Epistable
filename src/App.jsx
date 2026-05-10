@@ -37,6 +37,8 @@ const mapQuote = d => ({
   validityTs:d.validity_ts,
   buyerMessage:d.buyer_message,
   buyerDecidedAt:d.buyer_decided_at,
+  parentQuoteId:d.parent_quote_id,
+  revisionNumber:d.revision_number||1,
 });
 
 const DB = {
@@ -246,6 +248,8 @@ const DB = {
       area_sq_ft:d.areaSqFt,
       total_amount:d.totalAmount,
       validity_ts:d.validityTs,
+      parent_quote_id:d.parentQuoteId||null,
+      revision_number:d.revisionNumber||1,
       notes:d.notes,
       status:d.status||"sent",
       created_at:Date.now(),
@@ -1984,6 +1988,9 @@ function FacInquiries({fac,onChange}) {
 
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
   const [saleBusy,setSaleBusy]=useState("");
+  const [reviseQuote,setReviseQuote]=useState(null);
+  const [reviseForm,setReviseForm]=useState({areaSqFt:"",pricePerSqFt:"",validityDate:"",notes:""});
+  const [reviseBusy,setReviseBusy]=useState(false);
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -2005,6 +2012,16 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
   const acceptedActionItems=quotes.filter(q=>q.status==="accepted"&&!soldSlabIds.has(q.slabId||q.slab_id)).slice(0,5);
   const wonValue=soldQuotes.reduce((sum,q)=>sum+Number(q.totalAmount||q.total_amount||0),0);
   const decidedQuotes=quotes.filter(q=>q.status==="accepted"||q.status==="revision_requested").slice(0,5);
+  const revisionRequests=quotes.filter(q=>q.status==="revision_requested").slice(0,5);
+  function openRevision(q){
+    setReviseQuote(q);
+    setReviseForm({
+      areaSqFt:String(q.areaSqFt||q.area_sq_ft||""),
+      pricePerSqFt:String(q.pricePerSqFt||q.price_per_sq_ft||""),
+      validityDate:q.validityTs||q.validity_ts?new Date(q.validityTs||q.validity_ts).toISOString().slice(0,10):"",
+      notes:q.notes||""
+    });
+  }
   async function markQuoteSold(q){
     if(saleBusy)return;
     setSaleBusy(q.id);
@@ -2016,13 +2033,80 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
       setSaleBusy("");
     }
   }
+  async function createRevision(){
+    if(!reviseQuote||reviseBusy)return;
+    const area=Number(reviseForm.areaSqFt||0);
+    const price=Number(reviseForm.pricePerSqFt||0);
+    if(!area||!price)return;
+    setReviseBusy(true);
+    try {
+      const q=await DB.createQuote({
+        inquiryId:reviseQuote.inquiryId||reviseQuote.inquiry_id,
+        slabId:reviseQuote.slabId||reviseQuote.slab_id,
+        factoryId:reviseQuote.factoryId||reviseQuote.factory_id,
+        factoryName:reviseQuote.factoryName||reviseQuote.factory_name,
+        buyerName:reviseQuote.buyerName||reviseQuote.buyer_name,
+        buyerCompany:reviseQuote.buyerCompany||reviseQuote.buyer_company,
+        buyerEmail:reviseQuote.buyerEmail||reviseQuote.buyer_email,
+        stone:reviseQuote.stone,
+        grade:reviseQuote.grade,
+        pricePerSqFt:price,
+        areaSqFt:area,
+        totalAmount:Math.round(area*price),
+        validityTs:reviseForm.validityDate?new Date(`${reviseForm.validityDate}T23:59:59`).getTime():null,
+        notes:reviseForm.notes,
+        parentQuoteId:reviseQuote.parentQuoteId||reviseQuote.parent_quote_id||reviseQuote.id,
+        revisionNumber:Number(reviseQuote.revisionNumber||reviseQuote.revision_number||1)+1,
+        status:"sent"
+      });
+      await DB.updQuote(reviseQuote.id,{status:"revised"});
+      setReviseQuote(null);await onChange?.();
+      window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank");
+    } finally {
+      setReviseBusy(false);
+    }
+  }
   return (
     <div>
+      {reviseQuote&&<Modal title="Create Revised Quote" onClose={()=>setReviseQuote(null)}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:12}}>
+            <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:4}}>Buyer requested changes</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.5}}>{reviseQuote.buyerMessage||reviseQuote.buyer_message||"No buyer note provided."}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Area (sq ft)" value={reviseForm.areaSqFt} onChange={v=>setReviseForm(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))}/>
+            <Inp label="Price / sq ft" value={reviseForm.pricePerSqFt} onChange={v=>setReviseForm(p=>({...p,pricePerSqFt:v.replace(/[^0-9.]/g,"")}))}/>
+          </div>
+          <Inp label="Valid until" type="date" value={reviseForm.validityDate} onChange={v=>setReviseForm(p=>({...p,validityDate:v}))}/>
+          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <div style={{fontSize:13,fontWeight:900,color:C.green}}>Total: Rs {Math.round(Number(reviseForm.areaSqFt||0)*Number(reviseForm.pricePerSqFt||0)).toLocaleString("en-IN")}</div>
+            <Btn onClick={createRevision} disabled={reviseBusy||!Number(reviseForm.areaSqFt||0)||!Number(reviseForm.pricePerSqFt||0)}>{reviseBusy?"Creating...":"Create Revision"}</Btn>
+          </div>
+        </div>
+      </Modal>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, reservations, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("inquiries")}>Open Inquiries</Btn>
       </div>
       <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      {revisionRequests.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.amberBorder,background:C.amberBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+          <div><div style={{fontSize:14,fontWeight:900,color:C.amber}}>Quote revisions requested</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Create a revised quote and send the buyer a fresh link.</div></div>
+          <div style={{fontSize:18,fontWeight:900,color:C.amber}}>{revisionRequests.length}</div>
+        </div>
+        {revisionRequests.map((q,i)=>(
+          <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.amberBorder}`:"none",borderBottom:i<revisionRequests.length-1?`1px solid ${C.amberBorder}`:"none"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
+              <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+              {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:4}}>{q.buyerMessage}</div>}
+            </div>
+            <Btn size="sm" variant="ghost" onClick={()=>openRevision(q)}>Revise</Btn>
+          </div>
+        ))}
+      </Card>}
       {acceptedActionItems.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.greenBorder,background:C.greenBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
           <div><div style={{fontSize:14,fontWeight:900,color:C.green}}>Accepted quotes ready to close</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Mark sold after payment or dispatch is confirmed.</div></div>
@@ -2409,7 +2493,7 @@ function PublicQuotePage({quoteId}) {
       </Card>
     </div>
   );
-  const statusColor={draft:C.textDim,sent:C.primary,accepted:C.green,revision_requested:C.amber,expired:C.red}[quote.status]||C.primary;
+  const statusColor={draft:C.textDim,sent:C.primary,accepted:C.green,revision_requested:C.amber,revised:C.textDim,expired:C.red}[quote.status]||C.primary;
   const statusLabel=(quote.status||"sent").replace("_"," ");
   const validUntil=quote.validity_ts?fmtD(quote.validity_ts):"Not specified";
   const expired=quote.validity_ts&&quote.validity_ts<Date.now();
@@ -2493,6 +2577,10 @@ function PublicQuotePage({quoteId}) {
               <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Changes requested</div>
               <div style={{fontSize:12,color:C.textMid}}>The factory can review the buyer note and send a revised quote.</div>
               {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
+            </div>}
+            {quote.status==="revised"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
+              <div style={{fontSize:14,fontWeight:900,color:C.textMid,marginBottom:4}}>Revised quote sent</div>
+              <div style={{fontSize:12,color:C.textMid}}>This quote has been replaced by a newer quote from the factory.</div>
             </div>}
             {canDecide&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Buyer decision</div>
