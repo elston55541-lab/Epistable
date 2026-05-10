@@ -265,6 +265,9 @@ const DB = {
   async updQuote(id,u) {
     requireData(await supabase.from("quotes").update({...u,updated_at:Date.now()}).eq("id",id));
   },
+  async notifyBuyerRevisedQuote(id) {
+    requireData(await supabase.rpc("notify_buyer_revised_quote",{quote_id:id}));
+  },
 
   // Notifications
   async addNotif(uid,n) {
@@ -2060,6 +2063,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
         status:"sent"
       });
       await DB.updQuote(reviseQuote.id,{status:"revised"});
+      try{await DB.notifyBuyerRevisedQuote(q.id);}catch(e){console.warn("Buyer quote notification skipped",e);}
       setReviseQuote(null);await onChange?.();
       window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank");
     } finally {
