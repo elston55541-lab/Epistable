@@ -22,6 +22,20 @@ const mapInquiry = d => ({
   followUpAt:d.follow_up_at||null,
   priority:d.priority||"warm",
 });
+const mapQuote = d => ({
+  ...d,
+  inquiryId:d.inquiry_id,
+  slabId:d.slab_id,
+  factoryId:d.factory_id,
+  factoryName:d.factory_name,
+  buyerName:d.buyer_name,
+  buyerCompany:d.buyer_company,
+  buyerEmail:d.buyer_email,
+  pricePerSqFt:d.price_per_sq_ft,
+  areaSqFt:d.area_sq_ft,
+  totalAmount:d.total_amount,
+  validityTs:d.validity_ts,
+});
 
 const DB = {
   // Factories
@@ -210,6 +224,40 @@ const DB = {
   async allInquiries() {
     const data=await rows(await supabase.from("inquiries").select().order("created_at",{ascending:false}));
     return (data||[]).map(mapInquiry);
+  },
+
+  // Quotes
+  async createQuote(d) {
+    const id=genId("QTE");
+    const row={
+      id,
+      inquiry_id:d.inquiryId,
+      slab_id:d.slabId,
+      factory_id:d.factoryId,
+      factory_name:d.factoryName,
+      buyer_name:d.buyerName,
+      buyer_company:d.buyerCompany,
+      buyer_email:d.buyerEmail,
+      stone:d.stone,
+      grade:d.grade,
+      price_per_sq_ft:d.pricePerSqFt,
+      area_sq_ft:d.areaSqFt,
+      total_amount:d.totalAmount,
+      validity_ts:d.validityTs,
+      notes:d.notes,
+      status:d.status||"sent",
+      created_at:Date.now(),
+      updated_at:Date.now()
+    };
+    requireData(await supabase.from("quotes").insert(row));
+    return mapQuote(row);
+  },
+  async facQuotes(fid) {
+    const data=await rows(await supabase.from("quotes").select().eq("factory_id",fid).order("created_at",{ascending:false}));
+    return (data||[]).map(mapQuote);
+  },
+  async updQuote(id,u) {
+    requireData(await supabase.from("quotes").update({...u,updated_at:Date.now()}).eq("id",id));
   },
 
   // Notifications
@@ -1038,14 +1086,15 @@ function FactoryApp({user,onLogout}) {
   const [inquiries,setInquiries]=useState([]);
   const [salesInsps,setSalesInsps]=useState([]);
   const [disputes,setDisputes]=useState([]);
+  const [quotes,setQuotes]=useState([]);
   const [loading,setLoading]=useState(true);
   const [viewPortal,setViewPortal]=useState(false);
 
   async function load(){
     setLoading(true);
     const canManage=user.role==="admin"||user.role==="manager";
-    const [i,f,n,a,q,fi,d]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([]),canManage?DB.facInsps(user.factory_id):Promise.resolve([]),canManage?DB.facDisputes(user.factory_id):Promise.resolve([])]);
-    setInsps(i);setFac(f);setNotifs(n);setActivity(a);setInquiries(q);setSalesInsps(canManage?fi:i);setDisputes(d);
+    const [i,f,n,a,q,fi,d,qt]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([]),canManage?DB.facInsps(user.factory_id):Promise.resolve([]),canManage?DB.facDisputes(user.factory_id):Promise.resolve([]),canManage?DB.facQuotes(user.factory_id):Promise.resolve([])]);
+    setInsps(i);setFac(f);setNotifs(n);setActivity(a);setInquiries(q);setSalesInsps(canManage?fi:i);setDisputes(d);setQuotes(qt);
     setLoading(false);
   }
   useEffect(()=>{load();},[]);
@@ -1066,13 +1115,14 @@ function FactoryApp({user,onLogout}) {
     ...(isAdmin?[{id:"team",label:"Team",icon:"👥"},{id:"suppliers",label:"Suppliers",icon:"🏭"},{id:"buyers",label:"Buyers",icon:"🌐"},{id:"inquiries",label:"Inquiries",icon:"📩"},{id:"disputes",label:"Disputes",icon:"⚠️"}]:[]),
     {id:"notifs",label:"Alerts",icon:"🔔",badge:unread||undefined},
   ];
+  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"₹"});
 
   const pages={
     home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} setPage={setPage}/>}:{ }),
+    ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
@@ -1848,15 +1898,33 @@ function FacBuyers({fac,actor,onActivity}) {
 function FacInquiries({fac,onChange}) {
   const [inquiries,setInquiries]=useState([]);const [sel,setSel]=useState(null);
   const [follow,setFollow]=useState({priority:"warm",factoryNotes:"",followUpDate:""});
+  const [quote,setQuote]=useState({areaSqFt:"",validityDate:"",notes:""});
+  const [quoteBusy,setQuoteBusy]=useState(false);
   async function load(){setInquiries(await DB.facInquiries(fac?.id||""));}
   useEffect(()=>{load();},[]);
-  function openInquiry(q){setSel(q);setFollow({priority:q.priority||"warm",factoryNotes:q.factoryNotes||"",followUpDate:q.followUpAt?new Date(q.followUpAt).toISOString().slice(0,10):""});}
+  function openInquiry(q){setSel(q);setFollow({priority:q.priority||"warm",factoryNotes:q.factoryNotes||"",followUpDate:q.followUpAt?new Date(q.followUpAt).toISOString().slice(0,10):""});setQuote({areaSqFt:"",validityDate:"",notes:""});}
   function followTs(){return follow.followUpDate?new Date(`${follow.followUpDate}T09:00:00`).getTime():null;}
   function buyerPhone(q){return (q.message||"").match(/Phone:\s*([^\n]+)/i)?.[1]?.trim()||"";}
   async function refresh(){await load();onChange?.();}
   async function updStatus(id,status){await DB.updInquiry(id,{status});setSel(null);await refresh();}
   async function reserveInquiry(q){await DB.updInquiry(q.id,{status:"reserved"});await DB.updInspStatus(q.slabId,"reserved");setSel(null);await refresh();}
   async function saveFollowup(){if(!sel)return;await DB.updInquiry(sel.id,{priority:follow.priority,factory_notes:follow.factoryNotes||null,follow_up_at:followTs()});setSel(null);await refresh();}
+  async function createQuote(){
+    if(!sel||quoteBusy)return;
+    const area=Number(quote.areaSqFt||0);
+    const price=Number(sel.pricePerSqFt||sel.price_per_sq_ft||0);
+    if(!area||!price)return;
+    setQuoteBusy(true);
+    try {
+      const q=await DB.createQuote({inquiryId:sel.id,slabId:sel.slabId,factoryId:sel.factoryId,factoryName:sel.factoryName,buyerName:sel.buyerName,buyerCompany:sel.buyerCompany,buyerEmail:sel.buyerEmail,stone:sel.stone,grade:sel.grade,pricePerSqFt:price,areaSqFt:area,totalAmount:Math.round(area*price),validityTs:quote.validityDate?new Date(`${quote.validityDate}T23:59:59`).getTime():null,notes:quote.notes,status:"sent"});
+      await DB.updInquiry(sel.id,{status:"reserved"});
+      await DB.updInspStatus(sel.slabId,"reserved");
+      setSel(null);await refresh();
+      window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank");
+    } finally {
+      setQuoteBusy(false);
+    }
+  }
   return (
     <div>
       {sel&&<Modal title="Buyer Inquiry" onClose={()=>setSel(null)}>
@@ -1878,6 +1946,18 @@ function FacInquiries({fac,onChange}) {
           <Btn variant="ghost" onClick={()=>sel.buyerEmail&&(window.location.href=`mailto:${sel.buyerEmail}?subject=Epistable inquiry for ${sel.slabId}`)} disabled={!sel.buyerEmail}>Email</Btn>
           <Btn variant="ghost" onClick={()=>{const p=buyerPhone(sel).replace(/[^0-9]/g,"");if(p)window.open(`https://wa.me/${p}`,"_blank");}} disabled={!buyerPhone(sel)}>WhatsApp</Btn>
         </div>
+        <Card style={{padding:12,marginBottom:12,boxShadow:"none",background:C.surface}}>
+          <div style={{fontSize:13,fontWeight:900,marginBottom:10}}>Create Quote</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <Inp label="Area (sq ft)" value={quote.areaSqFt} onChange={v=>setQuote(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120"/>
+            <Inp label="Valid until" type="date" value={quote.validityDate} onChange={v=>setQuote(p=>({...p,validityDate:v}))}/>
+          </div>
+          <textarea value={quote.notes} onChange={e=>setQuote(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Quote notes, payment terms, delivery..." style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <div style={{fontSize:12,color:C.textDim,fontWeight:800}}>Total: ₹{Math.round(Number(quote.areaSqFt||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0))}</div>
+            <Btn size="sm" onClick={createQuote} disabled={quoteBusy||!Number(quote.areaSqFt||0)}>{quoteBusy?"Creating...":"Create Quote"}</Btn>
+          </div>
+        </Card>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Btn variant="secondary" onClick={saveFollowup}>Save</Btn>
           <Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>Contacted</Btn>
@@ -1900,10 +1980,9 @@ function FacInquiries({fac,onChange}) {
   );
 }
 
-function FacSalesDashboard({inquiries=[],insps=[],disputes=[],setPage}) {
+function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage}) {
   const active=inquiries.filter(q=>q.status!=="closed");
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
-  const reservedSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="reserved").length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
   const maxFunnel=Math.max(1,...funnel.map(x=>x[1]));
@@ -1917,13 +1996,14 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],setPage}) {
     ...inquiries.slice(0,8).map(q=>({kind:"Inquiry",title:q.buyerName||q.buyer_name||"Buyer",sub:`${q.stone} · ${q.status}`,ts:q.created_at||0,color:q.status==="new"?C.primary:q.status==="reserved"?C.purple:C.textMid})),
     ...disputes.slice(0,5).map(d=>({kind:"Dispute",title:d.buyerName||d.buyer_name||"Buyer",sub:`${d.stone} · ${d.status}`,ts:d.created_at||0,color:d.status==="open"?C.red:C.textMid})),
   ].sort((a,b)=>b.ts-a.ts).slice(0,8);
+  const sentQuotes=quotes.filter(q=>q.status==="sent").length;
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, reservations, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("inquiries")}>Open Inquiries</Btn>
       </div>
-      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Hot Inquiries",value:active.filter(q=>(q.priority||"warm")==="hot").length,icon:"Hot",color:C.red},{label:"Reserved Slabs",value:reservedSlabs,icon:"Hold",color:C.purple},{label:"Overdue Follow-ups",value:overdue.length,icon:"Due",color:overdue.length?C.red:C.textDim}]}/>
+      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Hot Inquiries",value:active.filter(q=>(q.priority||"warm")==="hot").length,icon:"Hot",color:C.red},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Overdue Follow-ups",value:overdue.length,icon:"Due",color:overdue.length?C.red:C.textDim}]}/>
       {overdue.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
           <div><div style={{fontSize:14,fontWeight:900,color:C.red}}>Follow up now</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdue.slice(0,3).map(q=>q.buyerName||q.buyer_name).join(", ")}</div></div>
@@ -2251,8 +2331,109 @@ function BuyerPortal({factoryId,onBack,buyer}) {
 }
 
 // ── ROOT ──
+function PublicQuotePage({quoteId}) {
+  const [quote,setQuote]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState("");
+  const [copied,setCopied]=useState(false);
+  useEffect(()=>{
+    let active=true;
+    supabase.rpc("get_public_quote",{quote_id:quoteId}).then(({data,error})=>{
+      if(!active)return;
+      if(error){setError(error.message||"Quote unavailable.");setLoading(false);return;}
+      const row=Array.isArray(data)?data[0]:data;
+      if(!row)setError("Quote not found.");
+      setQuote(row);setLoading(false);
+    });
+    return()=>{active=false;};
+  },[quoteId]);
+  if(loading)return <Loader/>;
+  if(error)return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <Card style={{padding:24,maxWidth:420,textAlign:"center"}}>
+        <div style={{fontSize:18,fontWeight:900,marginBottom:8}}>Quote unavailable</div>
+        <div style={{fontSize:13,color:C.textMid}}>{error}</div>
+      </Card>
+    </div>
+  );
+  const statusColor={draft:C.textDim,sent:C.primary,accepted:C.green,expired:C.red}[quote.status]||C.primary;
+  const validUntil=quote.validity_ts?fmtD(quote.validity_ts):"Not specified";
+  const expired=quote.validity_ts&&quote.validity_ts<Date.now();
+  async function copyLink(){
+    try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1400);}catch(e){}
+  }
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+      <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"22px 18px 90px"}}>
+        <div style={{maxWidth:820,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
+          <div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.65)",fontWeight:800,letterSpacing:"0.7px",textTransform:"uppercase",marginBottom:8}}>Epistable Quote</div>
+            <div style={{fontSize:28,fontWeight:900,color:C.white,lineHeight:1.1,marginBottom:6}}>Proforma quote</div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.72)"}}>{quote.factory_name||"Verified factory"} - {quote.stone}</div>
+          </div>
+          <button onClick={copyLink} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:10,color:C.white,padding:"9px 13px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>{copied?"Copied":"Copy link"}</button>
+        </div>
+      </div>
+      <div style={{maxWidth:820,margin:"-62px auto 0",padding:"0 14px 40px"}}>
+        <Card style={{overflow:"hidden"}}>
+          <div style={{padding:18,borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontSize:12,color:C.textDim,fontWeight:800,marginBottom:4}}>Quote ID</div>
+              <div style={{fontSize:14,fontFamily:"monospace",fontWeight:900,color:C.text}}>{quote.id}</div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              {expired&&<span style={{background:C.redBg,border:`1px solid ${C.redBorder}`,color:C.red,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900}}>Expired</span>}
+              <span style={{background:C.surface,border:`1px solid ${C.border}`,color:statusColor,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900,textTransform:"capitalize"}}>{quote.status}</span>
+            </div>
+          </div>
+          <div style={{padding:18,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,borderBottom:`1px solid ${C.border}`}}>
+            {[["Buyer",quote.buyer_company||quote.buyer_name||"Buyer"],["Email",quote.buyer_email||"Not provided"],["Factory",quote.factory_name||"Factory"],["Valid Until",validUntil]].map(([label,value])=>(
+              <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
+                <div style={{fontSize:11,color:C.textDim,fontWeight:800,marginBottom:5}}>{label}</div>
+                <div style={{fontSize:13,fontWeight:800,wordBreak:"break-word"}}>{value}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{padding:18}}>
+            <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Slab details</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:16}}>
+              {[["Slab",quote.slab_id],["Stone",quote.stone],["Grade",quote.grade],["Area",`${Number(quote.area_sq_ft||0).toLocaleString("en-IN")} sq ft`]].map(([label,value])=>(
+                <div key={label} style={{borderBottom:`1px solid ${C.border}`,padding:"0 0 10px"}}>
+                  <div style={{fontSize:11,color:C.textDim,fontWeight:800,marginBottom:4}}>{label}</div>
+                  <div style={{fontSize:13,fontWeight:900}}>{value||"-"}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:16,marginBottom:16}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:12,color:C.primary,fontWeight:900,marginBottom:4}}>Total quote value</div>
+                  <div style={{fontSize:28,fontWeight:900,color:C.green}}>Rs {Number(quote.total_amount||0).toLocaleString("en-IN")}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:11,color:C.textDim,fontWeight:800}}>Rate</div>
+                  <div style={{fontSize:15,fontWeight:900}}>Rs {Number(quote.price_per_sq_ft||0).toLocaleString("en-IN")}/sq ft</div>
+                </div>
+              </div>
+            </div>
+            {quote.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:13,marginBottom:16}}>
+              <div style={{fontSize:12,color:C.textDim,fontWeight:900,marginBottom:5}}>Notes</div>
+              <div style={{fontSize:13,lineHeight:1.6}}>{quote.notes}</div>
+            </div>}
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {quote.slab_id&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(quote.slab_id)}`)} style={{background:C.primary,border:"none",borderRadius:10,color:C.white,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>View slab certificate</button>}
+              <button onClick={()=>window.print()} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Print quote</button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
+  const quoteMatch=window.location.pathname.match(/^\/quote\/([^/?#]+)/);
   const inviteMatch=window.location.pathname==="/invite";
   const [session,setSession]=useState(null);
   const [booting,setBooting]=useState(true);
@@ -2271,6 +2452,7 @@ export default function App() {
   },[]);
   async function logout(){try{await signOut();}catch(e){}setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
+  if(quoteMatch)return <PublicQuotePage quoteId={decodeURIComponent(quoteMatch[1])}/>;
   if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");setSession(profileSession(profile));}}/>;
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
