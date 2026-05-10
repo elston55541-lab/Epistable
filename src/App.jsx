@@ -35,6 +35,8 @@ const mapQuote = d => ({
   areaSqFt:d.area_sq_ft,
   totalAmount:d.total_amount,
   validityTs:d.validity_ts,
+  buyerMessage:d.buyer_message,
+  buyerDecidedAt:d.buyer_decided_at,
 });
 
 const DB = {
@@ -1981,7 +1983,6 @@ function FacInquiries({fac,onChange}) {
 }
 
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage}) {
-  const active=inquiries.filter(q=>q.status!=="closed");
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -1997,13 +1998,15 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage}
     ...disputes.slice(0,5).map(d=>({kind:"Dispute",title:d.buyerName||d.buyer_name||"Buyer",sub:`${d.stone} · ${d.status}`,ts:d.created_at||0,color:d.status==="open"?C.red:C.textMid})),
   ].sort((a,b)=>b.ts-a.ts).slice(0,8);
   const sentQuotes=quotes.filter(q=>q.status==="sent").length;
+  const acceptedQuotes=quotes.filter(q=>q.status==="accepted").length;
+  const decidedQuotes=quotes.filter(q=>q.status==="accepted"||q.status==="revision_requested").slice(0,5);
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, reservations, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("inquiries")}>Open Inquiries</Btn>
       </div>
-      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Hot Inquiries",value:active.filter(q=>(q.priority||"warm")==="hot").length,icon:"Hot",color:C.red},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Overdue Follow-ups",value:overdue.length,icon:"Due",color:overdue.length?C.red:C.textDim}]}/>
+      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Overdue Follow-ups",value:overdue.length,icon:"Due",color:overdue.length?C.red:C.textDim}]}/>
       {overdue.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
           <div><div style={{fontSize:14,fontWeight:900,color:C.red}}>Follow up now</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdue.slice(0,3).map(q=>q.buyerName||q.buyer_name).join(", ")}</div></div>
@@ -2038,6 +2041,22 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage}
               <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:800}}>{a.kind}: {a.title}</div><div style={{fontSize:11,color:C.textDim}}>{a.sub} · {fmtD(a.ts)}</div></div>
             </div>
           ))}
+        </Card>
+        <Card style={{padding:16}}>
+          <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Quote Decisions</div>
+          {decidedQuotes.length===0?<div style={{fontSize:13,color:C.textDim}}>No quote decisions yet</div>:decidedQuotes.map((q,i)=>{
+            const accepted=q.status==="accepted";
+            return (
+              <div key={q.id} style={{padding:"10px 0",borderBottom:i<decidedQuotes.length-1?`1px solid ${C.border}`:"none"}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:4}}>
+                  <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
+                  <span style={{fontSize:10,fontWeight:900,color:accepted?C.green:C.amber,background:accepted?C.greenBg:C.amberBg,border:`1px solid ${accepted?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{accepted?"Accepted":"Changes"}</span>
+                </div>
+                <div style={{fontSize:11,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45}}>{q.buyerMessage}</div>}
+              </div>
+            );
+          })}
         </Card>
       </div>
     </div>
@@ -2336,6 +2355,9 @@ function PublicQuotePage({quoteId}) {
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [copied,setCopied]=useState(false);
+  const [buyerMessage,setBuyerMessage]=useState("");
+  const [decisionBusy,setDecisionBusy]=useState("");
+  const [decisionError,setDecisionError]=useState("");
   useEffect(()=>{
     let active=true;
     supabase.rpc("get_public_quote",{quote_id:quoteId}).then(({data,error})=>{
@@ -2356,11 +2378,22 @@ function PublicQuotePage({quoteId}) {
       </Card>
     </div>
   );
-  const statusColor={draft:C.textDim,sent:C.primary,accepted:C.green,expired:C.red}[quote.status]||C.primary;
+  const statusColor={draft:C.textDim,sent:C.primary,accepted:C.green,revision_requested:C.amber,expired:C.red}[quote.status]||C.primary;
+  const statusLabel=(quote.status||"sent").replace("_"," ");
   const validUntil=quote.validity_ts?fmtD(quote.validity_ts):"Not specified";
   const expired=quote.validity_ts&&quote.validity_ts<Date.now();
+  const canDecide=quote.status==="sent"&&!expired;
   async function copyLink(){
     try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1400);}catch(e){}
+  }
+  async function submitDecision(decision){
+    if(!canDecide||decisionBusy)return;
+    setDecisionBusy(decision);setDecisionError("");
+    const {data,error}=await supabase.rpc("respond_to_quote",{quote_id:quoteId,decision,message:buyerMessage});
+    setDecisionBusy("");
+    if(error){setDecisionError(error.message||"Could not update quote.");return;}
+    const row=Array.isArray(data)?data[0]:data;
+    if(row)setQuote(row);
   }
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
@@ -2383,7 +2416,7 @@ function PublicQuotePage({quoteId}) {
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
               {expired&&<span style={{background:C.redBg,border:`1px solid ${C.redBorder}`,color:C.red,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900}}>Expired</span>}
-              <span style={{background:C.surface,border:`1px solid ${C.border}`,color:statusColor,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900,textTransform:"capitalize"}}>{quote.status}</span>
+              <span style={{background:C.surface,border:`1px solid ${C.border}`,color:statusColor,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900,textTransform:"capitalize"}}>{statusLabel}</span>
             </div>
           </div>
           <div style={{padding:18,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,borderBottom:`1px solid ${C.border}`}}>
@@ -2419,6 +2452,29 @@ function PublicQuotePage({quoteId}) {
             {quote.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:13,marginBottom:16}}>
               <div style={{fontSize:12,color:C.textDim,fontWeight:900,marginBottom:5}}>Notes</div>
               <div style={{fontSize:13,lineHeight:1.6}}>{quote.notes}</div>
+            </div>}
+            {quote.status==="accepted"&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
+              <div style={{fontSize:14,fontWeight:900,color:C.green,marginBottom:4}}>Quote accepted</div>
+              <div style={{fontSize:12,color:C.textMid}}>The factory can now move this slab toward sale confirmation.</div>
+              {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
+            </div>}
+            {quote.status==="revision_requested"&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
+              <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Changes requested</div>
+              <div style={{fontSize:12,color:C.textMid}}>The factory can review the buyer note and send a revised quote.</div>
+              {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
+            </div>}
+            {canDecide&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
+              <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Buyer decision</div>
+              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory (optional)" style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+              {decisionError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",marginBottom:10}}>{decisionError}</div>}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <button onClick={()=>submitDecision("revision_requested")} disabled={!!decisionBusy} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:decisionBusy?0.65:1}}>{decisionBusy==="revision_requested"?"Sending...":"Request Changes"}</button>
+                <button onClick={()=>submitDecision("accepted")} disabled={!!decisionBusy} style={{background:C.green,border:"none",borderRadius:10,color:C.white,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:decisionBusy?0.65:1}}>{decisionBusy==="accepted"?"Accepting...":"Accept Quote"}</button>
+              </div>
+            </div>}
+            {!canDecide&&quote.status==="sent"&&expired&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
+              <div style={{fontSize:14,fontWeight:900,color:C.red,marginBottom:4}}>Quote expired</div>
+              <div style={{fontSize:12,color:C.textMid}}>Please ask the factory for an updated quote.</div>
             </div>}
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               {quote.slab_id&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(quote.slab_id)}`)} style={{background:C.primary,border:"none",borderRadius:10,color:C.white,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>View slab certificate</button>}
