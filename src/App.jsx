@@ -2341,13 +2341,39 @@ function quoteStatusConf(status) {
 
 function BuyerHome({buyer,onLogout,onViewPortal}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
+  const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
   useEffect(()=>{
     Promise.all([DB.getFac(buyer.factory_id),DB.facInsps(buyer.factory_id),DB.buyerInquiries(buyer.email,buyer.factory_id),DB.buyerQuotes(buyer.email,buyer.factory_id)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
   },[]);
   const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
   const activeQuotes=quotes.filter(q=>!["revised","expired","sold"].includes(q.status)).length;
+  function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
+  async function submitQuoteAction(){
+    if(!quoteAction||quoteBusy)return;
+    setQuoteBusy(quoteAction.decision);setQuoteError("");
+    const {data,error}=await supabase.rpc("respond_to_quote",{quote_id:quoteAction.quote.id,decision:quoteAction.decision,message:quoteMsg});
+    setQuoteBusy("");
+    if(error){setQuoteError(error.message||"Could not update quote.");return;}
+    const row=Array.isArray(data)?data[0]:data;
+    if(row)setQuotes(prev=>prev.map(q=>q.id===row.id?mapQuote(row):q));
+    setQuoteAction(null);setQuoteMsg("");
+  }
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+      {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
+            <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>{quoteAction.quote.stone} · Rs {Number(quoteAction.quote.totalAmount||0).toLocaleString("en-IN")}</div>
+            <div style={{fontSize:11,color:C.textDim}}>{quoteAction.quote.grade} · {quoteAction.quote.id}</div>
+          </div>
+          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Btn variant="secondary" onClick={()=>setQuoteAction(null)}>Cancel</Btn>
+            <Btn variant={quoteAction.decision==="accepted"?"green":"primary"} onClick={submitQuoteAction} disabled={!!quoteBusy}>{quoteBusy? "Sending..." : quoteAction.decision==="accepted"?"Accept Quote":"Send Request"}</Btn>
+          </div>
+        </div>
+      </Modal>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"20px 18px 24px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
           <div>
@@ -2382,14 +2408,17 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
             <div><div style={{fontSize:14,fontWeight:800}}>My Quotes</div><div style={{fontSize:11,color:C.textDim,marginTop:2}}>Track quotes sent by the factory</div></div>
             <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Browse slabs</button>
           </div>
-          {quotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);return(
-            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(quotes.length,5)-1?`1px solid ${C.border}`:"none"}}>
+          {quotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
+            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(quotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
                 <div style={{fontSize:11,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
               </div>
               <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{s.label}</span>
               <button onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Open</button>
+              {q.slabId&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Slab</button>}
+              {canRespond&&<button onClick={()=>openQuoteAction(q,"revision_requested")} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:8,color:C.amber,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Changes</button>}
+              {canRespond&&<button onClick={()=>openQuoteAction(q,"accepted")} style={{background:C.green,border:"none",borderRadius:8,color:C.white,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Accept</button>}
             </div>
           );})}
         </Card>}
