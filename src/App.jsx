@@ -2626,7 +2626,24 @@ function PublicQuotePage({quoteId}) {
   const statusLabel=(quote.status||"sent").replace("_"," ");
   const validUntil=quote.validity_ts?fmtD(quote.validity_ts):"Not specified";
   const expired=quote.validity_ts&&quote.validity_ts<Date.now();
+  const timelineStatus=expired&&quote.status==="sent"?"expired":quote.status||"sent";
   const canDecide=quote.status==="sent"&&!expired;
+  const quoteTimeline=[
+    {label:"Quote sent",detail:quote.created_at?fmtD(quote.created_at):"Sent to buyer",done:true,current:false},
+    {
+      label:"Buyer response",
+      detail:timelineStatus==="accepted"?"Accepted by buyer":timelineStatus==="revision_requested"?"Changes requested by buyer":timelineStatus==="revised"?"Buyer requested changes":timelineStatus==="expired"?"Expired before response":"Waiting for buyer",
+      done:["accepted","revision_requested","revised"].includes(timelineStatus),
+      current:timelineStatus==="sent"
+    },
+    {
+      label:timelineStatus==="revised"?"Revised quote":timelineStatus==="revision_requested"?"Factory review":"Sale follow-up",
+      detail:timelineStatus==="accepted"?"Factory to confirm payment, dispatch, or next steps":timelineStatus==="revision_requested"?"Factory can send a revised quote":timelineStatus==="revised"?"A newer quote has replaced this one":timelineStatus==="expired"?"Ask the factory for an updated quote":"Starts after buyer response",
+      done:timelineStatus==="revised",
+      current:["accepted","revision_requested"].includes(timelineStatus),
+      muted:timelineStatus==="sent"||timelineStatus==="expired"
+    }
+  ];
   async function copyLink(){
     try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1400);}catch(e){}
   }
@@ -2670,6 +2687,20 @@ function PublicQuotePage({quoteId}) {
                 <div style={{fontSize:13,fontWeight:800,wordBreak:"break-word"}}>{value}</div>
               </div>
             ))}
+          </div>
+          <div style={{padding:18,borderBottom:`1px solid ${C.border}`}}>
+            <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Quote timeline</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
+              {quoteTimeline.map((step,i)=>(
+                <div key={step.label} style={{display:"flex",gap:10,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:12,opacity:step.muted?0.72:1}}>
+                  <div style={{width:24,height:24,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}}>{step.done?"✓":i+1}</div>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:900,color:step.done?C.green:step.current?C.primary:C.text}}>{step.label}</div>
+                    <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginTop:3}}>{step.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <div style={{padding:18}}>
             <div style={{fontSize:15,fontWeight:900,marginBottom:12}}>Slab details</div>
