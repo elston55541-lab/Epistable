@@ -9,6 +9,19 @@ import { SlabCertificate } from "./components/SlabCertificate";
 
 // ── DB (Supabase) ──
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
+const mapInquiry = d => ({
+  ...d,
+  factoryId:d.factory_id,
+  factoryName:d.factory_name,
+  buyerName:d.buyer_name,
+  buyerCompany:d.buyer_company,
+  buyerEmail:d.buyer_email,
+  slabId:d.slab_id,
+  pricePerSqFt:d.price_per_sq_ft,
+  factoryNotes:d.factory_notes||"",
+  followUpAt:d.follow_up_at||null,
+  priority:d.priority||"warm",
+});
 
 const DB = {
   // Factories
@@ -187,16 +200,16 @@ const DB = {
   },
   async facInquiries(fid) {
     const data=await rows(await supabase.from("inquiries").select().eq("factory_id",fid).order("created_at",{ascending:false}));
-    return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
+    return (data||[]).map(mapInquiry);
   },
   async buyerInquiries(email,fid) {
     if(!email)return [];
     const data=await rows(await supabase.from("inquiries").select().eq("buyer_email",email.toLowerCase()).eq("factory_id",fid).order("created_at",{ascending:false}).limit(20));
-    return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
+    return (data||[]).map(mapInquiry);
   },
   async allInquiries() {
     const data=await rows(await supabase.from("inquiries").select().order("created_at",{ascending:false}));
-    return (data||[]).map(d=>({...d,factoryId:d.factory_id,factoryName:d.factory_name,buyerName:d.buyer_name,buyerCompany:d.buyer_company,buyerEmail:d.buyer_email,slabId:d.slab_id,pricePerSqFt:d.price_per_sq_ft}));
+    return (data||[]).map(mapInquiry);
   },
 
   // Notifications
@@ -1020,13 +1033,15 @@ function FactoryApp({user,onLogout}) {
   const [fac,setFac]=useState(null);
   const [notifs,setNotifs]=useState([]);
   const [activity,setActivity]=useState([]);
+  const [inquiries,setInquiries]=useState([]);
   const [loading,setLoading]=useState(true);
   const [viewPortal,setViewPortal]=useState(false);
 
   async function load(){
     setLoading(true);
-    const [i,f,n,a]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id)]);
-    setInsps(i);setFac(f);setNotifs(n);setActivity(a);
+    const canManage=user.role==="admin"||user.role==="manager";
+    const [i,f,n,a,q]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([])]);
+    setInsps(i);setFac(f);setNotifs(n);setActivity(a);setInquiries(q);
     setLoading(false);
   }
   useEffect(()=>{load();},[]);
@@ -1049,11 +1064,11 @@ function FactoryApp({user,onLogout}) {
   ];
 
   const pages={
-    home:<FacHome user={user} fac={fac} insps={insps} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
+    home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac}/>,disputes:<FacDisputes fac={fac}/>}:{}),
+    ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
     notifs:<FacNotifs notifs={notifs} onRead={async()=>{await DB.readAll(user.id);load();}}/>,
   };
 
@@ -1069,10 +1084,13 @@ function FactoryApp({user,onLogout}) {
   );
 }
 
-function FacHome({user,fac,insps,sc,b,paused,isAdmin,setPage,openPortal}) {
+function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPortal}) {
   const today=insps.filter(i=>Date.now()-i.ts<86400000);
   const byG=g=>insps.filter(i=>i.grade===g).length;
   const pp=insps.length?Math.round(byG("Premium")/insps.length*100):0;
+  const overdueFollowups=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
+  const hotInquiries=inquiries.filter(q=>(q.priority||"warm")==="hot"&&q.status!=="closed").length;
+  const homeKpis=[{label:"Scans This Month",value:sc,icon:"🔍",color:C.primary},{label:"Scan Limit",value:b.includedScans,icon:"📊",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Bill Due",value:"₹"+b.total,icon:"💳",color:C.amber},...(isAdmin?[{label:"Hot Inquiries",value:hotInquiries,icon:"Hot",color:C.red},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
@@ -1085,7 +1103,16 @@ function FacHome({user,fac,insps,sc,b,paused,isAdmin,setPage,openPortal}) {
           ))}
         </div>
       </div>
-      <KpiGrid items={[{label:"Scans This Month",value:sc,icon:"🔍",color:C.primary},{label:"Scan Limit",value:b.includedScans,icon:"📊",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Bill Due",value:"₹"+b.total,icon:"💳",color:C.amber}]}/>
+      <KpiGrid items={homeKpis}/>
+      {isAdmin&&overdueFollowups.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:900,color:C.red}}>Follow-ups overdue</div>
+            <div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdueFollowups.slice(0,2).map(q=>q.buyerName||q.buyer_name).join(", ")}{overdueFollowups.length>2?" and more":""}</div>
+          </div>
+          <Btn size="sm" variant="red" onClick={()=>setPage("inquiries")}>Open</Btn>
+        </div>
+      </Card>}
       <PBar value={sc/b.includedScans*100} color={sc>=b.includedScans?C.red:sc/b.includedScans>0.8?C.amber:C.primary} h={8}/>
       <div style={{display:"flex",justifyContent:"space-between",marginTop:6,marginBottom:14}}><span style={{fontSize:11,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:11,fontWeight:700,color:C.amber}}>₹{b.total} due</span></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
@@ -1813,12 +1840,18 @@ function FacBuyers({fac,actor,onActivity}) {
   );
 }
 
-function FacInquiries({fac}) {
+function FacInquiries({fac,onChange}) {
   const [inquiries,setInquiries]=useState([]);const [sel,setSel]=useState(null);
+  const [follow,setFollow]=useState({priority:"warm",factoryNotes:"",followUpDate:""});
   async function load(){setInquiries(await DB.facInquiries(fac?.id||""));}
   useEffect(()=>{load();},[]);
-  async function updStatus(id,status){await DB.updInquiry(id,{status});setSel(null);load();}
-  async function reserveInquiry(q){await DB.updInquiry(q.id,{status:"reserved"});await DB.updInspStatus(q.slabId,"reserved");setSel(null);load();}
+  function openInquiry(q){setSel(q);setFollow({priority:q.priority||"warm",factoryNotes:q.factoryNotes||"",followUpDate:q.followUpAt?new Date(q.followUpAt).toISOString().slice(0,10):""});}
+  function followTs(){return follow.followUpDate?new Date(`${follow.followUpDate}T09:00:00`).getTime():null;}
+  function buyerPhone(q){return (q.message||"").match(/Phone:\s*([^\n]+)/i)?.[1]?.trim()||"";}
+  async function refresh(){await load();onChange?.();}
+  async function updStatus(id,status){await DB.updInquiry(id,{status});setSel(null);await refresh();}
+  async function reserveInquiry(q){await DB.updInquiry(q.id,{status:"reserved"});await DB.updInspStatus(q.slabId,"reserved");setSel(null);await refresh();}
+  async function saveFollowup(){if(!sel)return;await DB.updInquiry(sel.id,{priority:follow.priority,factory_notes:follow.factoryNotes||null,follow_up_at:followTs()});setSel(null);await refresh();}
   return (
     <div>
       {sel&&<Modal title="Buyer Inquiry" onClose={()=>setSel(null)}>
@@ -1828,7 +1861,20 @@ function FacInquiries({fac}) {
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:12,fontWeight:600}}>{v}</span></div>
           ))}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          <Sel label="Priority" value={follow.priority} onChange={v=>setFollow(p=>({...p,priority:v}))} options={[{value:"hot",label:"Hot"},{value:"warm",label:"Warm"},{value:"low",label:"Low"}]}/>
+          <Inp label="Next follow-up" type="date" value={follow.followUpDate} onChange={v=>setFollow(p=>({...p,followUpDate:v}))}/>
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Factory Notes</label>
+          <textarea value={follow.factoryNotes} onChange={e=>setFollow(p=>({...p,factoryNotes:e.target.value}))} rows={3} placeholder="Call notes, buyer requirement, next step..." style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          <Btn variant="ghost" onClick={()=>sel.buyerEmail&&(window.location.href=`mailto:${sel.buyerEmail}?subject=Epistable inquiry for ${sel.slabId}`)} disabled={!sel.buyerEmail}>Email</Btn>
+          <Btn variant="ghost" onClick={()=>{const p=buyerPhone(sel).replace(/[^0-9]/g,"");if(p)window.open(`https://wa.me/${p}`,"_blank");}} disabled={!buyerPhone(sel)}>WhatsApp</Btn>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Btn variant="secondary" onClick={saveFollowup}>Save</Btn>
           <Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>Contacted</Btn>
           <Btn variant="ghost" onClick={()=>reserveInquiry(sel)}>Reserve</Btn>
           <Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn>
@@ -1837,9 +1883,12 @@ function FacInquiries({fac}) {
       <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Buyer Inquiries</div>
       {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={{fontWeight:600}}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
-        <div key={q.id} onClick={()=>setSel(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:q.status==="new"?C.primaryBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{q.buyer_name}</div><div style={{fontSize:11,color:C.textDim}}>{q.stone} · {q.grade}</div></div>
-          <InqPill status={q.status}/>
+        <div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed"?C.redBg:q.status==="new"?C.primaryBg:C.white}}>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{q.buyerName||q.buyer_name}</div><div style={{fontSize:11,color:C.textDim}}>{q.stone} · {q.grade}{q.followUpAt?` · Follow up ${fmtD(q.followUpAt)}`:""}</div></div>
+          <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+            <span style={{fontSize:10,fontWeight:800,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span>
+            <InqPill status={q.status}/>
+          </div>
         </div>
       ))}</Card>}
     </div>
