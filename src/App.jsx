@@ -2029,6 +2029,17 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
     };
     return map[status]||map.sent;
   }
+  function nextStep(status){
+    const map={
+      revision_requested:{text:"Buyer requested changes. Create and send a revised quote.",c:C.amber,bg:C.amberBg,b:C.amberBorder},
+      accepted:{text:"Buyer accepted. Confirm payment or dispatch, then mark the slab sold.",c:C.green,bg:C.greenBg,b:C.greenBorder},
+      sent:{text:"Waiting for buyer response.",c:C.primary,bg:C.primaryBg,b:C.primaryBorder},
+      expired:{text:"Quote expired. Send a fresh quote if the buyer is still interested.",c:C.red,bg:C.redBg,b:C.redBorder},
+      revised:{text:"This quote was replaced by a newer revision.",c:C.textDim,bg:C.surface,b:C.border},
+      sold:{text:"Closed. Slab is marked sold.",c:C.green,bg:C.greenBg,b:C.greenBorder},
+    };
+    return map[status]||map.sent;
+  }
   async function copyQuote(q){
     const url=`${window.location.origin}/quote/${encodeURIComponent(q.id)}`;
     try{await navigator.clipboard.writeText(url);setCopied(q.id);setTimeout(()=>setCopied(""),1400);}catch(e){window.prompt("Copy quote link",url);}
@@ -2130,7 +2141,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
       </Card>
       {filtered.length===0?<Card style={{padding:"44px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,marginBottom:5}}>No quotes found</div><div style={{fontSize:12,color:C.textDim}}>Quotes created from inquiries will appear here for follow-up and closing.</div></Card>:
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {filtered.map(q=>{const status=effectiveStatus(q);const cfg=statusStyle(status);const canRevise=status==="revision_requested";const canSell=status==="accepted";return(
+        {filtered.map(q=>{const status=effectiveStatus(q);const cfg=statusStyle(status);const step=nextStep(status);const canRevise=status==="revision_requested";const canSell=status==="accepted";return(
           <Card key={q.id} style={{padding:14,borderColor:canRevise?C.amberBorder:canSell?C.greenBorder:C.border}}>
             <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:10,flexWrap:"wrap"}}>
               <div style={{minWidth:0}}>
@@ -2147,13 +2158,14 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
                 <div style={{fontSize:11,color:C.textDim}}>{q.validityTs||q.validity_ts?`Valid ${fmtD(q.validityTs||q.validity_ts)}`:"No validity"}</div>
               </div>
             </div>
-            {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.textMid,lineHeight:1.45,marginBottom:10}}>Buyer note: {q.buyerMessage||q.buyer_message}</div>}
+            <div style={{background:step.bg,border:`1px solid ${step.b}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:step.c,lineHeight:1.45,fontWeight:800,marginBottom:10}}>{step.text}</div>
+            {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.white,border:`1px solid ${canRevise?C.amberBorder:C.border}`,borderRadius:8,padding:"9px 10px",fontSize:12,color:C.textMid,lineHeight:1.45,marginBottom:10}}><span style={{fontWeight:900,color:canRevise?C.amber:C.text}}>Buyer note:</span> {q.buyerMessage||q.buyer_message}</div>}
             <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
-              <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open</Btn>
-              <Btn size="sm" variant="secondary" onClick={()=>copyQuote(q)}>{copied===q.id?"Copied":"Copy"}</Btn>
-              {(q.slabId||q.slab_id)&&<Btn size="sm" variant="secondary" onClick={()=>window.open(`/slab/${encodeURIComponent(q.slabId||q.slab_id)}`,"_blank","noopener,noreferrer")}>Slab</Btn>}
-              {canRevise&&<Btn size="sm" variant="ghost" onClick={()=>openRevision(q)}>Revise</Btn>}
-              {canSell&&<Btn size="sm" variant="green" disabled={saleBusy===q.id} onClick={()=>markQuoteSold(q)}>{saleBusy===q.id?"Closing...":"Mark Sold"}</Btn>}
+              <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open Buyer Quote</Btn>
+              <Btn size="sm" variant="secondary" onClick={()=>copyQuote(q)}>{copied===q.id?"Copied":"Copy Link"}</Btn>
+              {(q.slabId||q.slab_id)&&<Btn size="sm" variant="secondary" onClick={()=>window.open(`/slab/${encodeURIComponent(q.slabId||q.slab_id)}`,"_blank","noopener,noreferrer")}>View Slab</Btn>}
+              {canRevise&&<Btn size="sm" variant="ghost" onClick={()=>openRevision(q)}>Create Revised Quote</Btn>}
+              {canSell&&<Btn size="sm" variant="green" disabled={saleBusy===q.id} onClick={()=>markQuoteSold(q)}>{saleBusy===q.id?"Closing...":"Mark Slab Sold"}</Btn>}
             </div>
           </Card>
         );})}
