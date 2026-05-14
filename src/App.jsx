@@ -190,7 +190,20 @@ const DB = {
   // Disputes
   async createDispute(d) {
     const id=genId("DSP");
-    const disp={id,...d,created_at:Date.now(),status:"open",factory_id:d.factoryId,factory_name:d.factoryName,buyer_name:d.buyerName,buyer_company:d.buyerCompany,slab_id:d.slabId};
+    const disp={
+      id,
+      created_at:Date.now(),
+      status:"open",
+      factory_id:d.factoryId,
+      factory_name:d.factoryName,
+      buyer_name:d.buyerName,
+      buyer_company:d.buyerCompany,
+      slab_id:d.slabId,
+      stone:d.stone,
+      category:d.category,
+      details:d.details,
+      response:d.response||null
+    };
     requireData(await supabase.from("disputes").insert(disp));
     return disp;
   },
@@ -209,7 +222,24 @@ const DB = {
   // Inquiries
   async createInquiry(d) {
     const id=genId("INQ");
-    const inq={id,...d,created_at:Date.now(),status:"new",factory_id:d.factoryId,factory_name:d.factoryName,buyer_name:d.buyerName,buyer_company:d.buyerCompany,buyer_email:d.buyerEmail,slab_id:d.slabId,price_per_sq_ft:d.pricePerSqFt};
+    const inq={
+      id,
+      created_at:Date.now(),
+      status:"new",
+      factory_id:d.factoryId,
+      factory_name:d.factoryName,
+      buyer_name:d.buyerName,
+      buyer_company:d.buyerCompany,
+      buyer_email:d.buyerEmail,
+      slab_id:d.slabId,
+      stone:d.stone,
+      grade:d.grade,
+      price_per_sq_ft:d.pricePerSqFt,
+      message:d.message||"",
+      priority:d.priority||"warm",
+      factory_notes:d.factoryNotes||"",
+      follow_up_at:d.followUpAt||null
+    };
     requireData(await supabase.from("inquiries").insert(inq));
     return inq;
   },
@@ -2354,9 +2384,11 @@ function quoteStatusConf(status) {
 function BuyerHome({buyer,onLogout,onViewPortal}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
+  const buyerFactoryId=buyer.factory_id||buyer.factoryId;
   useEffect(()=>{
-    Promise.all([DB.getFac(buyer.factory_id),DB.facInsps(buyer.factory_id),DB.buyerInquiries(buyer.email,buyer.factory_id),DB.buyerQuotes(buyer.email,buyer.factory_id)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
-  },[]);
+    if(!buyerFactoryId)return;
+    Promise.all([DB.getFac(buyerFactoryId),DB.facInsps(buyerFactoryId),DB.buyerInquiries(buyer.email,buyerFactoryId),DB.buyerQuotes(buyer.email,buyerFactoryId)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
+  },[buyer.email,buyerFactoryId]);
   const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
   const activeQuotes=quotes.filter(q=>!["revised","expired","sold"].includes(q.status)).length;
   function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
@@ -2406,7 +2438,7 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
         </div>
       </div>
       <div style={{padding:"16px 16px 48px"}}>
-        <div onClick={onViewPortal} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
+        <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
           <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>🪨</div>
           <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
           <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
@@ -2464,13 +2496,28 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");const [statusFilter,setStatusFilter]=useState("available");
   const [maxPrice,setMaxPrice]=useState("");const [sortBy,setSortBy]=useState("newest");
   const [viewMode,setViewMode]=useState("all");const [savedIds,setSavedIds]=useState([]);
+  const localFactoryId=()=>{try{return localStorage.getItem("epistable_last_buyer_factory_id")||"";}catch{return "";}};
+  const [portalFactoryId,setPortalFactoryId]=useState(factoryId||buyer?.factory_id||buyer?.factoryId||localFactoryId());
   const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
   const [qrSlab,setQrSlab]=useState(null);
   const {isMobile}=useBP();
   const shortlistKey=`epistable_shortlist_${buyer?.id||buyer?.email||factoryId||"guest"}`;
   useEffect(()=>{
-    Promise.all([DB.getFac(factoryId),DB.facInsps(factoryId)]).then(([f,i])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));});
-  },[]);
+    let active=true;
+    async function load(){
+      let fid=factoryId||buyer?.factory_id||buyer?.factoryId||portalFactoryId||localFactoryId();
+      if(!fid&&buyer?.email){
+        const freshBuyer=await DB.getBuyerByEmail(buyer.email);
+        fid=freshBuyer?.factory_id||freshBuyer?.factoryId||"";
+      }
+      if(!fid)return;
+      if(active)setPortalFactoryId(fid);
+      const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
+      if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));}
+    }
+    load();
+    return()=>{active=false;};
+  },[factoryId,buyer?.email,buyer?.factory_id,buyer?.factoryId]);
   useEffect(()=>{
     try{setSavedIds(JSON.parse(localStorage.getItem(shortlistKey)||"[]"));}catch{setSavedIds([]);}
   },[shortlistKey]);
@@ -2502,7 +2549,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   const clearFilters=()=>{setViewMode("all");setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setStatusFilter("available");setMaxPrice("");setSortBy("newest");setSearch("");};
   async function submitInquiry(){
     if(!inquiry)return;
-    await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:inquiryMsg});
+    await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId:portalFactoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:inquiryMsg});
     setInquirySent(true);
   }
   return (
@@ -2813,7 +2860,14 @@ export default function App() {
   const inviteMatch=window.location.pathname==="/invite";
   const [session,setSession]=useState(null);
   const [booting,setBooting]=useState(true);
+  function normalizeProfile(profile){
+    if(!profile)return profile;
+    const factoryId=profile.factory_id||profile.factoryId||null;
+    const factoryName=profile.factory_name||profile.factoryName||"";
+    return {...profile,factory_id:factoryId,factoryId,factory_name:factoryName,factoryName};
+  }
   function profileSession(profile){
+    profile=normalizeProfile(profile);
     if(profile.role==="owner")return {type:"owner"};
     if(profile.role==="buyer")return {type:"buyer",buyer:profile};
     return {type:"factory",user:profile};
@@ -2833,6 +2887,6 @@ export default function App() {
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
-    :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewPortal={()=>setSession({...session,showPortal:true})}/>)
+    :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id||session.buyer.factoryId} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showPortal:true};})}/>)
     :<Login onOwner={()=>setSession({type:"owner"})} onFactory={u=>setSession({type:"factory",user:u})} onBuyer={b=>setSession({type:"buyer",buyer:b})}/>;
 }
