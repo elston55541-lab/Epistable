@@ -2424,7 +2424,166 @@ function quoteStatusConf(status) {
   return m[status]||m.sent;
 }
 
-function BuyerHome({buyer,onLogout,onViewPortal}) {
+function quoteTimelineItems(q) {
+  const status=q.status||"sent";
+  const expired=q.validityTs&&q.validityTs<Date.now();
+  const timelineStatus=expired&&status==="sent"?"expired":status;
+  const fulfillment=fulfillmentConf(activeFulfillment(q));
+  const fulfillmentIndex=QUOTE_FULFILLMENT.findIndex(s=>s.id===fulfillment.id);
+  return [
+    {label:"Quote sent",detail:q.created_at?fmtD(q.created_at):"Sent by factory",done:true,current:false},
+    {
+      label:"Buyer response",
+      detail:timelineStatus==="accepted"?"Accepted by buyer":timelineStatus==="revision_requested"?"Changes requested":timelineStatus==="revised"?"Revised quote issued":timelineStatus==="expired"?"Expired before response":"Waiting for response",
+      done:["accepted","revision_requested","revised"].includes(timelineStatus),
+      current:timelineStatus==="sent"
+    },
+    ...(["accepted"].includes(timelineStatus)?QUOTE_FULFILLMENT.filter(x=>x.id!=="not_started").map(x=>({
+      label:x.label,
+      detail:x.buyer,
+      done:fulfillmentIndex>=QUOTE_FULFILLMENT.findIndex(s=>s.id===x.id),
+      current:fulfillment.id===x.id
+    })):[{
+      label:timelineStatus==="revision_requested"?"Factory review":timelineStatus==="revised"?"Revised quote":timelineStatus==="expired"?"Quote expired":"Order tracking",
+      detail:timelineStatus==="revision_requested"?"Factory can send a revised quote":timelineStatus==="revised"?"Use the latest quote from the factory":timelineStatus==="expired"?"Ask the factory for a fresh quote":"Starts after quote acceptance",
+      done:timelineStatus==="revised",
+      current:timelineStatus==="revision_requested"
+    }])
+  ];
+}
+
+function BuyerQuoteTimeline({quote}) {
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+      {quoteTimelineItems(quote).map((step,i)=>(
+        <div key={`${quote.id}-${step.label}`} style={{display:"flex",gap:8,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:10}}>
+          <div style={{width:22,height:22,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,flexShrink:0}}>{step.done?"OK":i+1}</div>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:11,fontWeight:900,color:step.done?C.green:step.current?C.primary:C.text}}>{step.label}</div>
+            <div style={{fontSize:10,color:C.textMid,lineHeight:1.35,marginTop:2}}>{step.detail}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function buyerQuoteNextAction(q) {
+  const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";
+  if(expired)return {label:"Ask factory for updated quote",color:C.red,bg:C.redBg,border:C.redBorder};
+  if(q.status==="sent")return {label:"Accept or request changes",color:C.primary,bg:C.primaryBg,border:C.primaryBorder};
+  if(q.status==="revision_requested")return {label:"Waiting for factory revision",color:C.amber,bg:C.amberBg,border:C.amberBorder};
+  if(q.status==="accepted") {
+    const f=fulfillmentConf(activeFulfillment(q));
+    return {label:f.buyer,color:f.color,bg:f.bg,border:f.border};
+  }
+  if(q.status==="revised")return {label:"A newer quote replaced this one",color:C.textDim,bg:C.surface,border:C.border};
+  return {label:"Quote closed",color:C.textDim,bg:C.surface,border:C.border};
+}
+
+function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
+  const [fac,setFac]=useState(null);const [quotes,setQuotes]=useState([]);const [loading,setLoading]=useState(true);
+  const [filter,setFilter]=useState("active");const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
+  const buyerFactoryId=buyer.factory_id||buyer.factoryId;
+  async function load(){
+    if(!buyerFactoryId){setLoading(false);return;}
+    setLoading(true);
+    const [f,qt]=await Promise.all([DB.getFac(buyerFactoryId),DB.buyerQuotes(buyer.email,buyerFactoryId)]);
+    setFac(f);setQuotes(qt);setLoading(false);
+  }
+  useEffect(()=>{load();},[buyer.email,buyerFactoryId]);
+  function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
+  async function submitQuoteAction(){
+    if(!quoteAction||quoteBusy)return;
+    setQuoteBusy(quoteAction.decision);setQuoteError("");
+    const {data,error}=await supabase.rpc("respond_to_quote",{quote_id:quoteAction.quote.id,decision:quoteAction.decision,message:quoteMsg});
+    setQuoteBusy("");
+    if(error){setQuoteError(error.message||"Could not update quote.");return;}
+    const row=Array.isArray(data)?data[0]:data;
+    if(row)setQuotes(prev=>prev.map(q=>q.id===row.id?mapQuote(row):q));
+    setQuoteAction(null);setQuoteMsg("");
+  }
+  const filtered=quotes.filter(q=>{
+    const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";
+    if(filter==="respond")return q.status==="sent"&&!expired;
+    if(filter==="accepted")return q.status==="accepted"&&activeFulfillment(q)!=="sold";
+    if(filter==="closed")return expired||q.status==="revised"||activeFulfillment(q)==="sold";
+    return !expired&&q.status!=="revised"&&activeFulfillment(q)!=="sold";
+  });
+  const needResponse=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
+  const accepted=quotes.filter(q=>q.status==="accepted"&&activeFulfillment(q)!=="sold").length;
+  if(loading)return <Loader/>;
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+      {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
+            <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>{quoteAction.quote.stone} - Rs {Number(quoteAction.quote.totalAmount||0).toLocaleString("en-IN")}</div>
+            <div style={{fontSize:11,color:C.textDim}}>{quoteAction.quote.grade} - {quoteAction.quote.id}</div>
+          </div>
+          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Btn variant="secondary" onClick={()=>setQuoteAction(null)}>Cancel</Btn>
+            <Btn variant={quoteAction.decision==="accepted"?"green":"primary"} onClick={submitQuoteAction} disabled={!!quoteBusy}>{quoteBusy?"Sending...":quoteAction.decision==="accepted"?"Accept Quote":"Send Request"}</Btn>
+          </div>
+        </div>
+      </Modal>}
+      <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"16px 16px 22px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
+          <button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Back</button>
+          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Sign Out</button>
+        </div>
+        <div style={{fontSize:12,color:"rgba(255,255,255,0.68)",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:5}}>Buyer Quotes</div>
+        <div style={{fontSize:24,fontWeight:900,color:C.white,marginBottom:4}}>Track quotes and orders</div>
+        <div style={{fontSize:13,color:"rgba(255,255,255,0.75)"}}>{fac?.name||buyer.factory_name||"Factory"} - {quotes.length} quotes</div>
+      </div>
+      <div style={{padding:"14px 14px 60px"}}>
+        <KpiGrid items={[{label:"Need Response",value:needResponse,icon:"Reply",color:C.primary},{label:"Accepted",value:accepted,icon:"Won",color:C.green},{label:"Total Quotes",value:quotes.length,icon:"Quote",color:C.text},{label:"Factory",value:fac?.name?"1":"-",icon:"Mill",color:C.teal}]}/>
+        <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
+          {[["active","Active"],["respond","Need response"],["accepted","Accepted"],["closed","Closed"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setFilter(id)} style={{padding:"8px 14px",background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:20,color:filter===id?C.white:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
+          ))}
+        </div>
+        {filtered.length===0?<Card style={{padding:"42px 24px",textAlign:"center"}}>
+          <div style={{fontSize:18,fontWeight:900,marginBottom:6}}>No quotes here yet</div>
+          <div style={{fontSize:13,color:C.textDim,marginBottom:16}}>Browse verified slabs and express interest to receive a quote.</div>
+          <Btn onClick={()=>onViewPortal(buyerFactoryId)}>Browse Inventory</Btn>
+        </Card>:<div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {filtered.map(q=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const next=buyerQuoteNextAction(q);const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";const canRespond=q.status==="sent"&&!expired;return(
+            <Card key={q.id} style={{padding:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:15,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone}</div>
+                  <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.grade} - {q.id} - {fmtD(q.created_at)}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontSize:18,fontWeight:900,color:C.green}}>Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                  <div style={{fontSize:11,color:C.textDim}}>{q.validityTs?`Valid ${fmtD(q.validityTs)}`:"No validity"}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:10}}>
+                <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"4px 9px",borderRadius:20,fontSize:10,fontWeight:900}}>{expired?"Expired":s.label}</span>
+                {q.status==="accepted"&&<span style={{background:f.bg,border:`1px solid ${f.border}`,color:f.color,padding:"4px 9px",borderRadius:20,fontSize:10,fontWeight:900}}>{f.label}</span>}
+              </div>
+              <div style={{background:next.bg,border:`1px solid ${next.border}`,borderRadius:10,padding:"9px 11px",fontSize:12,fontWeight:900,color:next.color,marginBottom:12}}>{next.label}</div>
+              <BuyerQuoteTimeline quote={q}/>
+              {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10,fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:12}}><span style={{fontWeight:900,color:C.text}}>Your note:</span> {q.buyerMessage||q.buyer_message}</div>}
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end",marginTop:12}}>
+                <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open Quote</Btn>
+                {q.slabId&&<Btn size="sm" variant="secondary" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)}>Slab Certificate</Btn>}
+                {canRespond&&<Btn size="sm" variant="ghost" onClick={()=>openQuoteAction(q,"revision_requested")}>Request Changes</Btn>}
+                {canRespond&&<Btn size="sm" variant="green" onClick={()=>openQuoteAction(q,"accepted")}>Accept</Btn>}
+              </div>
+            </Card>
+          );})}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
   const buyerFactoryId=buyer.factory_id||buyer.factoryId;
@@ -2486,6 +2645,11 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
           <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
           <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
         </div>
+        <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
+          <div style={{width:46,height:46,borderRadius:12,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:C.primary,flexShrink:0}}>Quote</div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:900,color:C.text,marginBottom:3}}>Track Quotes & Orders</div><div style={{fontSize:12,color:C.textMid}}>{activeQuotes} active quotes, {quotes.filter(q=>q.status==="sent").length} waiting for response</div></div>
+          <span style={{fontSize:20,color:C.textDim}}>&gt;</span>
+        </div>
         <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
           <span style={{fontSize:18,flexShrink:0}}>🛡️</span>
           <div><div style={{fontSize:13,fontWeight:700,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{fontSize:12,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
@@ -2493,7 +2657,7 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
         {quotes.length>0&&<Card style={{marginTop:14}}>
           <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <div><div style={{fontSize:14,fontWeight:800}}>My Quotes</div><div style={{fontSize:11,color:C.textDim,marginTop:2}}>Track quotes sent by the factory</div></div>
-            <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Browse slabs</button>
+            <button onClick={onViewQuotes} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>View all</button>
           </div>
           {quotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
             <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(quotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
@@ -2503,6 +2667,7 @@ function BuyerHome({buyer,onLogout,onViewPortal}) {
               </div>
               <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{s.label}</span>
               {q.status==="accepted"&&<span style={{background:f.bg,border:`1px solid ${f.border}`,color:f.color,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{f.label}</span>}
+              <button onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Track</button>
               <button onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Open</button>
               {q.slabId&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Slab</button>}
               {canRespond&&<button onClick={()=>openQuoteAction(q,"revision_requested")} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:8,color:C.amber,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Changes</button>}
@@ -2939,6 +3104,6 @@ export default function App() {
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
-    :session?.type==="buyer"?(session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id||session.buyer.factoryId} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showPortal:true};})}/>)
+    :session?.type==="buyer"?(session.showQuotes?<BuyerQuotesPage buyer={session.buyer} onLogout={logout} onBack={()=>setSession({...session,showQuotes:false})} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showQuotes:false,showPortal:true};})}/>:session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id||session.buyer.factoryId} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewQuotes={()=>setSession({...session,showQuotes:true})} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showPortal:true};})}/>)
     :<Login onOwner={()=>setSession({type:"owner"})} onFactory={u=>setSession({type:"factory",user:u})} onBuyer={b=>setSession({type:"buyer",buyer:b})}/>;
 }
