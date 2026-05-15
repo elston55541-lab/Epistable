@@ -314,6 +314,10 @@ const DB = {
   async updQuote(id,u) {
     requireData(await supabase.from("quotes").update({...u,updated_at:Date.now()}).eq("id",id));
   },
+  async updateQuoteFulfillment(id,status) {
+    const data=await rows(await supabase.rpc("update_quote_fulfillment",{quote_id:id,next_fulfillment_status:status}));
+    return data[0]?mapQuote(data[0]):null;
+  },
   async notifyBuyerRevisedQuote(id) {
     requireData(await supabase.rpc("notify_buyer_revised_quote",{quote_id:id}));
   },
@@ -2108,7 +2112,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
     if(saleBusy)return;
     setSaleBusy(q.id);
     try {
-      await DB.updQuote(q.id,{fulfillment_status:"sold"});
+      await DB.updateQuoteFulfillment(q.id,"sold");
       await DB.updInspStatus(q.slabId||q.slab_id,"sold");
       if(q.inquiryId||q.inquiry_id)await DB.updInquiry(q.inquiryId||q.inquiry_id,{status:"closed"});
       await onChange?.();
@@ -2120,7 +2124,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
     if(fulfillBusy)return;
     setFulfillBusy(q.id+"-"+status);
     try {
-      await DB.updQuote(q.id,{fulfillment_status:status});
+      await DB.updateQuoteFulfillment(q.id,status);
       await onChange?.();
     } finally {
       setFulfillBusy("");
