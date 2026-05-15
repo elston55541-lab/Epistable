@@ -2270,6 +2270,17 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
   const wonValue=soldQuotes.reduce((sum,q)=>sum+Number(q.totalAmount||q.total_amount||0),0);
   const decidedQuotes=quotes.filter(q=>q.status==="accepted"||q.status==="revision_requested").slice(0,5);
   const revisionRequests=quotes.filter(q=>q.status==="revision_requested").slice(0,5);
+  const fulfillmentStages=["payment_pending","payment_received","dispatch_scheduled","dispatched","delivered"];
+  const activeOrders=quotes
+    .filter(q=>q.status==="accepted"&&!soldSlabIds.has(q.slabId||q.slab_id)&&activeFulfillment(q)!=="sold")
+    .sort((a,b)=>fulfillmentStages.indexOf(activeFulfillment(a))-fulfillmentStages.indexOf(activeFulfillment(b))||Number(a.created_at||0)-Number(b.created_at||0));
+  const stageCounts=fulfillmentStages.map(id=>({conf:fulfillmentConf(id),count:activeOrders.filter(q=>activeFulfillment(q)===id).length}));
+  const stageRank={payment_pending:0,payment_received:1,dispatch_scheduled:2,dispatched:3,delivered:4,sold:5};
+  function orderAction(q){
+    const status=activeFulfillment(q);
+    const map={payment_pending:"Confirm payment",payment_received:"Schedule dispatch",dispatch_scheduled:"Dispatch slab",dispatched:"Confirm delivery",delivered:"Mark sold"};
+    return map[status]||"Review order";
+  }
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -2277,6 +2288,40 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
         <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
       </div>
       <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      <Card style={{padding:16,marginBottom:14,borderColor:activeOrders.length?C.primaryBorder:C.border}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:900}}>Active Orders</div>
+            <div style={{fontSize:12,color:C.textDim,marginTop:2}}>Accepted quotes that need payment, dispatch, delivery, or sold closure</div>
+          </div>
+          <Btn size="sm" variant={activeOrders.length?"primary":"secondary"} onClick={()=>setPage("quotes")}>Manage Orders</Btn>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:activeOrders.length?14:0}}>
+          {stageCounts.map(({conf,count})=>(
+            <div key={conf.id} style={{background:count?conf.bg:C.surface,border:`1px solid ${count?conf.border:C.border}`,borderRadius:10,padding:"10px 9px"}}>
+              <div style={{fontSize:18,fontWeight:900,color:count?conf.color:C.textDim,lineHeight:1}}>{count}</div>
+              <div style={{fontSize:10,fontWeight:900,color:count?conf.color:C.textDim,marginTop:5}}>{conf.label}</div>
+            </div>
+          ))}
+        </div>
+        {activeOrders.length===0?<div style={{fontSize:13,color:C.textDim,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>No active accepted orders yet. When a buyer accepts a quote, it will appear here until sold.</div>:
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {activeOrders.slice(0,5).map(q=>{const conf=fulfillmentConf(activeFulfillment(q));const nextIndex=Math.max(0,stageRank[activeFulfillment(q)]??0);return(
+            <div key={q.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:10,alignItems:"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
+                <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} - Rs {Number(q.totalAmount||q.total_amount||0).toLocaleString("en-IN")}</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,fontWeight:900,color:conf.color,marginBottom:5}}>{conf.label}</div>
+                <PBar value={(nextIndex+1)/fulfillmentStages.length*100} color={conf.color} h={6}/>
+              </div>
+              <Btn size="sm" variant={activeFulfillment(q)==="delivered"?"green":"ghost"} onClick={()=>setPage("quotes")}>{orderAction(q)}</Btn>
+            </div>
+          );})}
+          {activeOrders.length>5&&<button onClick={()=>setPage("quotes")} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",padding:"8px 0 0",textAlign:"left"}}>View {activeOrders.length-5} more active orders</button>}
+        </div>}
+      </Card>
       {revisionRequests.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.amberBorder,background:C.amberBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
           <div><div style={{fontSize:14,fontWeight:900,color:C.amber}}>Quote changes requested</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Handle these in Quotes so revisions stay tracked in one place.</div></div>
