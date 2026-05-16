@@ -613,46 +613,81 @@ function Login({onOwner,onFactory,onBuyer}) {
     width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,
     borderRadius:6,color:C.text,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif"
   };
+  const LoginFields=({compact=false})=>(
+    <>
+      <div style={{display:"flex",flexDirection:"column",gap:15,marginBottom:20}}>
+        <div>
+          <label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:7}}>Email</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="email" placeholder="you@example.com" style={fieldStyle}/>
+        </div>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+            <label style={{fontSize:13,fontWeight:600,color:C.text}}>Password</label>
+            <button type="button" onClick={()=>setShowP(p=>!p)} style={{background:"none",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{showP?"Hide":"Show"}</button>
+          </div>
+          <input type={showP?"text":"password"} value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="current-password" placeholder="Enter password" style={fieldStyle}/>
+        </div>
+      </div>
+      <Btn full size="lg" onClick={submit} disabled={loading} style={{borderRadius:6,padding:"13px 20px",fontWeight:700}}>{loading?"Signing in...":"Log In"}</Btn>
+      {compact&&<>
+        <div style={{display:"flex",alignItems:"center",gap:10,margin:"22px 0 16px"}}>
+          <div style={{height:1,background:C.border,flex:1}}/>
+          <span style={{fontSize:12,color:C.textDim}}>or</span>
+          <div style={{height:1,background:C.border,flex:1}}/>
+        </div>
+        <button type="button" onClick={()=>window.location.assign("/invite")} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:6,color:C.primary,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>Accept an invite</button>
+      </>}
+    </>
+  );
+  if(isDesktop)return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",fontFamily:"'Segoe UI',sans-serif"}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 64px",display:"flex",flexDirection:"column",justifyContent:"center",width:"45%",flexShrink:0,minHeight:"100vh",boxSizing:"border-box"}}>
+        <div style={{marginBottom:52}}>
+          <div style={{fontSize:28,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:8}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
+          <div style={{fontSize:16,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.2px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:14}}>Quality, quantified</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{height:1,width:24,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.55)"}}>Grade slabs · Track quality · Build trust</div>
+          </div>
+        </div>
+        {["AI-powered slab grading","Supplier scorecards","QR codes per slab","Buyer inquiry management","Per-scan billing","AI assistant"].map(text=>(
+          <div key={text} style={{display:"flex",alignItems:"center",gap:12,marginTop:14}}>
+            <div style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.82)",flexShrink:0}}>✓</div>
+            <span style={{fontSize:13,color:"rgba(255,255,255,0.75)",fontWeight:400}}>{text}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"40px"}}>
+        <div style={{width:"100%",maxWidth:420}}>
+          <div style={{marginBottom:28}}><div style={{fontSize:26,fontWeight:750,color:C.text,marginBottom:6}}>Welcome back</div><div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div></div>
+          {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"11px 14px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
+          <LoginFields/>
+          <div style={{marginTop:16,textAlign:"center",fontSize:12,color:C.textDim}}>Contact your administrator for credentials</div>
+        </div>
+      </div>
+    </div>
+  );
   return (
     <div style={{minHeight:"100vh",background:"#f7f9fc",fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",flexDirection:"column",alignItems:"center",padding:isDesktop?"52px 24px 24px":"28px 20px 20px",boxSizing:"border-box"}}>
       <div style={{width:"100%",maxWidth:390,display:"flex",flexDirection:"column",alignItems:"center",flex:1,justifyContent:isDesktop?"center":"flex-start"}}>
         <div style={{textAlign:"center",marginBottom:isDesktop?28:22}}>
-          <div style={{width:58,height:58,borderRadius:14,background:`linear-gradient(135deg,${C.primary},${C.teal})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 10px 26px rgba(0,87,168,0.22)",margin:"0 auto 14px",color:C.white,fontSize:22,fontWeight:900}}>E</div>
-          <div style={{fontSize:28,fontWeight:900,color:C.text,lineHeight:1.05}}>Epistable <span style={{color:C.primary}}>AI</span></div>
+          <div style={{width:58,height:58,borderRadius:14,background:`linear-gradient(135deg,${C.primary},${C.teal})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 10px 26px rgba(0,87,168,0.22)",margin:"0 auto 14px",color:C.white,fontSize:22,fontWeight:800}}>E</div>
+          <div style={{fontSize:28,fontWeight:800,color:C.text,lineHeight:1.05}}>Epistable <span style={{color:C.primary}}>AI</span></div>
           <div style={{fontSize:13,color:C.textDim,marginTop:8}}>Grade slabs. Track quality. Build trust.</div>
         </div>
 
         <div style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 8px 24px rgba(26,37,51,0.08)",padding:isDesktop?28:22,boxSizing:"border-box"}}>
-          <div style={{fontSize:22,fontWeight:800,color:C.text,marginBottom:4}}>Log in</div>
+          <div style={{fontSize:22,fontWeight:750,color:C.text,marginBottom:4}}>Log in</div>
           <div style={{fontSize:13,color:C.textDim,marginBottom:22}}>Use your assigned Epistable credentials.</div>
-          {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"11px 12px",fontSize:13,color:C.red,marginBottom:16,fontWeight:600}}>{err}</div>}
-          <div style={{display:"flex",flexDirection:"column",gap:15,marginBottom:20}}>
-            <div>
-              <label style={{display:"block",fontSize:13,fontWeight:700,color:C.text,marginBottom:7}}>Email</label>
-              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="email" placeholder="you@example.com" style={fieldStyle}/>
-            </div>
-            <div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
-                <label style={{fontSize:13,fontWeight:700,color:C.text}}>Password</label>
-                <button type="button" onClick={()=>setShowP(p=>!p)} style={{background:"none",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>{showP?"Hide":"Show"}</button>
-              </div>
-              <input type={showP?"text":"password"} value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="current-password" placeholder="Enter password" style={fieldStyle}/>
-            </div>
-          </div>
-          <Btn full size="lg" onClick={submit} disabled={loading} style={{borderRadius:6,padding:"13px 20px"}}>{loading?"Signing in...":"Log In"}</Btn>
-          <div style={{display:"flex",alignItems:"center",gap:10,margin:"22px 0 16px"}}>
-            <div style={{height:1,background:C.border,flex:1}}/>
-            <span style={{fontSize:12,color:C.textDim}}>or</span>
-            <div style={{height:1,background:C.border,flex:1}}/>
-          </div>
-          <button type="button" onClick={()=>window.location.assign("/invite")} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:6,color:C.primary,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Accept an invite</button>
+          {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"11px 12px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
+          <LoginFields compact/>
         </div>
 
         <div style={{width:"100%",marginTop:18,textAlign:"center"}}>
           <div style={{fontSize:12,color:C.textDim,marginBottom:14}}>Need access? Contact your factory administrator.</div>
           <div style={{display:"grid",gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr",gap:8}}>
             {["Verified slab certificates","Buyer-ready inventory","Factory quality control"].map(text=>(
-              <div key={text} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 10px",fontSize:11,fontWeight:700,color:C.textMid}}>{text}</div>
+              <div key={text} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 10px",fontSize:11,fontWeight:600,color:C.textMid}}>{text}</div>
             ))}
           </div>
         </div>
