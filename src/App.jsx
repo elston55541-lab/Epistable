@@ -2857,6 +2857,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
   const [quoteReq,setQuoteReq]=useState({areaSqFt:"",deliveryLocation:"",targetDate:"",notes:""});
   const [qrSlab,setQrSlab]=useState(null);
+  const [shortlistCopied,setShortlistCopied]=useState(false);
   const {isMobile}=useBP();
   const shortlistKey=`epistable_shortlist_${buyer?.id||buyer?.email||factoryId||"guest"}`;
   useEffect(()=>{
@@ -2879,12 +2880,22 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     try{setSavedIds(JSON.parse(localStorage.getItem(shortlistKey)||"[]"));}catch{setSavedIds([]);}
   },[shortlistKey]);
   const savedSet=new Set(savedIds);
+  const savedSlabs=insps.filter(i=>savedSet.has(i.id));
+  const availableCount=insps.filter(i=>(i.inventoryStatus||"available")==="available").length;
+  const reservedCount=insps.filter(i=>(i.inventoryStatus||"available")==="reserved").length;
+  const exportCount=insps.filter(i=>i.exportReady).length;
+  const premiumCount=insps.filter(i=>i.grade==="Premium").length;
   function toggleSaved(id){
     setSavedIds(prev=>{
       const next=prev.includes(id)?prev.filter(x=>x!==id):[id,...prev];
       try{localStorage.setItem(shortlistKey,JSON.stringify(next));}catch{}
       return next;
     });
+  }
+  async function copyShortlist(){
+    const lines=savedSlabs.map(s=>`${s.stone} | ${s.grade} | Rs ${s.pricePerSqFt}/sqft | ${window.location.origin}/slab/${encodeURIComponent(s.id)}`);
+    const text=lines.length?lines.join("\n"):"No slabs saved yet.";
+    try{await navigator.clipboard.writeText(text);setShortlistCopied(true);setTimeout(()=>setShortlistCopied(false),1400);}catch(e){window.prompt("Copy shortlist",text);}
   }
   const stoneOptions=["All",...Array.from(new Set(insps.map(i=>i.stone).filter(Boolean))).sort()];
   const supplierOptions=["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()];
@@ -2896,7 +2907,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       &&(exportFilter==="All"||(exportFilter==="Export"&&i.exportReady)||(exportFilter==="Domestic"&&!i.exportReady))
       &&(statusFilter==="All"||(i.inventoryStatus||"available")===statusFilter)
       &&(!maxPrice||Number(i.pricePerSqFt||0)<=Number(maxPrice))
-      &&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())||i.supplier?.toLowerCase().includes(search.toLowerCase())))
+      &&(!search||[i.stone,i.id,i.supplier,i.grade,slabDims(i),...(i.defects||[])].filter(Boolean).join(" ").toLowerCase().includes(search.toLowerCase())))
     .sort((a,b)=>{
       if(sortBy==="priceLow")return Number(a.pricePerSqFt||0)-Number(b.pricePerSqFt||0);
       if(sortBy==="priceHigh")return Number(b.pricePerSqFt||0)-Number(a.pricePerSqFt||0);
@@ -2923,6 +2934,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId:portalFactoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:requestLines.join("\n")});
     setInquirySent(true);
   }
+  const estimateTotal=quoteReq.areaSqFt&&inquiry?Math.round(Number(quoteReq.areaSqFt||0)*Number(inquiry.pricePerSqFt||0)):0;
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
@@ -2941,6 +2953,14 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       </div>
       <div style={{padding:"14px 14px 80px"}}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif",marginBottom:10}}/>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:8,marginBottom:10}}>
+          {[["Available",availableCount,C.green],["Reserved",reservedCount,C.amber],["Export Ready",exportCount,C.teal],["Premium",premiumCount,C.primary]].map(([label,value,color])=>(
+            <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
+              <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
+              <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
+            </div>
+          ))}
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
             <button key={v.id} onClick={()=>setViewMode(v.id)} style={{padding:"10px 12px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:10,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -2949,6 +2969,10 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             </button>
           ))}
         </div>
+        {savedIds.length>0&&<Card style={{padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:viewMode==="saved"?C.primaryBg:C.white,borderColor:viewMode==="saved"?C.primaryBorder:C.border}}>
+          <div style={{fontSize:12,color:C.textMid,fontWeight:800}}>{savedIds.length} saved slab{savedIds.length===1?"":"s"} in this browser</div>
+          <button onClick={copyShortlist} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"6px 10px",fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
+        </Card>}
         <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
           {["All","Premium","Standard"].map(f=>(
             <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 16px",background:filter===f?C.primary:"transparent",border:`1px solid ${filter===f?C.primary:C.border}`,borderRadius:20,color:filter===f?C.white:C.textMid,fontSize:13,fontWeight:filter===f?600:400,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
@@ -3050,6 +3074,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                 <Inp label="Area Required" value={quoteReq.areaSqFt} onChange={v=>setQuoteReq(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120" hint="sq ft"/>
                 <Inp label="Target Date" value={quoteReq.targetDate} onChange={v=>setQuoteReq(p=>({...p,targetDate:v}))} type="date"/>
               </div>
+              {estimateTotal>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:900,color:C.green,marginBottom:10}}>Estimated quote value: Rs {estimateTotal.toLocaleString("en-IN")}</div>}
               <Inp label="Delivery Location" value={quoteReq.deliveryLocation} onChange={v=>setQuoteReq(p=>({...p,deliveryLocation:v}))} placeholder="City, country" />
               <textarea value={quoteReq.notes} onChange={e=>setQuoteReq(p=>({...p,notes:e.target.value}))} placeholder="Requirement notes, payment terms, packing, shipping..." rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",margin:"12px 0 10px"}}/>
               <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Optional message to the factory..." rows={2} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
