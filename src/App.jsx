@@ -2343,6 +2343,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
 }
 
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
+  const [orderBusy,setOrderBusy]=useState("");
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -2375,6 +2376,26 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
     const status=activeFulfillment(q);
     const map={payment_pending:"Confirm payment",payment_received:"Schedule dispatch",dispatch_scheduled:"Dispatch slab",dispatched:"Confirm delivery",delivered:"Mark sold"};
     return map[status]||"Review order";
+  }
+  function nextOrderStatus(q){
+    const status=activeFulfillment(q);
+    const map={payment_pending:"payment_received",payment_received:"dispatch_scheduled",dispatch_scheduled:"dispatched",dispatched:"delivered",delivered:"sold"};
+    return map[status]||"payment_pending";
+  }
+  async function advanceOrder(q){
+    if(orderBusy)return;
+    const next=nextOrderStatus(q);
+    setOrderBusy(q.id);
+    try {
+      await DB.updateQuoteFulfillment(q.id,next);
+      if(next==="sold"){
+        await DB.updInspStatus(q.slabId||q.slab_id,"sold");
+        if(q.inquiryId||q.inquiry_id)await DB.updInquiry(q.inquiryId||q.inquiry_id,{status:"closed"});
+      }
+      await onChange?.();
+    } finally {
+      setOrderBusy("");
+    }
   }
   return (
     <div>
@@ -2411,7 +2432,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
                 <div style={{fontSize:10,fontWeight:900,color:conf.color,marginBottom:5}}>{conf.label}</div>
                 <PBar value={(nextIndex+1)/fulfillmentStages.length*100} color={conf.color} h={6}/>
               </div>
-              <Btn size="sm" variant={activeFulfillment(q)==="delivered"?"green":"ghost"} onClick={()=>setPage("quotes")}>{orderAction(q)}</Btn>
+              <Btn size="sm" variant={activeFulfillment(q)==="delivered"?"green":"ghost"} disabled={orderBusy===q.id} onClick={()=>advanceOrder(q)}>{orderBusy===q.id?"Updating...":orderAction(q)}</Btn>
             </div>
           );})}
           {activeOrders.length>5&&<button onClick={()=>setPage("quotes")} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",padding:"8px 0 0",textAlign:"left"}}>View {activeOrders.length-5} more active orders</button>}
