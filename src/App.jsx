@@ -613,7 +613,7 @@ function Login({onOwner,onFactory,onBuyer}) {
     width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,
     borderRadius:6,color:C.text,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif"
   };
-  const LoginFields=({compact=false})=>(
+  const LoginFields=()=>(
     <>
       <div style={{display:"flex",flexDirection:"column",gap:15,marginBottom:20}}>
         <div>
@@ -629,14 +629,6 @@ function Login({onOwner,onFactory,onBuyer}) {
         </div>
       </div>
       <Btn full size="lg" onClick={submit} disabled={loading} style={{borderRadius:6,padding:"13px 20px",fontWeight:700}}>{loading?"Signing in...":"Log In"}</Btn>
-      {compact&&<>
-        <div style={{display:"flex",alignItems:"center",gap:10,margin:"22px 0 16px"}}>
-          <div style={{height:1,background:C.border,flex:1}}/>
-          <span style={{fontSize:12,color:C.textDim}}>or</span>
-          <div style={{height:1,background:C.border,flex:1}}/>
-        </div>
-        <button type="button" onClick={()=>window.location.assign("/invite")} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:6,color:C.primary,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>Accept an invite</button>
-      </>}
     </>
   );
   if(isDesktop)return (
@@ -668,31 +660,38 @@ function Login({onOwner,onFactory,onBuyer}) {
     </div>
   );
   return (
-    <div style={{minHeight:"100vh",background:"#f7f9fc",fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",flexDirection:"column",alignItems:"center",padding:isDesktop?"52px 24px 24px":"28px 20px 20px",boxSizing:"border-box"}}>
-      <div style={{width:"100%",maxWidth:390,display:"flex",flexDirection:"column",alignItems:"center",flex:1,justifyContent:isDesktop?"center":"flex-start"}}>
-        <div style={{textAlign:"center",marginBottom:isDesktop?28:22}}>
-          <div style={{width:58,height:58,borderRadius:14,background:`linear-gradient(135deg,${C.primary},${C.teal})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 10px 26px rgba(0,87,168,0.22)",margin:"0 auto 14px",color:C.white,fontSize:22,fontWeight:800}}>E</div>
-          <div style={{fontSize:28,fontWeight:800,color:C.text,lineHeight:1.05}}>Epistable <span style={{color:C.primary}}>AI</span></div>
-          <div style={{fontSize:13,color:C.textDim,marginTop:8}}>Grade slabs. Track quality. Build trust.</div>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",flexDirection:"column",boxSizing:"border-box"}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 62%,#001f3d)`,padding:"26px 24px 24px",color:C.white}}>
+        <div style={{maxWidth:390,margin:"0 auto"}}>
+          <div style={{fontSize:26,fontWeight:800,lineHeight:1.1,marginBottom:7}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
+          <div style={{fontSize:15,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.1px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:12}}>Quality, quantified</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{height:1,width:24,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.58)"}}>Grade slabs · Track quality · Build trust</div>
+          </div>
         </div>
+      </div>
 
-        <div style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 8px 24px rgba(26,37,51,0.08)",padding:isDesktop?28:22,boxSizing:"border-box"}}>
-          <div style={{fontSize:22,fontWeight:750,color:C.text,marginBottom:4}}>Log in</div>
-          <div style={{fontSize:13,color:C.textDim,marginBottom:22}}>Use your assigned Epistable credentials.</div>
+      <div style={{width:"100%",maxWidth:390,margin:"0 auto",padding:"22px 20px 28px",boxSizing:"border-box",flex:1}}>
+        <div style={{marginBottom:18}}>
+          <div style={{fontSize:24,fontWeight:750,color:C.text,marginBottom:5}}>Welcome back</div>
+          <div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div>
+        </div>
+        <div style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 8px 24px rgba(26,37,51,0.08)",padding:22,boxSizing:"border-box"}}>
           {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"11px 12px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
-          <LoginFields compact/>
+          <LoginFields/>
         </div>
 
         <div style={{width:"100%",marginTop:18,textAlign:"center"}}>
           <div style={{fontSize:12,color:C.textDim,marginBottom:14}}>Need access? Contact your factory administrator.</div>
-          <div style={{display:"grid",gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8}}>
             {["Verified slab certificates","Buyer-ready inventory","Factory quality control"].map(text=>(
               <div key={text} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 10px",fontSize:11,fontWeight:600,color:C.textMid}}>{text}</div>
             ))}
           </div>
         </div>
+        <div style={{fontSize:11,color:C.textDim,marginTop:24,textAlign:"center"}}>Quality, quantified</div>
       </div>
-      <div style={{fontSize:11,color:C.textDim,marginTop:24}}>Quality, quantified</div>
     </div>
   );
 }
