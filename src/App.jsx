@@ -632,8 +632,8 @@ function Login({onOwner,onFactory,onBuyer}) {
     </>
   );
   if(isDesktop)return (
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",fontFamily:"'Segoe UI',sans-serif"}}>
-      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 64px",display:"flex",flexDirection:"column",justifyContent:"center",width:"45%",flexShrink:0,minHeight:"100vh",boxSizing:"border-box"}}>
+    <div style={{minHeight:"100vh",background:C.bg,display:"grid",gridTemplateColumns:"minmax(360px,40%) minmax(0,1fr)",fontFamily:"'Segoe UI',sans-serif"}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 56px 0 64px",display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"100vh",boxSizing:"border-box"}}>
         <div style={{marginBottom:52}}>
           <div style={{fontSize:28,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:8}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:16,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.2px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:14}}>Quality, quantified</div>
@@ -649,7 +649,7 @@ function Login({onOwner,onFactory,onBuyer}) {
           </div>
         ))}
       </div>
-      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"40px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-start",padding:"40px 40px 40px 72px"}}>
         <div style={{width:"100%",maxWidth:420}}>
           <div style={{marginBottom:28}}><div style={{fontSize:26,fontWeight:750,color:C.text,marginBottom:6}}>Welcome back</div><div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div></div>
           {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"11px 14px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
@@ -661,18 +661,18 @@ function Login({onOwner,onFactory,onBuyer}) {
   );
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",flexDirection:"column",boxSizing:"border-box"}}>
-      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 62%,#001f3d)`,padding:"26px 24px 24px",color:C.white}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 62%,#001f3d)`,padding:"34px 24px 32px",color:C.white}}>
         <div style={{maxWidth:390,margin:"0 auto"}}>
-          <div style={{fontSize:26,fontWeight:800,lineHeight:1.1,marginBottom:7}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
-          <div style={{fontSize:15,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.1px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:12}}>Quality, quantified</div>
+          <div style={{fontSize:26,fontWeight:800,lineHeight:1.15,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
+          <div style={{fontSize:15,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.1px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:16}}>Quality, quantified</div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{height:1,width:24,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.58)"}}>Grade slabs · Track quality · Build trust</div>
+            <div style={{fontSize:12,lineHeight:1.4,color:"rgba(255,255,255,0.62)"}}>Grade slabs · Track quality · Build trust</div>
           </div>
         </div>
       </div>
 
-      <div style={{width:"100%",maxWidth:390,margin:"0 auto",padding:"22px 20px 28px",boxSizing:"border-box",flex:1}}>
+      <div style={{width:"100%",maxWidth:390,margin:"0 auto",padding:"24px 20px 28px",boxSizing:"border-box",flex:1}}>
         <div style={{marginBottom:18}}>
           <div style={{fontSize:24,fontWeight:750,color:C.text,marginBottom:5}}>Welcome back</div>
           <div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div>
