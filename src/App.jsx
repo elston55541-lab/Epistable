@@ -2774,6 +2774,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   const localFactoryId=()=>{try{return localStorage.getItem("epistable_last_buyer_factory_id")||"";}catch{return "";}};
   const [portalFactoryId,setPortalFactoryId]=useState(factoryId||buyer?.factory_id||buyer?.factoryId||localFactoryId());
   const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
+  const [quoteReq,setQuoteReq]=useState({areaSqFt:"",deliveryLocation:"",targetDate:"",notes:""});
   const [qrSlab,setQrSlab]=useState(null);
   const {isMobile}=useBP();
   const shortlistKey=`epistable_shortlist_${buyer?.id||buyer?.email||factoryId||"guest"}`;
@@ -2822,9 +2823,23 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       return Number(b.ts||0)-Number(a.ts||0);
     });
   const clearFilters=()=>{setViewMode("all");setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setStatusFilter("available");setMaxPrice("");setSortBy("newest");setSearch("");};
+  function openQuoteRequest(slab){
+    setInquiry(slab);
+    setInquiryMsg("");
+    setQuoteReq({areaSqFt:"",deliveryLocation:"",targetDate:"",notes:""});
+    setInquirySent(false);
+  }
   async function submitInquiry(){
     if(!inquiry)return;
-    await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId:portalFactoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:inquiryMsg});
+    const requestLines=[
+      "Quote request",
+      quoteReq.areaSqFt?`Area required: ${quoteReq.areaSqFt} sq ft`:null,
+      quoteReq.deliveryLocation?`Delivery location: ${quoteReq.deliveryLocation}`:null,
+      quoteReq.targetDate?`Target date: ${quoteReq.targetDate}`:null,
+      quoteReq.notes?`Buyer notes: ${quoteReq.notes}`:null,
+      inquiryMsg?`Additional message: ${inquiryMsg}`:null
+    ].filter(Boolean);
+    await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId:portalFactoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:requestLines.join("\n")});
     setInquirySent(true);
   }
   return (
@@ -2925,7 +2940,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
                     <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>View</button>
                     <button onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"5px 9px",color:saved?C.white:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{saved?"Saved":"Save"}</button>
-                    <button disabled={!canInquire} onClick={()=>{if(!canInquire)return;setInquiry(slab);setInquiryMsg("");setInquirySent(false);}} style={{background:canInquire?C.primaryBg:C.surface,border:`1px solid ${canInquire?C.primaryBorder:C.border}`,borderRadius:8,padding:"5px 10px",color:canInquire?C.primary:C.textDim,fontSize:11,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"📩 Interested":invConf(inv).label}</button>
+                    <button disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{background:canInquire?C.primaryBg:C.surface,border:`1px solid ${canInquire?C.primaryBorder:C.border}`,borderRadius:8,padding:"5px 10px",color:canInquire?C.primary:C.textDim,fontSize:11,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"Request Quote":invConf(inv).label}</button>
                   </div>
                 </div>
               </div>
@@ -2937,16 +2952,29 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setInquiry(null)}>
           <div style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,padding:"20px"}} onClick={e=>e.stopPropagation()}>
             {inquirySent?<div style={{textAlign:"center",padding:"20px 0"}}>
-              <div style={{fontSize:48,marginBottom:12}}>📩</div>
-              <div style={{...TEXT.pageHeader,marginBottom:8}}>Inquiry Sent!</div>
-              <div style={{fontSize:13,lineHeight:1.5,color:C.textMid,marginBottom:20}}>Your interest in slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
+              <div style={{fontSize:48,marginBottom:12}}>₹</div>
+              <div style={{...TEXT.pageHeader,marginBottom:8}}>Quote Request Sent</div>
+              <div style={{fontSize:13,lineHeight:1.5,color:C.textMid,marginBottom:20}}>Your quote request for slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
               <button onClick={()=>setInquiry(null)} style={{padding:"12px 28px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Done</button>
             </div>:<div>
-              <div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,marginBottom:14}}>Express Interest — {inquiry.stone}</div>
-              <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Message (optional)…" rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
+              <div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,marginBottom:10}}>Request Quote — {inquiry.stone}</div>
+              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:4}}>
+                  <div style={{fontSize:13,fontWeight:900}}>{inquiry.grade} slab</div>
+                  <div style={{fontSize:14,fontWeight:900,color:C.green}}>Rs {inquiry.pricePerSqFt}/sqft</div>
+                </div>
+                <div style={{fontSize:11,color:C.textDim}}>{inquiry.id} · {slabDims(inquiry)}</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                <Inp label="Area Required" value={quoteReq.areaSqFt} onChange={v=>setQuoteReq(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120" hint="sq ft"/>
+                <Inp label="Target Date" value={quoteReq.targetDate} onChange={v=>setQuoteReq(p=>({...p,targetDate:v}))} type="date"/>
+              </div>
+              <Inp label="Delivery Location" value={quoteReq.deliveryLocation} onChange={v=>setQuoteReq(p=>({...p,deliveryLocation:v}))} placeholder="City, country" />
+              <textarea value={quoteReq.notes} onChange={e=>setQuoteReq(p=>({...p,notes:e.target.value}))} placeholder="Requirement notes, payment terms, packing, shipping..." rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",margin:"12px 0 10px"}}/>
+              <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Optional message to the factory..." rows={2} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Cancel</button>
-                <button onClick={submitInquiry} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Send</button>
+                <button onClick={submitInquiry} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Send Request</button>
               </div>
             </div>}
           </div>
