@@ -633,17 +633,17 @@ function Login({onOwner,onFactory,onBuyer}) {
   );
   if(isDesktop)return (
     <div style={{minHeight:"100vh",background:C.bg,display:"grid",gridTemplateColumns:"minmax(360px,40%) minmax(0,1fr)",fontFamily:"'Segoe UI',sans-serif"}}>
-      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 56px 0 64px",display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"100vh",boxSizing:"border-box"}}>
-        <div style={{marginBottom:58}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 56px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",minHeight:"100vh",boxSizing:"border-box",textAlign:"center"}}>
+        <div style={{marginBottom:58,width:"100%",maxWidth:360}}>
           <div style={{fontSize:34,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:18,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.2px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:18}}>Quality, quantified</div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             <div style={{height:1,width:30,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
             <div style={{fontSize:13,color:"rgba(255,255,255,0.58)"}}>Grade slabs · Track quality · Build trust</div>
           </div>
         </div>
         {["AI-powered slab grading","Supplier scorecards","QR codes per slab","Buyer inquiry management","Per-scan billing","AI assistant"].map(text=>(
-          <div key={text} style={{display:"flex",alignItems:"center",gap:14,marginTop:17}}>
+          <div key={text} style={{display:"flex",alignItems:"center",gap:14,marginTop:17,width:"100%",maxWidth:290,textAlign:"left"}}>
             <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.82)",flexShrink:0}}>✓</div>
             <span style={{fontSize:14,color:"rgba(255,255,255,0.78)",fontWeight:400}}>{text}</span>
           </div>
@@ -651,7 +651,7 @@ function Login({onOwner,onFactory,onBuyer}) {
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"40px"}}>
         <div style={{width:"100%",maxWidth:460}}>
-          <div style={{marginBottom:30,textAlign:"center"}}><div style={{fontSize:32,fontWeight:750,color:C.text,marginBottom:8}}>Welcome back</div><div style={{fontSize:15,color:C.textDim}}>Sign in with your assigned credentials</div></div>
+          <div style={{marginBottom:30,textAlign:"center"}}><div style={{fontSize:30,fontWeight:600,color:C.text,marginBottom:8}}>Welcome back</div><div style={{fontSize:15,color:C.textDim}}>Sign in with your assigned credentials</div></div>
           {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"11px 14px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
           <LoginFields/>
           <div style={{marginTop:16,textAlign:"center",fontSize:12,color:C.textDim}}>Contact your administrator for credentials</div>
@@ -674,7 +674,7 @@ function Login({onOwner,onFactory,onBuyer}) {
 
       <div style={{width:"100%",maxWidth:390,margin:"0 auto",padding:"24px 20px 28px",boxSizing:"border-box",flex:1}}>
         <div style={{marginBottom:18,textAlign:"center"}}>
-          <div style={{fontSize:24,fontWeight:750,color:C.text,marginBottom:5}}>Welcome back</div>
+          <div style={{fontSize:24,fontWeight:600,color:C.text,marginBottom:5}}>Welcome back</div>
           <div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div>
         </div>
         <div style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 8px 24px rgba(26,37,51,0.08)",padding:22,boxSizing:"border-box"}}>
