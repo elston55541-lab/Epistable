@@ -38,7 +38,7 @@ export function SlabCertificate({slabId}) {
   const [slab,setSlab]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
-  const [inq,setInq]=useState({name:"",company:"",email:"",phone:"",message:""});
+  const [inq,setInq]=useState({name:"",company:"",email:"",phone:"",areaSqFt:"",message:""});
   const [inqBusy,setInqBusy]=useState(false);
   const [inqSent,setInqSent]=useState(false);
   const [inqError,setInqError]=useState("");
@@ -47,6 +47,7 @@ export function SlabCertificate({slabId}) {
   const [disputeSent,setDisputeSent]=useState(false);
   const [disputeError,setDisputeError]=useState("");
   const [copied,setCopied]=useState(false);
+  const [summaryCopied,setSummaryCopied]=useState(false);
   const {isMobile}=useBP();
 
   useEffect(()=>{
@@ -80,6 +81,19 @@ export function SlabCertificate({slabId}) {
   const certificateUrl=window.location.href;
   const inventory=invConf(slab.inventory_status||"available");
   const canInquire=(slab.inventory_status||"available")==="available";
+  const areaSqFt=Number(inq.areaSqFt);
+  const quoteEstimate=Number.isFinite(areaSqFt)&&areaSqFt>0 ? Math.round(areaSqFt*Number(slab.price_per_sq_ft||0)) : 0;
+  const certificateSummary=[
+    `Epistable verified slab: ${slab.stone}`,
+    `Certificate: ${slab.id}`,
+    `Factory: ${slab.factory_name}${slab.factory_location ? `, ${slab.factory_location}` : ""}`,
+    `Grade: ${slab.grade}`,
+    `Price: Rs ${slab.price_per_sq_ft || 0}/sq ft`,
+    `Status: ${inventory.label}`,
+    defects.length ? `Defects recorded: ${defects.join(", ")}` : "Defects recorded: none",
+    `Photo evidence: ${photos.length || (photo ? 1 : 0)} photo${(photos.length || (photo ? 1 : 0))===1 ? "" : "s"}`,
+    `Certificate link: ${certificateUrl}`,
+  ].join("\n");
   const scrollTo=id=>document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
 
   async function copyLink(){
@@ -92,10 +106,26 @@ export function SlabCertificate({slabId}) {
     }
   }
 
+  async function copySummary(){
+    try {
+      await navigator.clipboard.writeText(certificateSummary);
+      setSummaryCopied(true);
+      setTimeout(()=>setSummaryCopied(false),1600);
+    } catch(e) {
+      window.prompt("Copy certificate summary",certificateSummary);
+    }
+  }
+
   async function submitInquiry(){
     if(!inquiryReady||inqBusy)return;
     setInqBusy(true);setInqError("");
-    const message=[inq.message.trim(),inq.phone.trim()?`Phone: ${inq.phone.trim()}`:""].filter(Boolean).join("\n\n");
+    const message=[
+      inq.areaSqFt.trim()?`Area required: ${inq.areaSqFt.trim()} sq ft`:"",
+      quoteEstimate?`Estimated slab value: Rs ${quoteEstimate}`:"",
+      inq.message.trim(),
+      inq.phone.trim()?`Phone: ${inq.phone.trim()}`:"",
+      `Certificate: ${certificateUrl}`,
+    ].filter(Boolean).join("\n\n");
     const {error}=await supabase.rpc("create_public_slab_inquiry",{
       slab_id:slab.id,
       buyer_name:inq.name.trim(),
@@ -144,7 +174,8 @@ export function SlabCertificate({slabId}) {
             <div style={{fontSize:12,fontWeight:900,color:C.text}}>Certificate {slab.id}</div>
             <div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slab.stone} · {slab.factory_name}</div>
           </div>
-          <div style={{display:"flex",gap:8,flexShrink:0}}>
+          <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <button onClick={copySummary} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Summary Copied":"Copy Summary"}</button>
             <button onClick={copyLink} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{copied?"Copied":"Copy Link"}</button>
             <button onClick={()=>window.print()} style={{padding:"9px 12px",border:"none",borderRadius:9,background:C.primary,color:C.white,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Print / Save PDF</button>
           </div>
@@ -179,6 +210,14 @@ export function SlabCertificate({slabId}) {
               </div>
               <div style={{fontSize:26,fontWeight:900}}>Rs {slab.price_per_sq_ft || 0}<span style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)"}}> / sq ft</span></div>
               <div style={{display:"inline-flex",marginTop:10,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:900,color:inventory.color}}>{inventory.label}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
+                {[["Defects",defects.length||"None"],["Photos",photos.length || (photo ? 1 : 0)],["Export",slab.export_ready ? "Ready" : "No"]].map(([label,value])=>(
+                  <div key={label} style={{background:"rgba(255,255,255,0.11)",border:"1px solid rgba(255,255,255,0.16)",borderRadius:9,padding:"8px 6px",textAlign:"center"}}>
+                    <div style={{fontSize:14,fontWeight:900,color:C.white,lineHeight:1.1}}>{value}</div>
+                    <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.62)",marginTop:3}}>{label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -195,6 +234,20 @@ export function SlabCertificate({slabId}) {
 
             <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Inspection Summary</div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:8,marginBottom:12}}>
+                <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                  <div style={{fontSize:11,fontWeight:900,color:C.green,marginBottom:2}}>Trust Signal</div>
+                  <div style={{fontSize:13,fontWeight:800,color:C.text}}>{slab.export_ready ? "Export ready" : "Factory verified"}</div>
+                </div>
+                <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                  <div style={{fontSize:11,fontWeight:900,color:C.primary,marginBottom:2}}>Evidence</div>
+                  <div style={{fontSize:13,fontWeight:800,color:C.text}}>{photos.length || (photo ? 1 : 0)} photo{(photos.length || (photo ? 1 : 0))===1 ? "" : "s"}</div>
+                </div>
+                <div style={{background:defects.length?C.amberBg:C.greenBg,border:`1px solid ${defects.length?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                  <div style={{fontSize:11,fontWeight:900,color:defects.length?C.amber:C.green,marginBottom:2}}>Defects</div>
+                  <div style={{fontSize:13,fontWeight:800,color:C.text}}>{defects.length ? `${defects.length} recorded` : "None recorded"}</div>
+                </div>
+              </div>
               <div style={{fontSize:14,lineHeight:1.7,color:C.textMid}}>{slab.reason || "No grading reason was recorded for this slab."}</div>
               {slab.notes&&<div style={{marginTop:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,fontSize:13,lineHeight:1.6,color:C.textMid}}>{slab.notes}</div>}
             </Card>
@@ -258,6 +311,11 @@ export function SlabCertificate({slabId}) {
                   <input value={inq.email} onChange={e=>setInq(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
                   <input value={inq.phone} onChange={e=>setInq(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
                 </div>
+                <input value={inq.areaSqFt} onChange={e=>setInq(p=>({...p,areaSqFt:e.target.value.replace(/[^\d.]/g,"")}))} placeholder="Area required in sq ft (optional)" inputMode="decimal" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                {quoteEstimate>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12}}>
+                  <span style={{fontSize:12,fontWeight:800,color:C.green}}>Estimated value</span>
+                  <span style={{fontSize:14,fontWeight:900,color:C.green}}>Rs {quoteEstimate}</span>
+                </div>}
                 <textarea value={inq.message} onChange={e=>setInq(p=>({...p,message:e.target.value}))} rows={3} placeholder="Message (quantity, timeline, destination...)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
                 {inqError&&<div style={{fontSize:12,color:C.red,fontWeight:700}}>{inqError}</div>}
                 <Btn full disabled={!inquiryReady||inqBusy} onClick={submitInquiry}>{inqBusy?"Sending...":"Send Inquiry"}</Btn>
