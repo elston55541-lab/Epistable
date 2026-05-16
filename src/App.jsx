@@ -4,7 +4,7 @@ import { acceptInviteWithPassword, getSessionProfile, signInWithEmail, signOut }
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
 import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
 import { useBP } from "./hooks/useBP";
-import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loader, Modal, PBar, Sel, StatPill } from "./components/ui";
+import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loader, Modal, PBar, Sel, StatPill, T } from "./components/ui";
 import { SlabCertificate } from "./components/SlabCertificate";
 
 // ── DB (Supabase) ──
@@ -53,6 +53,16 @@ const QUOTE_FULFILLMENT = [
 ];
 const fulfillmentConf = status => QUOTE_FULFILLMENT.find(x=>x.id===status)||QUOTE_FULFILLMENT[0];
 const activeFulfillment = q => q.fulfillmentStatus||q.fulfillment_status||(q.status==="accepted"?"payment_pending":"not_started");
+const TEXT = {
+  pageTitle: {...T.title,marginBottom:14},
+  pageHeader: {...T.title},
+  heroTitle: {fontSize:20,lineHeight:1.2,fontWeight:800,letterSpacing:0},
+  panelTitle: {fontSize:14,lineHeight:1.35,fontWeight:800,letterSpacing:0},
+  itemTitle: {fontSize:13,lineHeight:1.35,fontWeight:800,letterSpacing:0},
+  meta: {...T.hint,color:C.textDim},
+  tinyMeta: {fontSize:11,lineHeight:1.35,color:C.textDim,letterSpacing:0},
+  emptyTitle: {fontSize:15,lineHeight:1.35,fontWeight:800,letterSpacing:0},
+};
 
 const DB = {
   // Factories
@@ -746,8 +756,8 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,borderRadius:14,padding:"20px",marginBottom:18,color:C.white}}>
-        <div style={{fontSize:18,fontWeight:800,marginBottom:4}}>Owner Console</div>
-        <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginBottom:14}}>Full platform visibility</div>
+        <div style={{...TEXT.heroTitle,marginBottom:4}}>Owner Console</div>
+        <div style={{fontSize:13,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:14}}>Full platform visibility</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
           {[["₹"+totalBill,"Billed This Month"],[totalScans,"Total Scans"],[facs.filter(f=>f.status==="active").length,"Active Factories"],[overdue,"Overdue"]].map(([v,l])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"12px"}}><div style={{fontSize:20,fontWeight:800}}>{v}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.7)"}}>{l}</div></div>
@@ -757,14 +767,14 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
       <KpiGrid items={[{label:"Billed This Month",value:"₹"+totalBill,icon:"💳",color:C.green},{label:"Scans This Month",value:ms,icon:"🔍",color:C.primary},{label:"Factories",value:facs.length,icon:"🏭",color:C.teal},{label:"Users",value:users.length,icon:"👤",color:C.text}]}/>
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:14,fontWeight:700}}>Factories</div>
+          <div style={TEXT.panelTitle}>Factories</div>
           <Btn size="sm" variant="ghost" onClick={()=>setPage("factories")}>View All →</Btn>
         </div>
         {facs.length===0?<div style={{padding:32,textAlign:"center",color:C.textDim}}>No factories yet</div>:facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);
           return <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}} onClick={()=>pickFac(f)}>
             <div style={{width:38,height:38,borderRadius:10,background:C.primaryBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🏭</div>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={{fontSize:11,color:C.textDim}}>{sc} scans · ₹{b.total} due</div></div>
+            <div style={{flex:1,minWidth:0}}><div style={{...TEXT.itemTitle,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={TEXT.tinyMeta}>{sc} scans · ₹{b.total} due</div></div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
               <StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/>
             </div>
@@ -786,12 +796,12 @@ function OwnerBilling({facs,onRefresh}) {
     <div>
       <KpiGrid items={[{label:"Total Due",value:"₹"+totalDue,icon:"💳",color:C.green},{label:"Overdue",value:facs.filter(f=>f.billing_status==="overdue").length,icon:"🚨",color:C.red},{label:"Active",value:facs.filter(f=>f.status==="active").length,icon:"🏭",color:C.teal},{label:"Paused",value:facs.filter(f=>f.status==="paused").length,icon:"⏸",color:C.amber}]}/>
       <Card>
-        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,fontSize:14,fontWeight:700}}>Invoices — {mon}</div>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Invoices — {mon}</div>
         {facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const paused=f.status==="paused";
           return <div key={f.id} style={{padding:16,borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",background:paused?C.redBg:C.white}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-              <div><div style={{fontSize:14,fontWeight:700}}>{f.name}</div><div style={{fontSize:11,color:C.textDim}}>{f.plan||"Starter"}{paused&&<span style={{color:C.red,fontWeight:700}}> · 🚫 PAUSED</span>}</div></div>
+              <div><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.plan||"Starter"}{paused&&<span style={{color:C.red,fontWeight:800}}> · 🚫 PAUSED</span>}</div></div>
               <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:800,color:C.green}}>₹{b.total}</div><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <PBar value={sc/b.includedScans*100} color={sc>b.includedScans?C.red:C.primary}/>
@@ -831,7 +841,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
         </div>
       </Modal>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Factories</div><div style={{fontSize:12,color:C.textDim}}>{facs.length} registered</div></div>
+        <div><div style={TEXT.pageHeader}>Factories</div><div style={TEXT.meta}>{facs.length} registered</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
       {facs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🏭</div><Btn onClick={()=>setShow(true)}>+ Create First Factory</Btn></Card>:
@@ -839,7 +849,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
         {facs.map(f=>{const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const uCount=users.filter(u=>u.factory_id===f.id).length;return(
           <Card key={f.id}><div style={{padding:"14px 16px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-              <div style={{flex:1,minWidth:0,paddingRight:10}}><div style={{fontSize:14,fontWeight:700}}>{f.name}</div><div style={{fontSize:11,color:C.textDim}}>{f.location} · {f.plan||"Starter"}</div></div>
+              <div style={{flex:1,minWidth:0,paddingRight:10}}><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.location} · {f.plan||"Starter"}</div></div>
               <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}><StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
@@ -898,7 +908,7 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
       {manage&&<UserAccessModal user={manage} facs={[fac]} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
       <Card style={{marginBottom:14,padding:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-          <div><div style={{fontSize:16,fontWeight:800}}>{fac.name}</div><div style={{fontSize:12,color:C.textDim}}>{fac.location}</div></div>
+          <div><div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0}}>{fac.name}</div><div style={TEXT.meta}>{fac.location}</div></div>
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}><StatPill status={fac.status}/><BillPill status={fac.billing_status||"pending"}/></div>
         </div>
         <PBar value={sc/b.includedScans*100} color={sc>b.includedScans?C.red:C.primary} h={8}/>
@@ -906,13 +916,13 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
       </Card>
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:14,fontWeight:700}}>Users ({users.length})</div>
+          <div style={TEXT.panelTitle}>Users ({users.length})</div>
           <div style={{display:"flex",gap:8}}><Btn size="sm" variant="secondary" onClick={()=>setShowBuyer(true)}>+ Buyer</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ User</Btn></div>
         </div>
         {users.length===0?<div style={{padding:"32px",textAlign:"center",color:C.textDim}}>No users yet.</div>:users.map((u,i)=>(
           <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<users.length-1?`1px solid ${C.border}`:"none"}}>
             <Avi initials={u.avatar||"??"} size={36}/>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{u.name}</div><div style={{fontSize:11,color:C.textDim}}>{u.email}</div></div>
+            <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={TEXT.tinyMeta}>{u.email}</div></div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
               <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"2px 7px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
               <StatPill status={u.status||"active"}/>
@@ -949,7 +959,7 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
   return (
     <Modal title={title} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
       {done?<div>
-        <div style={{textAlign:"center",marginBottom:14}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={{fontSize:18,fontWeight:800}}>Created!</div></div>
+        <div style={{textAlign:"center",marginBottom:14}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={TEXT.pageHeader}>Created!</div></div>
         <div style={{background:C.primaryBg,border:`2px solid ${C.primaryBorder}`,borderRadius:12,padding:16,marginBottom:12}}>
           {[["Name",done.name],["Email",done.email],["Role",isBuyer?"Buyer":done.role],["Auth ID",done.auth_user_id||"Link in Supabase Auth"]].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:l==="Auth ID"?"monospace":"inherit",textAlign:"right"}}>{v}</span></div>
@@ -1065,7 +1075,7 @@ function OwnerUsers({users,facs,onRefresh}) {
       {show&&<UserFormModal title="Create User" facs={facs} onClose={()=>setShow(false)} onDone={()=>{setShow(false);onRefresh();}} onSubmit={createUser}/>}
       {manage&&<UserAccessModal user={manage} facs={facs} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>All Users</div><div style={{fontSize:12,color:C.textDim}}>{users.length} accounts</div></div>
+        <div><div style={TEXT.pageHeader}>All Users</div><div style={TEXT.meta}>{users.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
       <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factory…" icon="🔍"/></div>
@@ -1073,7 +1083,7 @@ function OwnerUsers({users,facs,onRefresh}) {
       <Card>{filtered.map((u,i)=>(
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||"??"} size={36}/>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{u.name}</div><div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.factory_name} · {u.email}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.factory_name} · {u.email}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
             <StatPill status={u.status||"active"}/>
@@ -1093,11 +1103,11 @@ function OwnerDisputes() {
   if(loading)return <Loader/>;
   return (
     <div>
-      <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>All Disputes</div>
-      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🤝</div><div style={{fontWeight:600}}>No disputes yet</div></Card>:
+      <div style={TEXT.pageTitle}>All Disputes</div>
+      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🤝</div><div style={TEXT.emptyTitle}>No disputes yet</div></Card>:
       <Card>{disputes.map((d,i)=>(
         <div key={d.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",background:d.status==="open"?C.redBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{d.stone} <span style={{fontSize:11,color:C.textDim}}>#{d.slab_id}</span></div><div style={{fontSize:11,color:C.textDim}}>{d.factory_name} · {d.buyer_name} · {catLabel[d.category]||d.category}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone} <span style={TEXT.tinyMeta}>#{d.slab_id}</span></div><div style={TEXT.tinyMeta}>{d.factory_name} · {d.buyer_name} · {catLabel[d.category]||d.category}</div></div>
           <DisputeStatusPill status={d.status}/>
         </div>
       ))}</Card>}
@@ -1113,11 +1123,11 @@ function OwnerInquiries() {
   if(loading)return <Loader/>;
   return (
     <div>
-      <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>All Buyer Inquiries</div>
-      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={{fontWeight:600}}>No inquiries yet</div></Card>:
+      <div style={TEXT.pageTitle}>All Buyer Inquiries</div>
+      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
         <div key={q.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",background:q.status==="new"?C.primaryBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{q.buyer_name}{q.buyer_company?" · "+q.buyer_company:""}</div><div style={{fontSize:11,color:C.textDim}}>{q.stone} · {q.factory_name} · {fmtD(q.created_at)}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyer_name}{q.buyer_company?" · "+q.buyer_company:""}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.factory_name} · {fmtD(q.created_at)}</div></div>
           <InqPill status={q.status}/>
         </div>
       ))}</Card>}
@@ -1128,7 +1138,7 @@ function OwnerInquiries() {
 function OwnerSettings() {
   return (
     <div>
-      <div style={{fontSize:18,fontWeight:800,marginBottom:16}}>Settings</div>
+      <div style={{...TEXT.pageHeader,marginBottom:16}}>Settings</div>
       <Card style={{padding:16,marginBottom:14}}><Inp label="Platform Name" value="Epistable AI" onChange={()=>{}}/></Card>
       <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:14,fontSize:13,color:C.primary}}>✅ Using Supabase — data syncs across all devices in real time.</div>
     </div>
@@ -1210,12 +1220,12 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
-        <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>👋 {user.role}</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{user.name}</div>
-        <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{fac?.name||"Factory"}</div>
+        <div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>👋 {user.role}</div>
+        <div style={{...TEXT.heroTitle,marginBottom:4}}>{user.name}</div>
+        <div style={{fontSize:13,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{fac?.name||"Factory"}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
           {[["Today",today.length,"🔍"],["Total",insps.length,"📦"],["Premium%",pp+"%","🏆"]].map(([l,v,icon])=>(
-            <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:12}}>{icon}</div><div style={{fontSize:18,fontWeight:800,lineHeight:1,marginTop:4}}>{v}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.65)",marginTop:2}}>{l}</div></div>
+            <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:12}}>{icon}</div><div style={{fontSize:18,fontWeight:800,lineHeight:1.1,letterSpacing:0,marginTop:4}}>{v}</div><div style={{fontSize:10,lineHeight:1.3,color:"rgba(255,255,255,0.65)",marginTop:2}}>{l}</div></div>
           ))}
         </div>
       </div>
@@ -1245,14 +1255,14 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
       </div>
       {today.length>0&&<Card>
         <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:13,fontWeight:700}}>Today's Scans</div>
+          <div style={TEXT.itemTitle}>Today's Scans</div>
           <button onClick={()=>setPage("history")} style={{background:"none",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer"}}>All →</button>
         </div>
         {today.slice(0,5).map((r,i)=>{const g=gradeConf(r.grade);return(
           <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",borderBottom:i<Math.min(today.length,5)-1?`1px solid ${C.border}`:"none"}}>
             <div style={{width:38,height:38,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{g.emoji}</div>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{r.stone}</div><div style={{fontSize:11,color:C.textDim}}>{fmtT(r.ts)}</div></div>
-            <span style={{fontSize:11,fontWeight:700,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20,flexShrink:0}}>{r.grade}</span>
+            <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{r.stone}</div><div style={TEXT.tinyMeta}>{fmtT(r.ts)}</div></div>
+            <span style={{...T.pill,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20,flexShrink:0}}>{r.grade}</span>
           </div>
         );})}
       </Card>}
@@ -1622,7 +1632,7 @@ function FacHistory({insps}) {
     <div>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onStatus={updateStatus} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
-      <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Scan History</div>
+      <div style={TEXT.pageTitle}>Scan History</div>
       <div style={{marginBottom:10}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="🔍"/></div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
         {["All",...GRADES.map(g=>g.id)].map(f=>(
@@ -1634,9 +1644,9 @@ function FacHistory({insps}) {
         <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
           <div style={{width:44,height:44,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.emoji}</div>}
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{r.stone}</div><div style={{fontSize:11,color:C.textDim}}>{r.date} · {r.time}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{r.stone}</div><div style={TEXT.tinyMeta}>{r.date} · {r.time}</div></div>
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}>
-            <span style={{fontSize:11,fontWeight:700,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
+            <span style={{...T.pill,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
             <InventoryPill status={r.inventoryStatus}/>
             <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
           </div>
@@ -1656,18 +1666,18 @@ function FacAnalytics({insps}) {
   const topDefects=Object.entries(defectMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   return (
     <div>
-      <div style={{fontSize:18,fontWeight:800,marginBottom:16}}>Analytics</div>
+      <div style={{...TEXT.pageHeader,marginBottom:16}}>Analytics</div>
       <KpiGrid items={[{label:"Today",value:today,icon:"📅",color:C.primary},{label:"This Week",value:week,icon:"📆",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Total",value:total,icon:"📦",color:C.text}]}/>
       <Card style={{marginBottom:14}}>
-        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,fontSize:14,fontWeight:700}}>Grade Distribution</div>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Grade Distribution</div>
         <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
           {GRADES.map(g=>{const count=byG(g.id);const pct=total?Math.round(count/total*100):0;return(
-            <div key={g.id}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:13,fontWeight:700}}>{g.emoji} {g.id}</span><span style={{fontSize:13,fontWeight:700,color:g.color}}>{count} ({pct}%)</span></div><PBar value={pct} color={g.color}/></div>
+            <div key={g.id}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={TEXT.itemTitle}>{g.emoji} {g.id}</span><span style={{...TEXT.itemTitle,color:g.color}}>{count} ({pct}%)</span></div><PBar value={pct} color={g.color}/></div>
           );})}
         </div>
       </Card>
       {topDefects.length>0&&<Card>
-        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,fontSize:14,fontWeight:700}}>Top Defects</div>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Top Defects</div>
         <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
           {topDefects.map(([d,cnt])=>(
             <div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1701,7 +1711,7 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
     <div>
       {manage&&<UserAccessModal user={manage} facs={[fac]} onClose={()=>setManage(null)} onSave={saveUser}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Team Access</div><div style={{fontSize:12,color:C.textDim}}>{users.length} profiles</div></div>
+        <div><div style={TEXT.pageHeader}>Team Access</div><div style={TEXT.meta}>{users.length} profiles</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn>
       </div>
       <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="🔍"/></div>
@@ -1709,7 +1719,7 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
       <Card>{filtered.map((u,i)=>(
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||u.name?.slice(0,2).toUpperCase()||"??"} size={36}/>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{u.name}</div><div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}{u.company?" · "+u.company:""}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}{u.company?" · "+u.company:""}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <span style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
             <StatPill status={u.status||"active"}/>
@@ -1874,7 +1884,7 @@ function FacSuppliers({fac}) {
         </Card>
       </Modal>;})()}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Supplier Scorecards</div><div style={{fontSize:12,color:C.textDim}}>{suppliers.length} registered suppliers</div></div>
+        <div><div style={TEXT.pageHeader}>Supplier Scorecards</div><div style={TEXT.meta}>{suppliers.length} registered suppliers</div></div>
         <div style={{display:"flex",gap:8}}><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ Add</Btn></div>
       </div>
       {scorecards.length>0&&<KpiGrid items={[
@@ -1937,7 +1947,7 @@ function FacBuyers({fac,actor,onActivity}) {
   return (
     <div>
 {show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>setShow(false)} onDone={closeAfterCreate} onSubmit={createBuyer}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Buyers</div><div style={{fontSize:12,color:C.textDim}}>{buyers.length} accounts</div></div>
+        <div><div style={TEXT.pageHeader}>Buyers</div><div style={TEXT.meta}>{buyers.length} accounts</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
       {manage&&<UserAccessModal user={manage} facs={[fac]} fixedRole="buyer" onClose={()=>setManage(null)} onSave={saveBuyer}/>}
@@ -1945,7 +1955,7 @@ function FacBuyers({fac,actor,onActivity}) {
       <Card>{buyers.map((b,i)=>(
         <div key={b.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<buyers.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={b.name.slice(0,2).toUpperCase()} size={36} color={C.teal} bg="#e0f7fa" border="#80deea"/>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{b.name}</div><div style={{fontSize:11,color:C.textDim}}>{b.company?b.company+" · ":""}{b.email}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{b.name}</div><div style={TEXT.tinyMeta}>{b.company?b.company+" · ":""}{b.email}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <StatPill status={b.status||"active"}/>
             <Btn size="sm" variant="secondary" onClick={()=>setManage(b)}>Manage</Btn>
@@ -2026,11 +2036,11 @@ function FacInquiries({fac,onChange}) {
           <Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn>
         </div>
       </Modal>}
-      <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Buyer Inquiries</div>
-      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={{fontWeight:600}}>No inquiries yet</div></Card>:
+      <div style={TEXT.pageTitle}>Buyer Inquiries</div>
+      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
         <div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed"?C.redBg:q.status==="new"?C.primaryBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{q.buyerName||q.buyer_name}</div><div style={{fontSize:11,color:C.textDim}}>{q.stone} · {q.grade}{q.followUpAt?` · Follow up ${fmtD(q.followUpAt)}`:""}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.grade}{q.followUpAt?` · Follow up ${fmtD(q.followUpAt)}`:""}</div></div>
           <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
             <span style={{fontSize:10,fontWeight:800,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span>
             <InqPill status={q.status}/>
@@ -2185,7 +2195,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
         </div>
       </Modal>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Quotes</div><div style={{fontSize:12,color:C.textDim}}>Manage sent quotes, buyer decisions, revisions, and sold status</div></div>
+        <div><div style={TEXT.pageHeader}>Quotes</div><div style={TEXT.meta}>Manage sent quotes, buyer decisions, revisions, and sold status</div></div>
       </div>
       <KpiGrid items={[{label:"Total Quotes",value:quotes.length,icon:"All",color:C.text},{label:"Needs Action",value:actionCount,icon:"Now",color:actionCount?C.amber:C.textDim},{label:"In Fulfillment",value:fulfillmentActionCount,icon:"Ship",color:fulfillmentActionCount?C.primary:C.textDim},{label:"Sold Value",value:"Rs "+soldValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
       <Card style={{padding:12,marginBottom:14}}>
@@ -2284,7 +2294,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div><div style={{fontSize:18,fontWeight:800}}>Sales Dashboard</div><div style={{fontSize:12,color:C.textDim}}>Buyer demand, quote movement, and follow-ups</div></div>
+        <div><div style={TEXT.pageHeader}>Sales Dashboard</div><div style={TEXT.meta}>Buyer demand, quote movement, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
       </div>
       <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
@@ -2428,11 +2438,11 @@ function FacDisputes({fac}) {
           <Btn variant="green" size="sm" onClick={()=>update(sel.id,"resolved")}>✅ Resolve</Btn>
         </div>
       </Modal>}
-      <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Disputes</div>
-      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🤝</div><div style={{fontWeight:600}}>No disputes</div></Card>:
+      <div style={TEXT.pageTitle}>Disputes</div>
+      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🤝</div><div style={TEXT.emptyTitle}>No disputes</div></Card>:
       <Card>{disputes.map((d,i)=>(
         <div key={d.id} onClick={()=>{setSel(d);setResponse(d.response||"");}} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:d.status==="open"?C.redBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{d.stone}</div><div style={{fontSize:11,color:C.textDim}}>{catLabel[d.category]||d.category} · {d.buyer_name}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone}</div><div style={TEXT.tinyMeta}>{catLabel[d.category]||d.category} · {d.buyer_name}</div></div>
           <DisputeStatusPill status={d.status}/>
         </div>
       ))}</Card>}
@@ -2444,12 +2454,12 @@ function FacNotifs({notifs,onRead}) {
   useEffect(()=>{if(notifs.some(n=>!n.read))onRead();},[]);
   return (
     <div>
-      <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Alerts</div>
-      {notifs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔔</div><div style={{fontWeight:600,marginBottom:5}}>No alerts yet</div><div style={{fontSize:12,color:C.textDim}}>Quote updates, buyer decisions, and follow-ups will appear here.</div></Card>:
+      <div style={TEXT.pageTitle}>Alerts</div>
+      {notifs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔔</div><div style={{...TEXT.emptyTitle,marginBottom:5}}>No alerts yet</div><div style={TEXT.meta}>Quote updates, buyer decisions, and follow-ups will appear here.</div></Card>:
       <Card>{notifs.map((n,i)=>(
         <div key={n.id} style={{display:"flex",gap:12,padding:"14px 16px",borderBottom:i<notifs.length-1?`1px solid ${C.border}`:"none",background:n.read?C.white:C.primaryBg}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{n.icon||"🔔"}</div>
-          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,marginBottom:2}}>{n.title}</div><div style={{fontSize:12,color:C.textMid}}>{n.msg}</div></div>
+          <div style={{flex:1}}><div style={{...TEXT.itemTitle,marginBottom:2}}>{n.title}</div><div style={{...TEXT.meta,color:C.textMid}}>{n.msg}</div></div>
         </div>
       ))}</Card>}
     </div>
@@ -2675,11 +2685,11 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Sign Out</button>
         </div>
         <div style={{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 16px"}}>
-          <div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
+          <div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
+          <div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
             {[["Available",insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
-              <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:11}}>{icon}</div><div style={{fontSize:18,fontWeight:800,color:C.white,lineHeight:1,marginBottom:2}}>{v}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
+              <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:11}}>{icon}</div><div style={{fontSize:18,fontWeight:800,color:C.white,lineHeight:1.1,letterSpacing:0,marginBottom:2}}>{v}</div><div style={{fontSize:10,lineHeight:1.3,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
             ))}
           </div>
         </div>
@@ -2687,7 +2697,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
       <div style={{padding:"16px 16px 48px"}}>
         <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
           <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>🪨</div>
-          <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
+          <div style={{flex:1}}><div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
           <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
         </div>
         <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
@@ -2697,7 +2707,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         </div>
         <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
           <span style={{fontSize:18,flexShrink:0}}>🛡️</span>
-          <div><div style={{fontSize:13,fontWeight:700,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{fontSize:12,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
+          <div><div style={{...TEXT.itemTitle,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{...TEXT.meta,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
         </div>
         {quotes.length>0&&<Card style={{marginTop:14}}>
           <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
@@ -2900,7 +2910,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   </div>
                 </div>
                 <div style={{padding:"0 14px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${C.border}`,paddingTop:8}}>
-                  <div style={{fontSize:16,fontWeight:800,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:11,fontWeight:400,color:C.textDim}}>/sqft</span></div>
+                  <div style={{fontSize:16,lineHeight:1.25,fontWeight:800,letterSpacing:0,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:11,fontWeight:400,color:C.textDim}}>/sqft</span></div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
                     <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>View</button>
                     <button onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"5px 9px",color:saved?C.white:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{saved?"Saved":"Save"}</button>
@@ -2917,12 +2927,12 @@ function BuyerPortal({factoryId,onBack,buyer}) {
           <div style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,padding:"20px"}} onClick={e=>e.stopPropagation()}>
             {inquirySent?<div style={{textAlign:"center",padding:"20px 0"}}>
               <div style={{fontSize:48,marginBottom:12}}>📩</div>
-              <div style={{fontSize:18,fontWeight:800,marginBottom:8}}>Inquiry Sent!</div>
-              <div style={{fontSize:13,color:C.textMid,marginBottom:20}}>Your interest in slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
+              <div style={{...TEXT.pageHeader,marginBottom:8}}>Inquiry Sent!</div>
+              <div style={{fontSize:13,lineHeight:1.5,color:C.textMid,marginBottom:20}}>Your interest in slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
               <button onClick={()=>setInquiry(null)} style={{padding:"12px 28px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Done</button>
             </div>:<div>
-              <div style={{fontSize:16,fontWeight:800,marginBottom:14}}>Express Interest — {inquiry.stone}</div>
-              <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Message (optional)…" rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,outline:"none",fontFamily:"sans-serif",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
+              <div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,marginBottom:14}}>Express Interest — {inquiry.stone}</div>
+              <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Message (optional)…" rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Cancel</button>
                 <button onClick={submitInquiry} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Send</button>
