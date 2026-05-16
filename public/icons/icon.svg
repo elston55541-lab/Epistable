@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Epistable AI app icon</title>
+  <desc id="desc">A verified stone slab mark on a blue to teal background.</desc>
+  <defs>
+    <linearGradient id="bg" x1="86" y1="64" x2="426" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#003f7a"/>
+      <stop offset="0.58" stop-color="#0057a8"/>
+      <stop offset="1" stop-color="#0097a7"/>
+    </linearGradient>
+    <linearGradient id="slab" x1="170" y1="138" x2="342" y2="374" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d7e5f6"/>
+    </linearGradient>
+    <filter id="shadow" x="102" y="98" width="316" height="340" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#001f3d" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <path d="M256 112 354 170v132l-98 58-98-58V170l98-58Z" fill="url(#slab)"/>
+    <path d="M256 112v248M158 170l98 58 98-58M158 302l98-58 98 58" fill="none" stroke="#b8d0f0" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
+    <path d="M212 263 244 295l62-76" fill="none" stroke="#2e7d32" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
