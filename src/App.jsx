@@ -611,8 +611,8 @@ function Login({onOwner,onFactory,onBuyer}) {
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:isDesktop?"row":"column",fontFamily:"'Segoe UI',sans-serif"}}>
-      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:isDesktop?"0 64px":"24px 28px 20px",display:"flex",flexDirection:"column",justifyContent:"center",width:isDesktop?"45%":"100%",flexShrink:0,minHeight:isDesktop?"100vh":"auto"}}>
-        <div style={{marginBottom:isDesktop?52:28}}>
+      <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:isDesktop?"0 64px":"22px 24px 18px",display:"flex",flexDirection:"column",justifyContent:"center",width:isDesktop?"45%":"100%",flexShrink:0,minHeight:isDesktop?"100vh":"auto",boxSizing:"border-box"}}>
+        <div style={{marginBottom:isDesktop?52:0}}>
           <div style={{fontSize:28,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:8}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:16,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.5px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:14}}>Quality, quantified</div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -627,9 +627,9 @@ function Login({onOwner,onFactory,onBuyer}) {
           </div>
         ))}
       </div>
-      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:isDesktop?"40px":"0"}}>
-        <div style={{width:"100%",maxWidth:420,padding:isDesktop?"0":"28px 24px 48px"}}>
-          <div style={{marginBottom:28}}><div style={{fontSize:isDesktop?26:22,fontWeight:800,color:C.text,marginBottom:6}}>Welcome back</div><div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div></div>
+      <div style={{flex:1,display:"flex",alignItems:isDesktop?"center":"flex-start",justifyContent:"center",padding:isDesktop?"40px":"0"}}>
+        <div style={{width:"100%",maxWidth:420,padding:isDesktop?"0":"20px 24px 48px",boxSizing:"border-box"}}>
+          <div style={{marginBottom:isDesktop?28:20}}><div style={{fontSize:isDesktop?26:22,fontWeight:800,color:C.text,marginBottom:6}}>Welcome back</div><div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div></div>
           {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"12px 16px",fontSize:13,color:C.red,marginBottom:16}}>⚠ {err}</div>}
           <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:20}}>
             <Inp label="Email" value={email} onChange={setEmail} type="email" placeholder="you@example.com" icon="✉️" required/>
