@@ -1268,6 +1268,7 @@ const PHOTO_SLOTS = [
 ];
 
 function FacScan({user,fac,paused,onSaved}) {
+  const {isMobile}=useBP();
   const [step,setStep]=useState(0);
   const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});
   const [grade,setGrade]=useState(null);const [loading,setLoading]=useState(false);const [saved,setSaved]=useState(false);
@@ -1361,7 +1362,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>{grade?.grade}</div>
       <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade?.pricePerSqFt}/sqft</div>
       <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
         <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
         <Btn onClick={onSaved}>View History</Btn>
       </div>
@@ -1393,7 +1394,7 @@ function FacScan({user,fac,paused,onSaved}) {
       </div>
       {step===0&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Stone Type</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
           {STONES.map(s=>(
             <button key={s.id} onClick={()=>setForm(p=>({...p,stone:s.id}))} style={{padding:"12px",background:form.stone===s.id?C.primaryBg:C.white,border:`2px solid ${form.stone===s.id?C.primary:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:"sans-serif",WebkitTapHighlightColor:"transparent"}}>
               <div style={{fontSize:13,fontWeight:700,color:form.stone===s.id?C.primary:C.text}}>{s.label}</div>
@@ -1416,7 +1417,7 @@ function FacScan({user,fac,paused,onSaved}) {
           {supplierMode==="registered"&&<>
             {suppliers.length>0?<Sel label="Select Supplier" value={form.supplierId} onChange={v=>setForm(p=>({...p,supplierId:v}))} options={[{value:"",label:"Select supplier..."},...suppliers.map(s=>({value:s.id,label:s.name}))]}/>
             :<div style={{fontSize:12,color:C.textMid,marginBottom:10}}>No registered suppliers yet. Add one below or use Typed/Unknown.</div>}
-            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:10}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr auto",gap:8,marginTop:10}}>
               <input value={quickSupplier} onChange={e=>setQuickSupplier(e.target.value)} placeholder="Quick add supplier" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif"}}/>
               <Btn size="sm" variant="secondary" onClick={addQuickSupplier} disabled={supplierBusy}>{supplierBusy?"Adding...":"+ Add"}</Btn>
             </div>
@@ -1430,7 +1431,7 @@ function FacScan({user,fac,paused,onSaved}) {
             <label style={{display:"block",fontSize:13,fontWeight:700}}>Photo Evidence</label>
             <span style={{fontSize:11,fontWeight:800,color:photoReady?C.green:C.amber}}>{completePhotoSlots}/{requiredPhotoSlots.length} required</span>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
             {PHOTO_SLOTS.slice(0,3).map(slot=>(
               <div key={slot.id} style={{border:`1px solid ${photos[slot.id]?C.greenBorder:C.border}`,borderRadius:12,overflow:"hidden",background:photos[slot.id]?C.greenBg:C.white}}>
                 <div style={{aspectRatio:"4/3",background:C.surface,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1439,7 +1440,7 @@ function FacScan({user,fac,paused,onSaved}) {
                 </div>
                 <div style={{padding:9}}>
                   <div style={{fontSize:12,fontWeight:800,color:C.text,marginBottom:6}}>{photos[slot.id]?"✓ ":""}{slot.label}</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6}}>
                     <button onClick={()=>openCamera(slot.id)} style={{padding:"7px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Camera</button>
                     <button onClick={()=>chooseUpload(slot.id)} style={{padding:"7px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Upload</button>
                   </div>
@@ -1452,7 +1453,7 @@ function FacScan({user,fac,paused,onSaved}) {
       </div>}
       {step===1&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Measurements</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:12}}>
           <Inp label="Thickness (mm)" value={form.measurements.thickness} onChange={v=>setMeas("thickness",v)} placeholder="20"/>
           <Inp label="Length (cm)" value={form.measurements.length} onChange={v=>setMeas("length",v)} placeholder="120"/>
           <Inp label="Width (cm)" value={form.measurements.width} onChange={v=>setMeas("width",v)} placeholder="60"/>
@@ -1464,11 +1465,11 @@ function FacScan({user,fac,paused,onSaved}) {
         <Sel label="Sound Test" value={form.measurements.soundTest} onChange={v=>setMeas("soundTest",v)} options={[{value:"clear",label:"🔔 Clear"},{value:"dull",label:"💀 Dull"},{value:"hollow",label:"💨 Hollow"}]}/>
         <Sel label="Edge Condition" value={form.measurements.edgeCondition} onChange={v=>setMeas("edgeCondition",v)} options={[{value:"good",label:"✅ Good"},{value:"minor",label:"⚠️ Minor chips"},{value:"damaged",label:"❌ Damaged"}]}/>
         <Sel label="Surface Finish" value={form.measurements.surfaceFinish} onChange={v=>setMeas("surfaceFinish",v)} options={[{value:"polished",label:"Polished"},{value:"honed",label:"Honed"},{value:"brushed",label:"Brushed"},{value:"sandblasted",label:"Sandblasted"}]}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
       </div>}
       {step===2&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Defects Found</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
           {DEFECTS.map(d=>{const sel=form.defects.includes(d.id);return(
             <button key={d.id} onClick={()=>toggleDefect(d.id)} style={{padding:"12px",background:sel?"#fff3e0":C.white,border:`2px solid ${sel?d.color:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:"sans-serif"}}>
               <div style={{fontSize:13,fontWeight:700,color:sel?d.color:C.text}}>{sel?"✓ ":""}{d.label}</div>
@@ -1484,7 +1485,7 @@ function FacScan({user,fac,paused,onSaved}) {
             </div>
             <span style={{fontSize:11,fontWeight:800,color:photos.defect?C.green:C.red}}>{photos.defect?"Complete":"Missing"}</span>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,alignItems:"stretch"}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"120px 1fr",gap:10,alignItems:"stretch"}}>
             <div style={{aspectRatio:"1",background:C.surface,border:`1px solid ${photos.defect?C.greenBorder:C.border}`,borderRadius:10,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {photos.defect?<img src={photos.defect.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<span style={{fontSize:11,color:C.textDim,fontWeight:700,textAlign:"center",padding:8}}>Defect photo</span>}
             </div>
@@ -1496,7 +1497,7 @@ function FacScan({user,fac,paused,onSaved}) {
           </div>
         </Card>}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}>🤖 Grade with AI</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}>🤖 Grade with AI</Btn></div>
       </div>}
       {step===3&&<div>
         <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>AI Grade Result</div>
@@ -1512,14 +1513,14 @@ function FacScan({user,fac,paused,onSaved}) {
               <div style={{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:8}}>{grade.reason}</div>
               {grade.tips&&<div style={{background:C.primaryBg,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.primary}}>💡 {grade.tips}</div>}
             </Card>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
               {GRADES.map(g=>(
                 <button key={g.id} onClick={()=>setGrade({...grade,grade:g.id,pricePerSqFt:g.price})} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"sans-serif",textAlign:"center"}}>
                   <div style={{fontSize:14,marginBottom:3}}>{g.emoji}</div><div style={{fontSize:9,fontWeight:700,color:grade.grade===g.id?g.color:C.textDim}}>{g.id}</div>
                 </button>
               ))}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);}}>← Redo</Btn><Btn variant="green" onClick={save}>✓ Save Slab</Btn></div>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);}}>← Redo</Btn><Btn variant="green" onClick={save}>✓ Save Slab</Btn></div>
           </div>
         );})():null}
       </div>}
@@ -2248,6 +2249,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
 }
 
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
+  const {isMobile}=useBP();
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -2307,7 +2309,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
         {activeOrders.length===0?<div style={{fontSize:13,color:C.textDim,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>No active accepted orders yet. When a buyer accepts a quote, it will appear here until sold.</div>:
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {activeOrders.slice(0,5).map(q=>{const conf=fulfillmentConf(activeFulfillment(q));const nextIndex=Math.max(0,stageRank[activeFulfillment(q)]??0);return(
-            <div key={q.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:10,alignItems:"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
+            <div key={q.id} style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:10,alignItems:isMobile?"stretch":"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
                 <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} - Rs {Number(q.totalAmount||q.total_amount||0).toLocaleString("en-IN")}</div>
@@ -2838,7 +2840,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
           ))}
         </div>
         <Card style={{padding:12,marginBottom:14}}>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(6,1fr)",gap:8}}>
             <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
               {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All stones":o}</option>)}
             </select>
@@ -2899,9 +2901,9 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                     </div>
                   </div>
                 </div>
-                <div style={{padding:"0 14px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${C.border}`,paddingTop:8}}>
+                <div style={{padding:"0 14px 12px",display:"flex",justifyContent:"space-between",alignItems:isMobile?"stretch":"center",gap:10,borderTop:`1px solid ${C.border}`,paddingTop:8,flexDirection:isMobile?"column":"row"}}>
                   <div style={{fontSize:16,fontWeight:800,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:11,fontWeight:400,color:C.textDim}}>/sqft</span></div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr 1fr":"auto auto auto",gap:6}}>
                     <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>View</button>
                     <button onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"5px 9px",color:saved?C.white:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{saved?"Saved":"Save"}</button>
                     <button disabled={!canInquire} onClick={()=>{if(!canInquire)return;setInquiry(slab);setInquiryMsg("");setInquirySent(false);}} style={{background:canInquire?C.primaryBg:C.surface,border:`1px solid ${canInquire?C.primaryBorder:C.border}`,borderRadius:8,padding:"5px 10px",color:canInquire?C.primary:C.textDim,fontSize:11,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"📩 Interested":invConf(inv).label}</button>
@@ -2923,7 +2925,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             </div>:<div>
               <div style={{fontSize:16,fontWeight:800,marginBottom:14}}>Express Interest — {inquiry.stone}</div>
               <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Message (optional)…" rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,outline:"none",fontFamily:"sans-serif",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Cancel</button>
                 <button onClick={submitInquiry} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Send</button>
               </div>
