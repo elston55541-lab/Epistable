@@ -1259,8 +1259,14 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   const byG=g=>insps.filter(i=>i.grade===g).length;
   const pp=insps.length?Math.round(byG("Premium")/insps.length*100):0;
   const overdueFollowups=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
-  const hotInquiries=inquiries.filter(q=>(q.priority||"warm")==="hot"&&q.status!=="closed").length;
-  const homeKpis=[{label:"Scans This Month",value:sc,icon:"🔍",color:C.primary},{label:"Scan Limit",value:b.includedScans,icon:"📊",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Bill Due",value:"₹"+b.total,icon:"💳",color:C.amber},...(isAdmin?[{label:"Hot Inquiries",value:hotInquiries,icon:"Hot",color:C.red},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
+  const quoteRequests=inquiries.filter(q=>/quote request/i.test(q.message||"")&&q.status!=="closed");
+  const newInquiries=inquiries.filter(q=>q.status==="new");
+  const availableSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="available").length;
+  const reservedSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="reserved").length;
+  const soldSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="sold").length;
+  const rejectedToday=today.filter(i=>i.grade==="Rejected").length;
+  const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
+  const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:"Rs "+b.total,icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
@@ -1273,7 +1279,31 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
           ))}
         </div>
       </div>
-      <KpiGrid items={homeKpis}/>
+      <KpiGrid items={homeKpisNext}/>
+      {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
+          <div><div style={{fontSize:14,fontWeight:900}}>Today at a glance</div><div style={TEXT.tinyMeta}>Inventory, buyer demand, and quality signals</div></div>
+          <Btn size="sm" variant="ghost" onClick={()=>setPage("sales")}>Sales</Btn>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          {[["Reserved",reservedSlabs,C.amber],["Sold",soldSlabs,C.green],["Rejected Today",rejectedToday,rejectedToday?C.red:C.textDim]].map(([label,value,color])=>(
+            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px"}}>
+              <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
+              <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
+            </div>
+          ))}
+        </div>
+        {adminPriorities.length===0?<div style={{fontSize:12,color:C.textDim,background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10}}>No urgent buyer follow-ups right now.</div>:
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            {adminPriorities.map((p,i)=>(
+              <button key={`${p.label}-${i}`} onClick={()=>setPage(p.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
+                <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{p.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.detail}</span></span>
+                <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Open</span>
+              </button>
+            ))}
+          </div>}
+      </Card>}
       {isAdmin&&overdueFollowups.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
           <div>
