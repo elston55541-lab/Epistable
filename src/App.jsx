@@ -3113,6 +3113,7 @@ function PublicQuotePage({quoteId}) {
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [copied,setCopied]=useState(false);
+  const [summaryCopied,setSummaryCopied]=useState(false);
   const [buyerMessage,setBuyerMessage]=useState("");
   const [decisionBusy,setDecisionBusy]=useState("");
   const [decisionError,setDecisionError]=useState("");
@@ -3140,6 +3141,8 @@ function PublicQuotePage({quoteId}) {
   const statusLabel=(quote.status||"sent").replace("_"," ");
   const validUntil=quote.validity_ts?fmtD(quote.validity_ts):"Not specified";
   const expired=quote.validity_ts&&quote.validity_ts<Date.now();
+  const expiringSoon=quote.status==="sent"&&quote.validity_ts&&quote.validity_ts>Date.now()&&quote.validity_ts-Date.now()<=3*86400000;
+  const daysLeft=quote.validity_ts&&!expired?Math.max(1,Math.ceil((quote.validity_ts-Date.now())/86400000)):0;
   const timelineStatus=expired&&quote.status==="sent"?"expired":quote.status||"sent";
   const fulfillment=fulfillmentConf(quote.fulfillment_status||(quote.status==="accepted"?"payment_pending":"not_started"));
   const canDecide=quote.status==="sent"&&!expired;
@@ -3167,6 +3170,19 @@ function PublicQuotePage({quoteId}) {
   ];
   async function copyLink(){
     try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1400);}catch(e){}
+  }
+  async function copyQuoteSummary(){
+    const text=[
+      `Epistable quote: ${quote.id}`,
+      `Factory: ${quote.factory_name||"Verified factory"}`,
+      `Slab: ${quote.slab_id||"-"} | ${quote.stone} | ${quote.grade}`,
+      `Area: ${Number(quote.area_sq_ft||0).toLocaleString("en-IN")} sq ft`,
+      `Rate: Rs ${Number(quote.price_per_sq_ft||0).toLocaleString("en-IN")}/sq ft`,
+      `Total: Rs ${Number(quote.total_amount||0).toLocaleString("en-IN")}`,
+      `Valid until: ${validUntil}`,
+      window.location.href
+    ].join("\n");
+    try{await navigator.clipboard.writeText(text);setSummaryCopied(true);setTimeout(()=>setSummaryCopied(false),1400);}catch(e){window.prompt("Copy quote summary",text);}
   }
   async function submitDecision(decision){
     if(!canDecide||decisionBusy)return;
@@ -3198,8 +3214,19 @@ function PublicQuotePage({quoteId}) {
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
               {expired&&<span style={{background:C.redBg,border:`1px solid ${C.redBorder}`,color:C.red,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900}}>Expired</span>}
+              {expiringSoon&&<span style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,color:C.amber,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900}}>Expires in {daysLeft} day{daysLeft===1?"":"s"}</span>}
               <span style={{background:C.surface,border:`1px solid ${C.border}`,color:statusColor,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900,textTransform:"capitalize"}}>{statusLabel}</span>
               {quote.status==="accepted"&&<span style={{background:fulfillment.bg,border:`1px solid ${fulfillment.border}`,color:fulfillment.color,borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:900}}>{fulfillment.label}</span>}
+            </div>
+          </div>
+          <div style={{padding:18,borderBottom:`1px solid ${C.border}`,background:expiringSoon?C.amberBg:C.greenBg}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
+              {[["Verified slab",quote.slab_id||"-"],["Factory issued",quote.factory_name||"Verified factory"],["Buyer action",canDecide?"Accept or request changes":statusLabel],["Validity",expired?"Expired":quote.validity_ts?`${daysLeft} day${daysLeft===1?"":"s"} left`:"Not specified"]].map(([label,value])=>(
+                <div key={label} style={{background:C.white,border:`1px solid ${expiringSoon?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:10,color:C.textDim,fontWeight:900,marginBottom:4}}>{label}</div>
+                  <div style={{fontSize:13,color:C.text,fontWeight:900}}>{value}</div>
+                </div>
+              ))}
             </div>
           </div>
           <div style={{padding:18,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,borderBottom:`1px solid ${C.border}`}}>
@@ -3252,7 +3279,7 @@ function PublicQuotePage({quoteId}) {
             </div>}
             {quote.status==="accepted"&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:900,color:C.green,marginBottom:4}}>Quote accepted</div>
-              <div style={{fontSize:12,color:C.textMid}}>Current next step: {fulfillment.buyer}.</div>
+              <div style={{fontSize:12,color:C.textMid}}>Current next step: {fulfillment.buyer}. Keep this link for order tracking.</div>
               {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
             </div>}
             {quote.status==="revision_requested"&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
@@ -3279,6 +3306,7 @@ function PublicQuotePage({quoteId}) {
             </div>}
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               {quote.slab_id&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(quote.slab_id)}`)} style={{background:C.primary,border:"none",borderRadius:10,color:C.white,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>View slab certificate</button>}
+              <button onClick={copyQuoteSummary} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:10,color:C.primary,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Copied summary":"Copy summary"}</button>
               <button onClick={()=>window.print()} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Print quote</button>
             </div>
           </div>
