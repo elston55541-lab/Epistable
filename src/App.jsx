@@ -22,6 +22,11 @@ const mapInquiry = d => ({
   followUpAt:d.follow_up_at||null,
   priority:d.priority||"warm",
 });
+const buyerVisibleSlabs = rows =>
+  (rows||[]).filter(x =>
+    (x.grade==="Premium"||x.grade==="Standard") &&
+    (x.inventoryStatus||x.inventory_status||"available")==="available"
+  );
 const mapQuote = d => ({
   ...d,
   inquiryId:d.inquiry_id,
@@ -2630,11 +2635,21 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
 
 function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
+  const [inventoryLoading,setInventoryLoading]=useState(true);
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
   const buyerFactoryId=buyer.factory_id||buyer.factoryId;
   useEffect(()=>{
-    if(!buyerFactoryId)return;
-    Promise.all([DB.getFac(buyerFactoryId),DB.facInsps(buyerFactoryId),DB.buyerInquiries(buyer.email,buyerFactoryId),DB.buyerQuotes(buyer.email,buyerFactoryId)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
+    if(!buyerFactoryId){setInventoryLoading(false);return;}
+    let active=true;
+    setInventoryLoading(true);
+    DB.getFac(buyerFactoryId).then(f=>{if(active)setFac(f);}).catch(e=>console.error("Buyer factory load failed",e));
+    DB.facInsps(buyerFactoryId)
+      .then(i=>{if(active)setInsps(buyerVisibleSlabs(i));})
+      .catch(e=>console.error("Buyer inventory load failed",e))
+      .finally(()=>{if(active)setInventoryLoading(false);});
+    DB.buyerInquiries(buyer.email,buyerFactoryId).then(q=>{if(active)setInquiries(q);}).catch(e=>console.error("Buyer inquiries load failed",e));
+    DB.buyerQuotes(buyer.email,buyerFactoryId).then(qt=>{if(active)setQuotes(qt);}).catch(e=>console.error("Buyer quotes load failed",e));
+    return()=>{active=false;};
   },[buyer.email,buyerFactoryId]);
   const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
   const activeQuotes=quotes.filter(q=>!["revised","expired","sold"].includes(q.status)&&activeFulfillment(q)!=="sold").length;
@@ -2678,7 +2693,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           <div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-            {[["Available",insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
+            {[["Available",inventoryLoading?"...":insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
               <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:11}}>{icon}</div><div style={{fontSize:18,fontWeight:800,color:C.white,lineHeight:1,marginBottom:2}}>{v}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
             ))}
           </div>
@@ -2687,7 +2702,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
       <div style={{padding:"16px 16px 48px"}}>
         <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
           <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>🪨</div>
-          <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
+          <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{inventoryLoading?"Loading slabs...":`${insps.length} slabs available`}</div></div>
           <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
         </div>
         <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
@@ -2747,6 +2762,7 @@ function slabDims(slab) {
 
 function BuyerPortal({factoryId,onBack,buyer}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
+  const [inventoryLoading,setInventoryLoading]=useState(true);
   const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");const [statusFilter,setStatusFilter]=useState("available");
   const [maxPrice,setMaxPrice]=useState("");const [sortBy,setSortBy]=useState("newest");
   const [viewMode,setViewMode]=useState("all");const [savedIds,setSavedIds]=useState([]);
@@ -2759,15 +2775,22 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   useEffect(()=>{
     let active=true;
     async function load(){
+      if(active)setInventoryLoading(true);
       let fid=factoryId||buyer?.factory_id||buyer?.factoryId||portalFactoryId||localFactoryId();
       if(!fid&&buyer?.email){
         const freshBuyer=await DB.getBuyerByEmail(buyer.email);
         fid=freshBuyer?.factory_id||freshBuyer?.factoryId||"";
       }
-      if(!fid)return;
+      if(!fid){if(active)setInventoryLoading(false);return;}
       if(active)setPortalFactoryId(fid);
-      const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
-      if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));}
+      try {
+        const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
+        if(active){setFac(f);setInsps(buyerVisibleSlabs(i));}
+      } catch(e) {
+        console.error("Buyer inventory portal load failed",e);
+      } finally {
+        if(active)setInventoryLoading(false);
+      }
     }
     load();
     return()=>{active=false;};
@@ -2819,13 +2842,13 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         </div>
         <div style={{padding:"0 18px 20px"}}>
           <div style={{fontSize:20,fontWeight:800,color:"#fff",marginBottom:4}}>{fac?.name||"Factory"}</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{insps.length} verified slabs available</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{inventoryLoading?"Loading verified slabs...":`${insps.length} verified slabs available`}</div>
         </div>
       </div>
       <div style={{padding:"14px 14px 80px"}}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif",marginBottom:10}}/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-          {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
+          {[{id:"all",label:"All slabs",count:inventoryLoading?"...":insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
             <button key={v.id} onClick={()=>setViewMode(v.id)} style={{padding:"10px 12px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:10,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               <span>{v.label}</span>
               <span style={{fontSize:11,opacity:0.75}}>({v.count})</span>
@@ -2865,11 +2888,12 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             </select>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}>
-            <div style={{fontSize:12,color:C.textDim,fontWeight:700}}>{filtered.length} of {insps.length} slabs shown</div>
+            <div style={{fontSize:12,color:C.textDim,fontWeight:700}}>{inventoryLoading?"Loading slabs...":`${filtered.length} of ${insps.length} slabs shown`}</div>
             <button onClick={clearFilters} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset filters</button>
           </div>
         </Card>
-        {filtered.length===0?<div style={{background:"#fff",borderRadius:12,padding:"40px 24px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:10}}>🪨</div><div style={{fontSize:15,fontWeight:700}}>{viewMode==="saved"?"No saved slabs yet":"No slabs available yet"}</div></div>:
+        {inventoryLoading?<div style={{background:"#fff",borderRadius:12,padding:"40px 24px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:10}}>🪨</div><div style={{fontSize:15,fontWeight:700}}>Loading slabs...</div></div>:
+        filtered.length===0?<div style={{background:"#fff",borderRadius:12,padding:"40px 24px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:10}}>🪨</div><div style={{fontSize:15,fontWeight:700}}>{viewMode==="saved"?"No saved slabs yet":"No slabs available yet"}</div></div>:
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
           {filtered.map(slab=>{
             const g=gradeConf(slab.grade);
