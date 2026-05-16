@@ -2344,6 +2344,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
 
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
   const [orderBusy,setOrderBusy]=useState("");
+  const [orderCopied,setOrderCopied]=useState("");
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -2381,6 +2382,10 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
     const status=activeFulfillment(q);
     const map={payment_pending:"payment_received",payment_received:"dispatch_scheduled",dispatch_scheduled:"dispatched",dispatched:"delivered",delivered:"sold"};
     return map[status]||"payment_pending";
+  }
+  async function copyOrderLink(q){
+    const url=`${window.location.origin}/quote/${encodeURIComponent(q.id)}`;
+    try{await navigator.clipboard.writeText(url);setOrderCopied(q.id);setTimeout(()=>setOrderCopied(""),1400);}catch(e){window.prompt("Copy quote link",url);}
   }
   async function advanceOrder(q){
     if(orderBusy)return;
@@ -2426,13 +2431,17 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
             <div key={q.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:10,alignItems:"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-                <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} - Rs {Number(q.totalAmount||q.total_amount||0).toLocaleString("en-IN")}</div>
+                <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} - Rs {Number(q.totalAmount||q.total_amount||0).toLocaleString("en-IN")} - {q.id}</div>
               </div>
               <div>
                 <div style={{fontSize:10,fontWeight:900,color:conf.color,marginBottom:5}}>{conf.label}</div>
                 <PBar value={(nextIndex+1)/fulfillmentStages.length*100} color={conf.color} h={6}/>
               </div>
-              <Btn size="sm" variant={activeFulfillment(q)==="delivered"?"green":"ghost"} disabled={orderBusy===q.id} onClick={()=>advanceOrder(q)}>{orderBusy===q.id?"Updating...":orderAction(q)}</Btn>
+              <div style={{display:"flex",gap:6,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open</Btn>
+                <Btn size="sm" variant="secondary" onClick={()=>copyOrderLink(q)}>{orderCopied===q.id?"Copied":"Copy"}</Btn>
+                <Btn size="sm" variant={activeFulfillment(q)==="delivered"?"green":"ghost"} disabled={orderBusy===q.id} onClick={()=>advanceOrder(q)}>{orderBusy===q.id?"Updating...":orderAction(q)}</Btn>
+              </div>
             </div>
           );})}
           {activeOrders.length>5&&<button onClick={()=>setPage("quotes")} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",padding:"8px 0 0",textAlign:"left"}}>View {activeOrders.length-5} more active orders</button>}
@@ -2456,7 +2465,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
       </Card>}
       {acceptedActionItems.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.greenBorder,background:C.greenBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
-          <div><div style={{fontSize:14,fontWeight:900,color:C.green}}>Accepted quotes ready to close</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Confirm payment or dispatch, then mark sold from Quotes.</div></div>
+          <div><div style={{fontSize:14,fontWeight:900,color:C.green}}>Accepted quotes ready to move</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Advance payment, dispatch, delivery, and sold status from this dashboard.</div></div>
           <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
         </div>
         {acceptedActionItems.map((q,i)=>(
@@ -2465,7 +2474,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
               <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
               <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
             </div>
-            <Btn size="sm" variant="green" onClick={()=>setPage("quotes")}>Close</Btn>
+            <Btn size="sm" variant="green" disabled={orderBusy===q.id} onClick={()=>advanceOrder(q)}>{orderBusy===q.id?"Updating...":orderAction(q)}</Btn>
           </div>
         ))}
       </Card>}
@@ -2642,6 +2651,17 @@ function buyerQuoteNextAction(q) {
   return {label:"Quote closed",color:C.textDim,bg:C.surface,border:C.border};
 }
 
+function buyerQuotePriority(q) {
+  const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";
+  if(q.status==="sent"&&!expired)return 0;
+  if(q.status==="accepted"&&activeFulfillment(q)!=="sold")return 1;
+  if(q.status==="revision_requested")return 2;
+  if(expired)return 3;
+  if(q.status==="revised")return 4;
+  if(activeFulfillment(q)==="sold")return 5;
+  return 6;
+}
+
 function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   const [fac,setFac]=useState(null);const [quotes,setQuotes]=useState([]);const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState("active");const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
@@ -2670,7 +2690,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
     if(filter==="accepted")return q.status==="accepted"&&activeFulfillment(q)!=="sold";
     if(filter==="closed")return expired||q.status==="revised"||activeFulfillment(q)==="sold";
     return !expired&&q.status!=="revised"&&activeFulfillment(q)!=="sold";
-  });
+  }).sort((a,b)=>buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0));
   const needResponse=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
   const accepted=quotes.filter(q=>q.status==="accepted"&&activeFulfillment(q)!=="sold").length;
   if(loading)return <Loader/>;
@@ -2753,7 +2773,9 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
     Promise.all([DB.getFac(buyerFactoryId),DB.facInsps(buyerFactoryId),DB.buyerInquiries(buyer.email,buyerFactoryId),DB.buyerQuotes(buyer.email,buyerFactoryId)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
   },[buyer.email,buyerFactoryId]);
   const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
-  const activeQuotes=quotes.filter(q=>!["revised","expired","sold"].includes(q.status)&&activeFulfillment(q)!=="sold").length;
+  const visibleQuotes=[...quotes].sort((a,b)=>buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0));
+  const activeQuotes=quotes.filter(q=>!(q.status==="sent"&&q.validityTs&&q.validityTs<Date.now())&&!["revised","expired","sold"].includes(q.status)&&activeFulfillment(q)!=="sold").length;
+  const responseQuotes=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
   function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
   async function submitQuoteAction(){
     if(!quoteAction||quoteBusy)return;
@@ -2808,7 +2830,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         </div>
         <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
           <div style={{width:46,height:46,borderRadius:12,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:C.primary,flexShrink:0}}>Quote</div>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:900,color:C.text,marginBottom:3}}>Track Quotes & Orders</div><div style={{fontSize:12,color:C.textMid}}>{activeQuotes} active quotes, {quotes.filter(q=>q.status==="sent").length} waiting for response</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:900,color:C.text,marginBottom:3}}>Track Quotes & Orders</div><div style={{fontSize:12,color:C.textMid}}>{activeQuotes} active quotes, {responseQuotes} waiting for response</div></div>
           <span style={{fontSize:20,color:C.textDim}}>&gt;</span>
         </div>
         <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
@@ -2820,8 +2842,8 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
             <div><div style={{fontSize:14,fontWeight:800}}>My Quotes</div><div style={{fontSize:11,color:C.textDim,marginTop:2}}>Track quotes sent by the factory</div></div>
             <button onClick={onViewQuotes} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>View all</button>
           </div>
-          {quotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
-            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(quotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
+          {visibleQuotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
+            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(visibleQuotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
                 <div style={{fontSize:11,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
