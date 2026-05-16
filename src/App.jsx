@@ -2675,7 +2675,8 @@ function buyerQuotePriority(q) {
 
 function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   const [fac,setFac]=useState(null);const [quotes,setQuotes]=useState([]);const [loading,setLoading]=useState(true);
-  const [filter,setFilter]=useState("active");const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
+  const [filter,setFilter]=useState("active");const [search,setSearch]=useState("");const [sortBy,setSortBy]=useState("priority");const [copiedQuote,setCopiedQuote]=useState("");
+  const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
   const buyerFactoryId=buyer.factory_id||buyer.factoryId;
   async function load(){
     if(!buyerFactoryId){setLoading(false);return;}
@@ -2695,13 +2696,33 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
     if(row)setQuotes(prev=>prev.map(q=>q.id===row.id?mapQuote(row):q));
     setQuoteAction(null);setQuoteMsg("");
   }
+  async function copyBuyerQuoteSummary(q){
+    const next=buyerQuoteNextAction(q);
+    const text=[
+      `Epistable quote: ${q.id}`,
+      `Factory: ${q.factoryName||q.factory_name||fac?.name||"Verified factory"}`,
+      `Slab: ${q.slabId||q.slab_id||"-"} | ${q.stone} | ${q.grade}`,
+      `Area: ${Number(q.areaSqFt||q.area_sq_ft||0).toLocaleString("en-IN")} sq ft`,
+      `Total: Rs ${Number(q.totalAmount||q.total_amount||0).toLocaleString("en-IN")}`,
+      `Status: ${next.label}`,
+      `${window.location.origin}/quote/${encodeURIComponent(q.id)}`,
+    ].join("\n");
+    try{await navigator.clipboard.writeText(text);setCopiedQuote(q.id);setTimeout(()=>setCopiedQuote(""),1400);}catch(e){window.prompt("Copy quote summary",text);}
+  }
   const filtered=quotes.filter(q=>{
     const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";
-    if(filter==="respond")return q.status==="sent"&&!expired;
-    if(filter==="accepted")return q.status==="accepted"&&activeFulfillment(q)!=="sold";
-    if(filter==="closed")return expired||q.status==="revised"||activeFulfillment(q)==="sold";
-    return !expired&&q.status!=="revised"&&activeFulfillment(q)!=="sold";
-  }).sort((a,b)=>buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0));
+    const matchesFilter=filter==="respond"?q.status==="sent"&&!expired:
+      filter==="accepted"?q.status==="accepted"&&activeFulfillment(q)!=="sold":
+      filter==="closed"?expired||q.status==="revised"||activeFulfillment(q)==="sold":
+      !expired&&q.status!=="revised"&&activeFulfillment(q)!=="sold";
+    const hay=[q.id,q.stone,q.grade,q.slabId,q.slab_id,q.factoryName,q.factory_name,q.buyerMessage,q.buyer_message].filter(Boolean).join(" ").toLowerCase();
+    return matchesFilter&&(!search||hay.includes(search.toLowerCase()));
+  }).sort((a,b)=>{
+    if(sortBy==="newest")return Number(b.created_at||0)-Number(a.created_at||0);
+    if(sortBy==="valueHigh")return Number(b.totalAmount||b.total_amount||0)-Number(a.totalAmount||a.total_amount||0);
+    if(sortBy==="valueLow")return Number(a.totalAmount||a.total_amount||0)-Number(b.totalAmount||b.total_amount||0);
+    return buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0);
+  });
   const needResponse=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
   const accepted=quotes.filter(q=>q.status==="accepted"&&activeFulfillment(q)!=="sold").length;
   if(loading)return <Loader/>;
@@ -2732,6 +2753,21 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
       </div>
       <div style={{padding:"14px 14px 60px"}}>
         <KpiGrid items={[{label:"Need Response",value:needResponse,icon:"Reply",color:C.primary},{label:"Accepted",value:accepted,icon:"Won",color:C.green},{label:"Total Quotes",value:quotes.length,icon:"Quote",color:C.text},{label:"Factory",value:fac?.name?"1":"-",icon:"Mill",color:C.teal}]}/>
+        <Card style={{padding:12,marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(130px,180px)",gap:8}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}/>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}>
+              <option value="priority">Priority first</option>
+              <option value="newest">Newest first</option>
+              <option value="valueHigh">Value high-low</option>
+              <option value="valueLow">Value low-high</option>
+            </select>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:9}}>
+            <div style={{fontSize:12,color:C.textDim,fontWeight:800}}>{filtered.length} of {quotes.length} quotes shown</div>
+            <button onClick={()=>{setSearch("");setSortBy("priority");setFilter("active");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset</button>
+          </div>
+        </Card>
         <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
           {[["active","Active"],["respond","Need response"],["accepted","Accepted"],["closed","Closed"]].map(([id,label])=>(
             <button key={id} onClick={()=>setFilter(id)} style={{padding:"8px 14px",background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:20,color:filter===id?C.white:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
@@ -2763,6 +2799,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
               {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10,fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:12}}><span style={{fontWeight:900,color:C.text}}>Your note:</span> {q.buyerMessage||q.buyer_message}</div>}
               <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end",marginTop:12}}>
                 <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open Quote</Btn>
+                <Btn size="sm" variant="secondary" onClick={()=>copyBuyerQuoteSummary(q)}>{copiedQuote===q.id?"Copied":"Copy Summary"}</Btn>
                 {q.slabId&&<Btn size="sm" variant="secondary" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)}>Slab Certificate</Btn>}
                 {canRespond&&<Btn size="sm" variant="ghost" onClick={()=>openQuoteAction(q,"revision_requested")}>Request Changes</Btn>}
                 {canRespond&&<Btn size="sm" variant="green" onClick={()=>openQuoteAction(q,"accepted")}>Accept</Btn>}
@@ -2787,6 +2824,8 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   const visibleQuotes=[...quotes].sort((a,b)=>buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0));
   const activeQuotes=quotes.filter(q=>!(q.status==="sent"&&q.validityTs&&q.validityTs<Date.now())&&!["revised","expired","sold"].includes(q.status)&&activeFulfillment(q)!=="sold").length;
   const responseQuotes=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
+  const priorityQuote=visibleQuotes[0];
+  const priorityAction=priorityQuote?buyerQuoteNextAction(priorityQuote):null;
   function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
   async function submitQuoteAction(){
     if(!quoteAction||quoteBusy)return;
@@ -2844,6 +2883,21 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:900,color:C.text,marginBottom:3}}>Track Quotes & Orders</div><div style={{fontSize:12,color:C.textMid}}>{activeQuotes} active quotes, {responseQuotes} waiting for response</div></div>
           <span style={{fontSize:20,color:C.textDim}}>&gt;</span>
         </div>
+        {priorityQuote&&<Card style={{padding:14,marginBottom:14,borderColor:priorityAction.border,background:priorityAction.bg}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:11,fontWeight:900,color:priorityAction.color,textTransform:"uppercase",marginBottom:4}}>Next action</div>
+              <div style={{fontSize:15,fontWeight:900,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{priorityQuote.stone}</div>
+              <div style={{fontSize:12,color:C.textMid,marginTop:3}}>{priorityQuote.grade} - Rs {Number(priorityQuote.totalAmount||0).toLocaleString("en-IN")}</div>
+            </div>
+            <span style={{fontSize:11,fontWeight:900,color:priorityAction.color,background:C.white,border:`1px solid ${priorityAction.border}`,borderRadius:20,padding:"5px 9px",whiteSpace:"nowrap"}}>{priorityAction.label}</span>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <Btn size="sm" variant="secondary" onClick={onViewQuotes}>Track</Btn>
+            <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(priorityQuote.id)}`,"_blank","noopener,noreferrer")}>Open Quote</Btn>
+            {priorityQuote.status==="sent"&&!(priorityQuote.validityTs&&priorityQuote.validityTs<Date.now())&&<Btn size="sm" variant="green" onClick={()=>openQuoteAction(priorityQuote,"accepted")}>Accept</Btn>}
+          </div>
+        </Card>}
         <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
           <span style={{fontSize:18,flexShrink:0}}>🛡️</span>
           <div><div style={{...TEXT.itemTitle,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{...TEXT.meta,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
