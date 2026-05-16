@@ -2017,7 +2017,33 @@ function FacInquiries({fac,onChange}) {
   const [quoteBusy,setQuoteBusy]=useState(false);
   async function load(){setInquiries(await DB.facInquiries(fac?.id||""));}
   useEffect(()=>{load();},[]);
-  function openInquiry(q){setSel(q);setFollow({priority:q.priority||"warm",factoryNotes:q.factoryNotes||"",followUpDate:q.followUpAt?new Date(q.followUpAt).toISOString().slice(0,10):""});setQuote({areaSqFt:"",validityDate:"",notes:""});}
+  function quoteRequest(q){
+    const msg=q?.message||"";
+    const read=label=>msg.match(new RegExp(`${label}:\\s*([^\\n]+)`,"i"))?.[1]?.trim()||"";
+    const area=read("Area required").replace(/[^0-9.]/g,"");
+    return {
+      isQuote:/quote request/i.test(msg),
+      area,
+      deliveryLocation:read("Delivery location"),
+      targetDate:read("Target date"),
+      buyerNotes:read("Buyer notes"),
+      additionalMessage:read("Additional message")
+    };
+  }
+  function quoteNotesFromRequest(req){
+    return [
+      req.deliveryLocation?`Delivery location: ${req.deliveryLocation}`:null,
+      req.targetDate?`Target date: ${req.targetDate}`:null,
+      req.buyerNotes?`Buyer notes: ${req.buyerNotes}`:null,
+      req.additionalMessage?`Additional message: ${req.additionalMessage}`:null
+    ].filter(Boolean).join("\n");
+  }
+  function openInquiry(q){
+    const req=quoteRequest(q);
+    setSel(q);
+    setFollow({priority:req.isQuote?"hot":q.priority||"warm",factoryNotes:q.factoryNotes||"",followUpDate:q.followUpAt?new Date(q.followUpAt).toISOString().slice(0,10):""});
+    setQuote({areaSqFt:req.area||"",validityDate:"",notes:quoteNotesFromRequest(req)});
+  }
   function followTs(){return follow.followUpDate?new Date(`${follow.followUpDate}T09:00:00`).getTime():null;}
   function buyerPhone(q){return (q.message||"").match(/Phone:\s*([^\n]+)/i)?.[1]?.trim()||"";}
   async function refresh(){await load();onChange?.();}
@@ -2042,13 +2068,28 @@ function FacInquiries({fac,onChange}) {
   }
   return (
     <div>
-      {sel&&<Modal title="Buyer Inquiry" onClose={()=>setSel(null)}>
+      {sel&&(()=>{const req=quoteRequest(sel);return <Modal title={req.isQuote?"Quote Request":"Buyer Inquiry"} onClose={()=>setSel(null)}>
         <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:14,marginBottom:14}}>
           <div style={{fontSize:14,fontWeight:800,marginBottom:2}}>{sel.buyer_name}{sel.buyer_company?" · "+sel.buyer_company:""}</div>
-          {[["Slab",sel.slab_id],["Stone",sel.stone],["Grade",sel.grade],["Message",sel.message||"—"]].map(([l,v])=>(
+          {[["Slab",sel.slab_id],["Stone",sel.stone],["Grade",sel.grade],...(req.isQuote?[]:[["Message",sel.message||"—"]])].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:12,fontWeight:600}}>{v}</span></div>
           ))}
         </div>
+        {req.isQuote&&<Card style={{padding:12,marginBottom:12,boxShadow:"none",background:C.greenBg,borderColor:C.greenBorder}}>
+          <div style={{fontSize:13,fontWeight:900,color:C.green,marginBottom:9}}>Buyer quote requirements</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:req.buyerNotes||req.additionalMessage?9:0}}>
+            {[["Area",req.area?`${req.area} sq ft`:"Not specified"],["Delivery",req.deliveryLocation||"Not specified"],["Target date",req.targetDate||"Not specified"],["Est. value",req.area?`₹${Math.round(Number(req.area||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0)).toLocaleString("en-IN")}`:"—"]].map(([l,v])=>(
+              <div key={l} style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:8,padding:"8px 9px"}}>
+                <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginBottom:3}}>{l}</div>
+                <div style={{fontSize:12,color:C.text,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {(req.buyerNotes||req.additionalMessage)&&<div style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:8,padding:"9px 10px",fontSize:12,lineHeight:1.45,color:C.textMid}}>
+            {req.buyerNotes&&<div><span style={{fontWeight:900,color:C.text}}>Notes:</span> {req.buyerNotes}</div>}
+            {req.additionalMessage&&<div style={{marginTop:req.buyerNotes?5:0}}><span style={{fontWeight:900,color:C.text}}>Message:</span> {req.additionalMessage}</div>}
+          </div>}
+        </Card>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
           <Sel label="Priority" value={follow.priority} onChange={v=>setFollow(p=>({...p,priority:v}))} options={[{value:"hot",label:"Hot"},{value:"warm",label:"Warm"},{value:"low",label:"Low"}]}/>
           <Inp label="Next follow-up" type="date" value={follow.followUpDate} onChange={v=>setFollow(p=>({...p,followUpDate:v}))}/>
@@ -2079,18 +2120,18 @@ function FacInquiries({fac,onChange}) {
           <Btn variant="ghost" onClick={()=>reserveInquiry(sel)}>Reserve</Btn>
           <Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn>
         </div>
-      </Modal>}
+      </Modal>;})()}
       <div style={TEXT.pageTitle}>Buyer Inquiries</div>
       {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
-      <Card>{inquiries.map((q,i)=>(
+      <Card>{inquiries.map((q,i)=>{const req=quoteRequest(q);return(
         <div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed"?C.redBg:q.status==="new"?C.primaryBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.grade}{q.followUpAt?` · Follow up ${fmtD(q.followUpAt)}`:""}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.grade}{req.isQuote?" · Quote request":""}{q.followUpAt?` · Follow up ${fmtD(q.followUpAt)}`:""}</div></div>
           <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
             <span style={{fontSize:10,fontWeight:800,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span>
             <InqPill status={q.status}/>
           </div>
         </div>
-      ))}</Card>}
+      );})}</Card>}
     </div>
   );
 }
