@@ -38,7 +38,10 @@ export async function signInWithEmail(email, password) {
   const normalizedEmail = email.trim().toLowerCase();
 
   const auth = requireData(
-    await supabase.auth.signInWithPassword({ email: normalizedEmail, password }),
+    await withTimeout(
+      supabase.auth.signInWithPassword({ email: normalizedEmail, password }),
+      "Login took too long. Please check your connection and try again."
+    ),
     "Could not sign in"
   );
 
@@ -97,6 +100,22 @@ export async function acceptInviteWithPassword(email, password, mode = "signup")
     : await loadProfileForAuthUser(auth.user?.id, normalizedEmail);
 
   return { auth, profile: profile?.[0] || profile };
+}
+
+export function friendlyAuthError(error, context = "login") {
+  const raw = String(error?.message || error || "").trim();
+  const msg = raw.toLowerCase();
+  if (!raw) return context === "invite" ? "Could not accept invite. Please try again." : "Could not sign in. Please try again.";
+  if (msg.includes("invalid login credentials")) return "Email or password is incorrect.";
+  if (msg.includes("email not confirmed")) return "Your email is not confirmed yet. Open the confirmation email, then try again.";
+  if (msg.includes("rate limit")) return "Too many attempts. Wait a few minutes, then try again.";
+  if (msg.includes("no epistable profile") || msg.includes("no pending invite")) return context === "invite"
+    ? "No pending Epistable invite was found for this email. Ask the factory admin to create access first."
+    : "This login is not linked to an Epistable profile yet. Ask the admin to link this email.";
+  if (msg.includes("account suspended")) return "This account is suspended. Contact your administrator.";
+  if (msg.includes("fetch") || msg.includes("network") || msg.includes("took too long")) return "Connection timed out. Check your internet and try again.";
+  if (msg.includes("already registered") || msg.includes("user already registered")) return "This email already has a login. Choose “I Have Login” and enter the existing password.";
+  return raw;
 }
 
 function withTimeout(promise, message, ms = 15000) {
