@@ -1740,6 +1740,10 @@ function FacScan({user,fac,paused,onSaved}) {
               <div style={{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:8}}>{grade.reason}</div>
               {grade.tips&&<div style={{background:C.primaryBg,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.primary}}>💡 {grade.tips}</div>}
             </Card>
+            <Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder,background:C.amberBg}}>
+              <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:5}}>AI-assisted, inspector-confirmed</div>
+              <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Review the evidence photos, measurements, defects, and price before saving. If the AI grade does not match the slab, override it below so the certificate reflects the human inspection.</div>
+            </Card>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
               {GRADES.map(g=>(
                 <button key={g.id} onClick={()=>setGrade({...grade,grade:g.id,pricePerSqFt:g.price})} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"sans-serif",textAlign:"center"}}>
