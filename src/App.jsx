@@ -616,10 +616,10 @@ function Login({onOwner,onFactory,onBuyer}) {
       const {profile}=await signInWithEmail(email,pass);
       if(profile.role==="owner"){onOwner();return;}
       if(profile.role==="buyer"){
-        await DB.updBuyer(profile.id,{last_active:Date.now()});
+        DB.updBuyer(profile.id,{last_active:Date.now()}).catch(e=>console.warn("Could not update buyer activity",e));
         onBuyer(profile);return;
       }
-      await DB.updUser(profile.id,{last_active:Date.now()});
+      DB.updUser(profile.id,{last_active:Date.now()}).catch(e=>console.warn("Could not update user activity",e));
       onFactory(profile);return;
     } catch(e){setErr("Login error: "+e.message);setLoading(false);}
   }
