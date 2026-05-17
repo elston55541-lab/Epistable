@@ -252,6 +252,22 @@ export function SlabCertificate({slabId}) {
               {slab.notes&&<div style={{marginTop:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,fontSize:13,lineHeight:1.6,color:C.textMid}}>{slab.notes}</div>}
             </Card>
 
+            <Card className="cert-card cert-interactive" style={{padding:18}}>
+              <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Buyer verification checklist</div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:8}}>
+                {[
+                  ["Match slab ID",`Confirm ${slab.id} matches the physical slab or invoice.`],
+                  ["Review evidence",`Check ${photos.length || (photo ? 1 : 0)} photo${(photos.length || (photo ? 1 : 0))===1 ? "" : "s"}, defects, and measurements.`],
+                  ["Request quote",canInquire?"Send area and delivery needs from this certificate.":"Ask the factory for alternatives."],
+                ].map(([label,detail])=>(
+                  <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
+                    <div style={{fontSize:11,fontWeight:900,color:C.primary,marginBottom:4}}>{label}</div>
+                    <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{detail}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
             {photos.length>1&&<Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:12}}>Photo Evidence</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>

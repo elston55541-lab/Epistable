@@ -64,6 +64,28 @@ const TEXT = {
   emptyTitle: {fontSize:15,lineHeight:1.35,fontWeight:800,letterSpacing:0},
 };
 
+function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
+  return (
+    <Card style={{padding:14,...style}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:900,color:C.text,marginBottom:3}}>{title}</div>
+          {subtitle&&<div style={TEXT.tinyMeta}>{subtitle}</div>}
+        </div>
+        {actionLabel&&<Btn size="sm" variant="ghost" onClick={onAction}>{actionLabel}</Btn>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+        {items.map((item,i)=>(
+          <div key={`${item.label}-${i}`} style={{background:item.bg||C.surface,border:`1px solid ${item.border||C.border}`,borderRadius:10,padding:"10px 11px"}}>
+            <div style={{fontSize:11,fontWeight:900,color:item.color||C.primary,marginBottom:4}}>{item.label}</div>
+            <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{item.detail}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 const DB = {
   // Factories
   async createFac(d) {
@@ -1300,6 +1322,15 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   const rejectedToday=today.filter(i=>i.grade==="Rejected").length;
   const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
   const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:"Rs "+b.total,icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
+  const factoryNextSteps=isAdmin?[
+    {label:"1. Publish trust",detail:`${availableSlabs} available slabs can be shared from buyer inventory.`,color:C.green,bg:C.greenBg,border:C.greenBorder},
+    {label:"2. Convert demand",detail:quoteRequests.length?`${quoteRequests.length} quote request${quoteRequests.length===1?"":"s"} need pricing.`:"Create quotes from fresh inquiries.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+    {label:"3. Close orders",detail:reservedSlabs?`${reservedSlabs} reserved slab${reservedSlabs===1?"":"s"} need follow-up.`:"Accepted quotes will appear in Sales.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+  ]:[
+    {label:"1. Capture evidence",detail:"Add full slab, surface, edge, and defect photos.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+    {label:"2. Grade consistently",detail:"Record measurements and defects before saving.",color:C.green,bg:C.greenBg,border:C.greenBorder},
+    {label:"3. Share proof",detail:"Use QR certificates from history when buyers ask.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+  ];
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
@@ -1313,6 +1344,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         </div>
       </div>
       <KpiGrid items={homeKpisNext}/>
+      <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:14}}/>
       {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
           <div><div style={{fontSize:14,fontWeight:900}}>Today at a glance</div><div style={TEXT.tinyMeta}>Inventory, buyer demand, and quality signals</div></div>
@@ -2389,6 +2421,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
 function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,onChange}) {
   const [orderBusy,setOrderBusy]=useState("");
   const [orderCopied,setOrderCopied]=useState("");
+  const [briefCopied,setBriefCopied]=useState(false);
   const byStatus=s=>inquiries.filter(q=>q.status===s).length;
   const overdue=inquiries.filter(q=>q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed");
   const funnel=[["New",byStatus("new"),C.primary],["Contacted",byStatus("contacted"),C.amber],["Reserved",byStatus("reserved"),C.purple],["Closed",byStatus("closed"),C.green]];
@@ -2431,6 +2464,18 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
     const url=`${window.location.origin}/quote/${encodeURIComponent(q.id)}`;
     try{await navigator.clipboard.writeText(url);setOrderCopied(q.id);setTimeout(()=>setOrderCopied(""),1400);}catch(e){window.prompt("Copy quote link",url);}
   }
+  async function copySalesBrief(){
+    const text=[
+      `Epistable sales update - ${fmtD(Date.now())}`,
+      `New inquiries: ${byStatus("new")}`,
+      `Quotes sent: ${sentQuotes}`,
+      `Accepted quotes: ${acceptedQuotes}`,
+      `Active orders: ${activeOrders.length}`,
+      `Sold value: Rs ${wonValue.toLocaleString("en-IN")}`,
+      overdue.length?`Overdue follow-ups: ${overdue.map(q=>q.buyerName||q.buyer_name||"Buyer").slice(0,3).join(", ")}`:"No overdue follow-ups",
+    ].join("\n");
+    try{await navigator.clipboard.writeText(text);setBriefCopied(true);setTimeout(()=>setBriefCopied(false),1400);}catch(e){window.prompt("Copy sales update",text);}
+  }
   async function advanceOrder(q){
     if(orderBusy)return;
     const next=nextOrderStatus(q);
@@ -2453,6 +2498,11 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
         <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
       </div>
       <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      <GuidanceCard title="Sales operating rhythm" subtitle="A simple daily checklist for factory follow-up" actionLabel={briefCopied?"Copied":"Copy update"} onAction={copySalesBrief} style={{marginBottom:14}} items={[
+        {label:"Morning",detail:"Review new inquiries and send quotes for interested slabs.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+        {label:"Afternoon",detail:"Follow up sent quotes and handle buyer change requests.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+        {label:"Dispatch",detail:"Move accepted orders through payment, dispatch, delivery, and sold.",color:C.green,bg:C.greenBg,border:C.greenBorder},
+      ]}/>
       <Card style={{padding:16,marginBottom:14,borderColor:activeOrders.length?C.primaryBorder:C.border}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
           <div>
@@ -2928,6 +2978,11 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:900,color:C.text,marginBottom:3}}>Track Quotes & Orders</div><div style={{fontSize:12,color:C.textMid}}>{activeQuotes} active quotes, {responseQuotes} waiting for response</div></div>
           <span style={{fontSize:20,color:C.textDim}}>&gt;</span>
         </div>
+        <GuidanceCard title="How buying works" subtitle="From verified slab to delivery tracking" style={{marginBottom:14}} items={[
+          {label:"1. Shortlist",detail:"Open inventory, filter slabs, and review certificates.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+          {label:"2. Request quote",detail:"Send area, delivery location, and requirements.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+          {label:"3. Track order",detail:"Accept the quote and follow payment, dispatch, and delivery.",color:C.green,bg:C.greenBg,border:C.greenBorder},
+        ]}/>
         {priorityQuote&&<Card style={{padding:14,marginBottom:14,borderColor:priorityAction.border,background:priorityAction.bg}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
             <div style={{minWidth:0}}>
@@ -3406,6 +3461,11 @@ function PublicQuotePage({quoteId}) {
                 </div>
               </div>
             </div>
+            <GuidanceCard title="Before you accept" subtitle="Quick trust checks for the buyer" style={{marginBottom:16,boxShadow:"none"}} items={[
+              {label:"Certificate",detail:"Open the slab certificate and confirm grade, photos, and defects.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+              {label:"Commercials",detail:"Confirm area, rate, delivery terms, and validity date.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+              {label:"Tracking",detail:"After acceptance, this quote becomes the order tracking link.",color:C.green,bg:C.greenBg,border:C.greenBorder},
+            ]}/>
             {quote.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:13,marginBottom:16}}>
               <div style={{fontSize:12,color:C.textDim,fontWeight:900,marginBottom:5}}>Notes</div>
               <div style={{fontSize:13,lineHeight:1.6}}>{quote.notes}</div>
