@@ -3453,8 +3453,6 @@ export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const quoteMatch=window.location.pathname.match(/^\/quote\/([^/?#]+)/);
   const inviteMatch=window.location.pathname==="/invite";
-  const [session,setSession]=useState(null);
-  const [booting,setBooting]=useState(true);
   function normalizeProfile(profile){
     if(!profile)return profile;
     const factoryId=profile.factory_id||profile.factoryId||null;
@@ -3467,21 +3465,40 @@ export default function App() {
     if(profile.role==="buyer")return {type:"buyer",buyer:profile};
     return {type:"factory",user:profile};
   }
+  function readCachedProfile(){
+    try {
+      const raw=window.localStorage.getItem("epistable.profile");
+      return raw?normalizeProfile(JSON.parse(raw)):null;
+    } catch(e) {
+      return null;
+    }
+  }
+  function cacheProfile(profile){
+    try {
+      if(profile)window.localStorage.setItem("epistable.profile",JSON.stringify(normalizeProfile(profile)));
+    } catch(e) {}
+  }
+  function clearCachedProfile(){
+    try { window.localStorage.removeItem("epistable.profile"); } catch(e) {}
+  }
+  const cachedProfile=readCachedProfile();
+  const [session,setSession]=useState(()=>cachedProfile?profileSession(cachedProfile):null);
+  const [booting,setBooting]=useState(()=>!cachedProfile);
   useEffect(()=>{
     let active=true;
     getSessionProfile()
-      .then(profile=>{if(active&&profile)setSession(profileSession(profile));})
+      .then(profile=>{if(!active)return;if(profile){cacheProfile(profile);setSession(profileSession(profile));}else{clearCachedProfile();setSession(null);}})
       .catch(e=>console.error("Session restore failed",e))
       .finally(()=>{if(active)setBooting(false);});
     return ()=>{active=false;};
   },[]);
-  async function logout(){try{await signOut();}catch(e){}setSession(null);}
+  async function logout(){try{await signOut();}catch(e){}clearCachedProfile();setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
   if(quoteMatch)return <PublicQuotePage quoteId={decodeURIComponent(quoteMatch[1])}/>;
-  if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");setSession(profileSession(profile));}}/>;
+  if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");cacheProfile(profile);setSession(profileSession(profile));}}/>;
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
     :session?.type==="buyer"?(session.showQuotes?<BuyerQuotesPage buyer={session.buyer} onLogout={logout} onBack={()=>setSession({...session,showQuotes:false})} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showQuotes:false,showPortal:true};})}/>:session.showPortal?<BuyerPortal factoryId={session.buyer.factory_id||session.buyer.factoryId} buyer={session.buyer} onBack={()=>setSession({...session,showPortal:false})}/>:<BuyerHome buyer={session.buyer} onLogout={logout} onViewQuotes={()=>setSession({...session,showQuotes:true})} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showPortal:true};})}/>)
-    :<Login onOwner={()=>setSession({type:"owner"})} onFactory={u=>setSession({type:"factory",user:u})} onBuyer={b=>setSession({type:"buyer",buyer:b})}/>;
+    :<Login onOwner={()=>{clearCachedProfile();setSession({type:"owner"});}} onFactory={u=>{cacheProfile(u);setSession({type:"factory",user:normalizeProfile(u)});}} onBuyer={b=>{cacheProfile(b);setSession({type:"buyer",buyer:normalizeProfile(b)});}}/>;
 }
