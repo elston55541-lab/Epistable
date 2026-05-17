@@ -1216,16 +1216,23 @@ function FactoryApp({user,onLogout}) {
   const [disputes,setDisputes]=useState([]);
   const [quotes,setQuotes]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [adminDataLoading,setAdminDataLoading]=useState(false);
   const [viewPortal,setViewPortal]=useState(false);
 
-  async function load(){
+  async function load({blockAdmin=true}={}){
     setLoading(true);
     const canManage=user.role==="admin"||user.role==="manager";
-    const [i,f,n,a,q,fi,d,qt]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id),DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([]),canManage?DB.facInsps(user.factory_id):Promise.resolve([]),canManage?DB.facDisputes(user.factory_id):Promise.resolve([]),canManage?DB.facQuotes(user.factory_id):Promise.resolve([])]);
-    setInsps(i);setFac(f);setNotifs(n);setActivity(a);setInquiries(q);setSalesInsps(canManage?fi:i);setDisputes(d);setQuotes(qt);
+    const [i,f]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id)]);
+    setInsps(i);setFac(f);setSalesInsps(prev=>canManage?(prev.length?prev:i):i);
     setLoading(false);
+    setAdminDataLoading(true);
+    const adminLoad=Promise.all([DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([]),canManage?DB.facInsps(user.factory_id):Promise.resolve([]),canManage?DB.facDisputes(user.factory_id):Promise.resolve([]),canManage?DB.facQuotes(user.factory_id):Promise.resolve([])])
+      .then(([n,a,q,fi,d,qt])=>{setNotifs(n);setActivity(a);setInquiries(q);setSalesInsps(canManage?fi:i);setDisputes(d);setQuotes(qt);})
+      .catch(e=>console.error("Factory dashboard refresh failed",e))
+      .finally(()=>setAdminDataLoading(false));
+    if(blockAdmin)await adminLoad;
   }
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{load({blockAdmin:false});},[]);
   if(loading)return <Loader/>;
   const isAdmin=user.role==="admin"||user.role==="manager";
   if(viewPortal&&fac&&isAdmin)return <BuyerPortal factoryId={fac.id} onBack={()=>setViewPortal(false)} buyer={null}/>;
@@ -1262,6 +1269,7 @@ function FactoryApp({user,onLogout}) {
       <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:11,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,color:paused?"#f87171":"#4ade80"}}>●</span>{paused?"Paused":fac?.name||"Factory"}</div>}
         navItems={nav} page={page} onNav={p=>{setPage(p);if(p==="notifs"){DB.readAll(user.id);load();}}} onLogout={onLogout} userName={user.name} userSub={user.role}>
         {paused&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚫</span><div style={{fontSize:13,fontWeight:700,color:C.red}}>Account Paused — Contact Epistable support to resume.</div></div>}
+        {adminDataLoading&&isAdmin&&<div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 12px",fontSize:12,fontWeight:800,color:C.primary,marginBottom:12}}>Refreshing dashboard data...</div>}
         {pages[page]||pages.home}
       </Shell>
       <ChatBot role="factory" ctxData={{fac,insps,user}}/>
