@@ -99,6 +99,19 @@ function EmptyState({title,body,actionLabel,onAction,secondaryLabel,onSecondary,
   );
 }
 
+function ErrorNotice({title="Something went wrong",message,onRetry,style={}}) {
+  if(!message)return null;
+  return (
+    <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,color:C.red,marginBottom:12,...style}}>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:12,fontWeight:900,marginBottom:2}}>{title}</div>
+        <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{message}</div>
+      </div>
+      {onRetry&&<Btn size="sm" variant="secondary" onClick={onRetry} style={{flexShrink:0,borderColor:C.redBorder,color:C.red}}>Retry</Btn>}
+    </div>
+  );
+}
+
 const DB = {
   // Factories
   async createFac(d) {
@@ -1253,6 +1266,7 @@ function FactoryApp({user,onLogout}) {
   const [loading,setLoading]=useState(false);
   const [shellLoading,setShellLoading]=useState(true);
   const [adminDataLoading,setAdminDataLoading]=useState(false);
+  const [refreshError,setRefreshError]=useState("");
   const [viewPortal,setViewPortal]=useState(false);
 
   async function load({blockAdmin=true}={}){
@@ -1260,12 +1274,14 @@ function FactoryApp({user,onLogout}) {
     setShellLoading(true);
     const canManage=user.role==="admin"||user.role==="manager";
     let userInsps=[];
+    setRefreshError("");
     try {
       const [i,f]=await Promise.all([DB.userInsps(user.id),DB.getFac(user.factory_id)]);
       userInsps=i||[];
       setInsps(userInsps);setFac(prev=>f||prev);setSalesInsps(prev=>canManage?(prev.length?prev:userInsps):userInsps);
     } catch(e) {
       console.error("Factory shell refresh failed",e);
+      setRefreshError(e.message||"Could not refresh factory data. Check your connection and retry.");
     } finally {
       setLoading(false);
       setShellLoading(false);
@@ -1273,7 +1289,7 @@ function FactoryApp({user,onLogout}) {
     setAdminDataLoading(true);
     const adminLoad=Promise.all([DB.getNotifs(user.id),DB.facActivity(user.factory_id),canManage?DB.facInquiries(user.factory_id):Promise.resolve([]),canManage?DB.facInsps(user.factory_id):Promise.resolve([]),canManage?DB.facDisputes(user.factory_id):Promise.resolve([]),canManage?DB.facQuotes(user.factory_id):Promise.resolve([])])
       .then(([n,a,q,fi,d,qt])=>{setNotifs(n);setActivity(a);setInquiries(q);setSalesInsps(canManage?fi:userInsps);setDisputes(d);setQuotes(qt);})
-      .catch(e=>console.error("Factory dashboard refresh failed",e))
+      .catch(e=>{console.error("Factory dashboard refresh failed",e);setRefreshError(e.message||"Some dashboard data could not be refreshed.");})
       .finally(()=>setAdminDataLoading(false));
     if(blockAdmin)await adminLoad;
   }
@@ -1314,6 +1330,7 @@ function FactoryApp({user,onLogout}) {
       <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:11,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,color:paused?"#f87171":"#4ade80"}}>●</span>{paused?"Paused":fac?.name||"Factory"}</div>}
         navItems={nav} page={page} onNav={p=>{setPage(p);if(p==="notifs"){DB.readAll(user.id);load();}}} onLogout={onLogout} userName={user.name} userSub={user.role}>
         {paused&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚫</span><div style={{fontSize:13,fontWeight:700,color:C.red}}>Account Paused — Contact Epistable support to resume.</div></div>}
+        <ErrorNotice message={refreshError} onRetry={()=>load({blockAdmin:false})}/>
         {(shellLoading||adminDataLoading)&&isAdmin&&<div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 12px",fontSize:12,fontWeight:800,color:C.primary,marginBottom:12}}>Refreshing dashboard data...</div>}
         {pages[page]||pages.home}
       </Shell>
@@ -1433,6 +1450,7 @@ function FacScan({user,fac,paused,onSaved}) {
   const [step,setStep]=useState(0);
   const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});
   const [grade,setGrade]=useState(null);const [loading,setLoading]=useState(false);const [saved,setSaved]=useState(false);
+  const [saving,setSaving]=useState(false);const [saveError,setSaveError]=useState("");
   const [photos,setPhotos]=useState({});
   const [photoSlot,setPhotoSlot]=useState("front");
   const [suppliers,setSuppliers]=useState([]);
@@ -1510,11 +1528,18 @@ function FacScan({user,fac,paused,onSaved}) {
   }
 
   async function save(){
-    if(!grade)return;
-    const capturedSupplier=supplierName();
-    const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:capturedSupplier,supplierId:supplierMode==="registered"?form.supplierId||null:null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
-    await DB.saveInsp(insp);
-    setSaved(true);
+    if(!grade||saving)return;
+    setSaving(true);setSaveError("");
+    try {
+      const capturedSupplier=supplierName();
+      const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:capturedSupplier,supplierId:supplierMode==="registered"?form.supplierId||null:null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
+      await DB.saveInsp(insp);
+      setSaved(true);
+    } catch(e) {
+      setSaveError(e.message||"Could not save this slab. Your entries are still on screen, so you can retry.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if(saved)return(
@@ -1681,7 +1706,8 @@ function FacScan({user,fac,paused,onSaved}) {
                 </button>
               ))}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);}}>← Redo</Btn><Btn variant="green" onClick={save}>✓ Save Slab</Btn></div>
+            <ErrorNotice title="Could not save slab" message={saveError} onRetry={save}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setSaveError("");}}>← Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"✓ Save Slab"}</Btn></div>
           </div>
         );})():null}
       </div>}
@@ -2773,15 +2799,22 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   const [fac,setFac]=useState(null);const [quotes,setQuotes]=useState([]);const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState("active");const [search,setSearch]=useState("");const [sortBy,setSortBy]=useState("priority");const [copiedQuote,setCopiedQuote]=useState("");
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
+  const [loadError,setLoadError]=useState("");
   const [resolvedFactoryId,setResolvedFactoryId]=useState(buyer.factory_id||buyer.factoryId||"");
   const buyerFactoryId=buyer.factory_id||buyer.factoryId||resolvedFactoryId;
   async function load(){
     let fid=buyerFactoryId;
     if(!fid){fid=await resolveBuyerFactoryId(buyer);if(fid)setResolvedFactoryId(fid);}
-    if(!fid){setLoading(false);return;}
-    setLoading(true);
-    const [f,qt]=await Promise.all([DB.getFac(fid),DB.buyerQuotes(buyer.email,fid)]);
-    setFac(f);setQuotes(qt);setLoading(false);
+    if(!fid){setLoadError("This buyer is not linked to a factory yet.");setLoading(false);return;}
+    setLoading(true);setLoadError("");
+    try {
+      const [f,qt]=await Promise.all([DB.getFac(fid),DB.buyerQuotes(buyer.email,fid)]);
+      setFac(f);setQuotes(qt);
+    } catch(e) {
+      setLoadError(e.message||"Could not load buyer quotes.");
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(()=>{load();},[buyer.email,buyer.factory_id,buyer.factoryId,resolvedFactoryId]);
   function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
@@ -2851,6 +2884,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
         <div style={{fontSize:13,color:"rgba(255,255,255,0.75)"}}>{fac?.name||buyer.factory_name||"Factory"} - {quotes.length} quotes</div>
       </div>
       <div style={{padding:"14px 14px 60px"}}>
+        <ErrorNotice message={loadError} onRetry={load}/>
         <KpiGrid items={[{label:"Need Response",value:needResponse,icon:"Reply",color:C.primary},{label:"Accepted",value:accepted,icon:"Won",color:C.green},{label:"Total Quotes",value:quotes.length,icon:"Quote",color:C.text},{label:"Factory",value:fac?.name?"1":"-",icon:"Mill",color:C.teal}]}/>
         <Card style={{padding:12,marginBottom:14}}>
           <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(130px,180px)",gap:8}}>
@@ -2910,6 +2944,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
 function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
+  const [loadError,setLoadError]=useState("");
   const [resolvedFactoryId,setResolvedFactoryId]=useState(buyer.factory_id||buyer.factoryId||"");
   const buyerFactoryId=buyer.factory_id||buyer.factoryId||resolvedFactoryId;
   useEffect(()=>{
@@ -2918,8 +2953,13 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
       let fid=buyerFactoryId;
       if(!fid){fid=await resolveBuyerFactoryId(buyer);if(active&&fid)setResolvedFactoryId(fid);}
       if(!fid||!active)return;
-      const [f,i,q,qt]=await Promise.all([DB.getFac(fid),DB.facInsps(fid),DB.buyerInquiries(buyer.email,fid),DB.buyerQuotes(buyer.email,fid)]);
-      if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);}
+      try {
+        setLoadError("");
+        const [f,i,q,qt]=await Promise.all([DB.getFac(fid),DB.facInsps(fid),DB.buyerInquiries(buyer.email,fid),DB.buyerQuotes(buyer.email,fid)]);
+        if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);}
+      } catch(e) {
+        if(active)setLoadError(e.message||"Could not refresh buyer data.");
+      }
     }
     load();
     return()=>{active=false;};
@@ -2975,8 +3015,9 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
             ))}
           </div>
         </div>
-      </div>
-      <div style={{padding:"16px 16px 48px"}}>
+        </div>
+        <div style={{padding:"16px 16px 48px"}}>
+        <ErrorNotice message={loadError}/>
         <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
           <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>🪨</div>
           <div style={{flex:1}}><div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
@@ -3066,6 +3107,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   const [portalFactoryId,setPortalFactoryId]=useState(factoryId||buyer?.factory_id||buyer?.factoryId||localFactoryId());
   const [inquiry,setInquiry]=useState(null);const [inquiryMsg,setInquiryMsg]=useState("");const [inquirySent,setInquirySent]=useState(false);
   const [quoteReq,setQuoteReq]=useState({areaSqFt:"",deliveryLocation:"",targetDate:"",notes:""});
+  const [loadError,setLoadError]=useState("");const [inquiryBusy,setInquiryBusy]=useState(false);const [inquiryError,setInquiryError]=useState("");
   const [qrSlab,setQrSlab]=useState(null);
   const [shortlistCopied,setShortlistCopied]=useState(false);
   const {isMobile}=useBP();
@@ -3082,10 +3124,15 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         const namedFac=await DB.getFacByName(buyer.factory_name);
         fid=namedFac?.id||"";
       }
-      if(!fid)return;
+      if(!fid){if(active)setLoadError("No factory inventory is linked to this buyer yet.");return;}
       if(active)setPortalFactoryId(fid);
-      const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
-      if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));}
+      try {
+        setLoadError("");
+        const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
+        if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));}
+      } catch(e) {
+        if(active)setLoadError(e.message||"Could not load buyer inventory.");
+      }
     }
     load();
     return()=>{active=false;};
@@ -3136,7 +3183,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     setInquirySent(false);
   }
   async function submitInquiry(){
-    if(!inquiry)return;
+    if(!inquiry||inquiryBusy)return;
+    setInquiryBusy(true);setInquiryError("");
     const requestLines=[
       "Quote request",
       quoteReq.areaSqFt?`Area required: ${quoteReq.areaSqFt} sq ft`:null,
@@ -3145,8 +3193,14 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       quoteReq.notes?`Buyer notes: ${quoteReq.notes}`:null,
       inquiryMsg?`Additional message: ${inquiryMsg}`:null
     ].filter(Boolean);
-    await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId:portalFactoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:requestLines.join("\n")});
-    setInquirySent(true);
+    try {
+      await DB.createInquiry({slabId:inquiry.id,stone:inquiry.stone,grade:inquiry.grade,pricePerSqFt:inquiry.pricePerSqFt,factoryId:portalFactoryId,factoryName:fac?.name||"",buyerName:buyer?.name||"Guest Buyer",buyerCompany:buyer?.company||"",buyerEmail:buyer?.email||"",message:requestLines.join("\n")});
+      setInquirySent(true);
+    } catch(e) {
+      setInquiryError(e.message||"Could not send this request. Please retry.");
+    } finally {
+      setInquiryBusy(false);
+    }
   }
   const estimateTotal=quoteReq.areaSqFt&&inquiry?Math.round(Number(quoteReq.areaSqFt||0)*Number(inquiry.pricePerSqFt||0)):0;
   return (
@@ -3166,6 +3220,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         </div>
       </div>
       <div style={{padding:"14px 14px 80px"}}>
+        <ErrorNotice message={loadError}/>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif",marginBottom:10}}/>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:8,marginBottom:10}}>
           {[["Available",availableCount,C.green],["Reserved",reservedCount,C.amber],["Export Ready",exportCount,C.teal],["Premium",premiumCount,C.primary]].map(([label,value,color])=>(
@@ -3292,9 +3347,10 @@ function BuyerPortal({factoryId,onBack,buyer}) {
               <Inp label="Delivery Location" value={quoteReq.deliveryLocation} onChange={v=>setQuoteReq(p=>({...p,deliveryLocation:v}))} placeholder="City, country" />
               <textarea value={quoteReq.notes} onChange={e=>setQuoteReq(p=>({...p,notes:e.target.value}))} placeholder="Requirement notes, payment terms, packing, shipping..." rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",margin:"12px 0 10px"}}/>
               <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Optional message to the factory..." rows={2} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
+              <ErrorNotice title="Could not send request" message={inquiryError} onRetry={submitInquiry}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Cancel</button>
-                <button onClick={submitInquiry} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Send Request</button>
+                <button onClick={submitInquiry} disabled={inquiryBusy} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:inquiryBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:inquiryBusy?0.65:1}}>{inquiryBusy?"Sending...":"Send Request"}</button>
               </div>
             </div>}
           </div>
@@ -3322,7 +3378,7 @@ function PublicQuotePage({quoteId}) {
       const row=Array.isArray(data)?data[0]:data;
       if(!row)setError("Quote not found.");
       setQuote(row);setLoading(false);
-    });
+    }).catch(e=>{if(active){setError(e.message||"Quote unavailable.");setLoading(false);}});
     return()=>{active=false;};
   },[quoteId]);
   if(loading)return <Loader/>;
