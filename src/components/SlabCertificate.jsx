@@ -54,12 +54,16 @@ export function SlabCertificate({slabId}) {
     let active=true;
     async function load(){
       setLoading(true);setError("");
-      const {data,error}=await supabase.rpc("get_public_slab_certificate",{slab_id:slabId});
-      if(!active)return;
-      if(error){setError(error.message||"Unable to load this slab certificate.");setLoading(false);return;}
-      const row=Array.isArray(data)?data[0]:data;
-      if(!row){setError("No verified slab was found for this QR code.");setLoading(false);return;}
-      setSlab(row);setLoading(false);
+      try {
+        const {data,error}=await supabase.rpc("get_public_slab_certificate",{slab_id:slabId});
+        if(!active)return;
+        if(error){setError(error.message||"Unable to load this slab certificate.");setLoading(false);return;}
+        const row=Array.isArray(data)?data[0]:data;
+        if(!row){setError("No verified slab was found for this QR code.");setLoading(false);return;}
+        setSlab(row);setLoading(false);
+      } catch(e) {
+        if(active){setError(e.message||"Unable to load this slab certificate.");setLoading(false);}
+      }
     }
     load();
     return()=>{active=false;};
@@ -83,6 +87,12 @@ export function SlabCertificate({slabId}) {
   const canInquire=(slab.inventory_status||"available")==="available";
   const areaSqFt=Number(inq.areaSqFt);
   const quoteEstimate=Number.isFinite(areaSqFt)&&areaSqFt>0 ? Math.round(areaSqFt*Number(slab.price_per_sq_ft||0)) : 0;
+  const evidenceCount=photos.length || (photo ? 1 : 0);
+  const verificationItems=[
+    {label:"Live certificate",detail:"Use this page URL or QR code as the source of truth before buying."},
+    {label:"Slab identity",detail:`Match certificate ID ${slab.id} with the physical slab, invoice, or factory record.`},
+    {label:"Evidence trail",detail:`Review ${evidenceCount} photo${evidenceCount===1?"":"s"}, measurements, defects, inspector, and timestamp together.`},
+  ];
   const certificateSummary=[
     `Epistable verified slab: ${slab.stone}`,
     `Certificate: ${slab.id}`,
@@ -91,7 +101,7 @@ export function SlabCertificate({slabId}) {
     `Price: Rs ${slab.price_per_sq_ft || 0}/sq ft`,
     `Status: ${inventory.label}`,
     defects.length ? `Defects recorded: ${defects.join(", ")}` : "Defects recorded: none",
-    `Photo evidence: ${photos.length || (photo ? 1 : 0)} photo${(photos.length || (photo ? 1 : 0))===1 ? "" : "s"}`,
+    `Photo evidence: ${evidenceCount} photo${evidenceCount===1 ? "" : "s"}`,
     `Certificate link: ${certificateUrl}`,
   ].join("\n");
   const scrollTo=id=>document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
@@ -211,7 +221,7 @@ export function SlabCertificate({slabId}) {
               <div style={{fontSize:26,fontWeight:900}}>Rs {slab.price_per_sq_ft || 0}<span style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)"}}> / sq ft</span></div>
               <div style={{display:"inline-flex",marginTop:10,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:900,color:inventory.color}}>{inventory.label}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
-                {[["Defects",defects.length||"None"],["Photos",photos.length || (photo ? 1 : 0)],["Export",slab.export_ready ? "Ready" : "No"]].map(([label,value])=>(
+                {[["Defects",defects.length||"None"],["Photos",evidenceCount],["Export",slab.export_ready ? "Ready" : "No"]].map(([label,value])=>(
                   <div key={label} style={{background:"rgba(255,255,255,0.11)",border:"1px solid rgba(255,255,255,0.16)",borderRadius:9,padding:"8px 6px",textAlign:"center"}}>
                     <div style={{fontSize:14,fontWeight:900,color:C.white,lineHeight:1.1}}>{value}</div>
                     <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.62)",marginTop:3}}>{label}</div>
@@ -241,7 +251,7 @@ export function SlabCertificate({slabId}) {
                 </div>
                 <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 10px"}}>
                   <div style={{fontSize:11,fontWeight:900,color:C.primary,marginBottom:2}}>Evidence</div>
-                  <div style={{fontSize:13,fontWeight:800,color:C.text}}>{photos.length || (photo ? 1 : 0)} photo{(photos.length || (photo ? 1 : 0))===1 ? "" : "s"}</div>
+                  <div style={{fontSize:13,fontWeight:800,color:C.text}}>{evidenceCount} photo{evidenceCount===1 ? "" : "s"}</div>
                 </div>
                 <div style={{background:defects.length?C.amberBg:C.greenBg,border:`1px solid ${defects.length?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
                   <div style={{fontSize:11,fontWeight:900,color:defects.length?C.amber:C.green,marginBottom:2}}>Defects</div>
@@ -257,7 +267,7 @@ export function SlabCertificate({slabId}) {
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:8}}>
                 {[
                   ["Match slab ID",`Confirm ${slab.id} matches the physical slab or invoice.`],
-                  ["Review evidence",`Check ${photos.length || (photo ? 1 : 0)} photo${(photos.length || (photo ? 1 : 0))===1 ? "" : "s"}, defects, and measurements.`],
+                  ["Review evidence",`Check ${evidenceCount} photo${evidenceCount===1 ? "" : "s"}, defects, and measurements.`],
                   ["Request quote",canInquire?"Send area and delivery needs from this certificate.":"Ask the factory for alternatives."],
                 ].map(([label,detail])=>(
                   <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
@@ -289,6 +299,18 @@ export function SlabCertificate({slabId}) {
               <Field label="Inspected" value={inspectedAt}/>
               <Field label="Export ready" value={slab.export_ready ? "Yes" : "No"}/>
               <Field label="Inventory status" value={inventory.label}/>
+            </Card>
+
+            <Card className="cert-card" style={{padding:18,borderColor:C.greenBorder,background:C.greenBg}}>
+              <div style={{fontSize:16,fontWeight:900,color:C.green,marginBottom:8}}>How to verify this certificate</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {verificationItems.map(item=>(
+                  <div key={item.label} style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                    <div style={{fontSize:11,fontWeight:900,color:C.green,marginBottom:3}}>{item.label}</div>
+                    <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{item.detail}</div>
+                  </div>
+                ))}
+              </div>
             </Card>
 
             <Card className="cert-card" style={{padding:18}}>
