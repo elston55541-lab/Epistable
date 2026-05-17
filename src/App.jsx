@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./lib/supabase";
 import { acceptInviteWithPassword, friendlyAuthError, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
@@ -1802,8 +1802,11 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
 function FacHistory({insps}) {
   const [search,setSearch]=useState("");const [filterG,setFilterG]=useState("All");const [qrSlab,setQrSlab]=useState(null);const [detailSlab,setDetailSlab]=useState(null);
   const [statusOverrides,setStatusOverrides]=useState({});
-  const withStatus=insps.map(i=>({...i,inventoryStatus:statusOverrides[i.id]||i.inventoryStatus||"available"}));
-  const filtered=withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&(!search||i.stone?.toLowerCase().includes(search.toLowerCase())||i.id?.toLowerCase().includes(search.toLowerCase())));
+  const withStatus=useMemo(()=>insps.map(i=>({...i,inventoryStatus:statusOverrides[i.id]||i.inventoryStatus||"available"})),[insps,statusOverrides]);
+  const filtered=useMemo(()=>{
+    const q=search.toLowerCase();
+    return withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&(!q||i.stone?.toLowerCase().includes(q)||i.id?.toLowerCase().includes(q)));
+  },[withStatus,filterG,search]);
   async function updateStatus(slab,status){
     await DB.updInspStatus(slab.id,status);
     setStatusOverrides(p=>({...p,[slab.id]:status}));
@@ -2844,22 +2847,31 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
     ].join("\n");
     try{await navigator.clipboard.writeText(text);setCopiedQuote(q.id);setTimeout(()=>setCopiedQuote(""),1400);}catch(e){window.prompt("Copy quote summary",text);}
   }
-  const filtered=quotes.filter(q=>{
+  const filtered=useMemo(()=>{
+    const qText=search.toLowerCase();
+    return quotes.filter(q=>{
+      const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";
+      const matchesFilter=filter==="respond"?q.status==="sent"&&!expired:
+        filter==="accepted"?q.status==="accepted"&&activeFulfillment(q)!=="sold":
+        filter==="closed"?expired||q.status==="revised"||activeFulfillment(q)==="sold":
+        !expired&&q.status!=="revised"&&activeFulfillment(q)!=="sold";
+      const hay=[q.id,q.stone,q.grade,q.slabId,q.slab_id,q.factoryName,q.factory_name,q.buyerMessage,q.buyer_message].filter(Boolean).join(" ").toLowerCase();
+      return matchesFilter&&(!qText||hay.includes(qText));
+    }).sort((a,b)=>{
+      if(sortBy==="newest")return Number(b.created_at||0)-Number(a.created_at||0);
+      if(sortBy==="valueHigh")return Number(b.totalAmount||b.total_amount||0)-Number(a.totalAmount||a.total_amount||0);
+      if(sortBy==="valueLow")return Number(a.totalAmount||a.total_amount||0)-Number(b.totalAmount||b.total_amount||0);
+      return buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0);
+    });
+  },[quotes,filter,search,sortBy]);
+  const quoteCounts=useMemo(()=>quotes.reduce((acc,q)=>{
     const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";
-    const matchesFilter=filter==="respond"?q.status==="sent"&&!expired:
-      filter==="accepted"?q.status==="accepted"&&activeFulfillment(q)!=="sold":
-      filter==="closed"?expired||q.status==="revised"||activeFulfillment(q)==="sold":
-      !expired&&q.status!=="revised"&&activeFulfillment(q)!=="sold";
-    const hay=[q.id,q.stone,q.grade,q.slabId,q.slab_id,q.factoryName,q.factory_name,q.buyerMessage,q.buyer_message].filter(Boolean).join(" ").toLowerCase();
-    return matchesFilter&&(!search||hay.includes(search.toLowerCase()));
-  }).sort((a,b)=>{
-    if(sortBy==="newest")return Number(b.created_at||0)-Number(a.created_at||0);
-    if(sortBy==="valueHigh")return Number(b.totalAmount||b.total_amount||0)-Number(a.totalAmount||a.total_amount||0);
-    if(sortBy==="valueLow")return Number(a.totalAmount||a.total_amount||0)-Number(b.totalAmount||b.total_amount||0);
-    return buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0);
-  });
-  const needResponse=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
-  const accepted=quotes.filter(q=>q.status==="accepted"&&activeFulfillment(q)!=="sold").length;
+    acc.needResponse+=q.status==="sent"&&!expired?1:0;
+    acc.accepted+=q.status==="accepted"&&activeFulfillment(q)!=="sold"?1:0;
+    return acc;
+  },{needResponse:0,accepted:0}),[quotes]);
+  const needResponse=quoteCounts.needResponse;
+  const accepted=quoteCounts.accepted;
   if(loading)return <Loader/>;
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
@@ -3143,12 +3155,20 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   useEffect(()=>{
     try{setSavedIds(JSON.parse(localStorage.getItem(shortlistKey)||"[]"));}catch{setSavedIds([]);}
   },[shortlistKey]);
-  const savedSet=new Set(savedIds);
-  const savedSlabs=insps.filter(i=>savedSet.has(i.id));
-  const availableCount=insps.filter(i=>(i.inventoryStatus||"available")==="available").length;
-  const reservedCount=insps.filter(i=>(i.inventoryStatus||"available")==="reserved").length;
-  const exportCount=insps.filter(i=>i.exportReady).length;
-  const premiumCount=insps.filter(i=>i.grade==="Premium").length;
+  const savedSet=useMemo(()=>new Set(savedIds),[savedIds]);
+  const savedSlabs=useMemo(()=>insps.filter(i=>savedSet.has(i.id)),[insps,savedSet]);
+  const inventoryCounts=useMemo(()=>insps.reduce((acc,i)=>{
+    const status=i.inventoryStatus||"available";
+    acc.available+=status==="available"?1:0;
+    acc.reserved+=status==="reserved"?1:0;
+    acc.exportReady+=i.exportReady?1:0;
+    acc.premium+=i.grade==="Premium"?1:0;
+    return acc;
+  },{available:0,reserved:0,exportReady:0,premium:0}),[insps]);
+  const availableCount=inventoryCounts.available;
+  const reservedCount=inventoryCounts.reserved;
+  const exportCount=inventoryCounts.exportReady;
+  const premiumCount=inventoryCounts.premium;
   function toggleSaved(id){
     setSavedIds(prev=>{
       const next=prev.includes(id)?prev.filter(x=>x!==id):[id,...prev];
@@ -3161,23 +3181,25 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     const text=lines.length?lines.join("\n"):"No slabs saved yet.";
     try{await navigator.clipboard.writeText(text);setShortlistCopied(true);setTimeout(()=>setShortlistCopied(false),1400);}catch(e){window.prompt("Copy shortlist",text);}
   }
-  const stoneOptions=["All",...Array.from(new Set(insps.map(i=>i.stone).filter(Boolean))).sort()];
-  const supplierOptions=["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()];
-  const filtered=insps
-    .filter(i=>(filter==="All"||i.grade===filter)
+  const stoneOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.stone).filter(Boolean))).sort()],[insps]);
+  const supplierOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()],[insps]);
+  const filtered=useMemo(()=>{
+    const q=search.toLowerCase();
+    return insps.filter(i=>(filter==="All"||i.grade===filter)
       &&(viewMode==="all"||savedSet.has(i.id))
       &&(stoneFilter==="All"||i.stone===stoneFilter)
       &&(supplierFilter==="All"||i.supplier===supplierFilter)
       &&(exportFilter==="All"||(exportFilter==="Export"&&i.exportReady)||(exportFilter==="Domestic"&&!i.exportReady))
       &&(statusFilter==="All"||(i.inventoryStatus||"available")===statusFilter)
       &&(!maxPrice||Number(i.pricePerSqFt||0)<=Number(maxPrice))
-      &&(!search||[i.stone,i.id,i.supplier,i.grade,slabDims(i),...(i.defects||[])].filter(Boolean).join(" ").toLowerCase().includes(search.toLowerCase())))
+      &&(!q||[i.stone,i.id,i.supplier,i.grade,slabDims(i),...(i.defects||[])].filter(Boolean).join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>{
       if(sortBy==="priceLow")return Number(a.pricePerSqFt||0)-Number(b.pricePerSqFt||0);
       if(sortBy==="priceHigh")return Number(b.pricePerSqFt||0)-Number(a.pricePerSqFt||0);
       if(sortBy==="grade")return (a.grade==="Premium"?0:1)-(b.grade==="Premium"?0:1);
       return Number(b.ts||0)-Number(a.ts||0);
     });
+  },[insps,filter,viewMode,savedSet,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,search,sortBy]);
   const clearFilters=()=>{setViewMode("all");setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setStatusFilter("available");setMaxPrice("");setSortBy("newest");setSearch("");};
   function openQuoteRequest(slab){
     setInquiry(slab);
