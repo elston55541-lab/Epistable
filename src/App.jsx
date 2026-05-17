@@ -75,6 +75,10 @@ const DB = {
   async getFac(id) {
     return maybeOne(await supabase.from("factories").select().eq("id",id).maybeSingle());
   },
+  async getFacByName(name) {
+    if(!name)return null;
+    return maybeOne(await supabase.from("factories").select().ilike("name",name.trim()).maybeSingle());
+  },
   async updFac(id,u) {
     return requireData(await supabase.from("factories").update(u).eq("id",id).select().single());
   },
@@ -371,6 +375,17 @@ const DB = {
     }
   },
 };
+
+async function resolveBuyerFactoryId(buyer) {
+  const direct=buyer?.factory_id||buyer?.factoryId;
+  if(direct&&typeof direct==="string")return direct;
+  if(buyer?.email) {
+    const linked=await DB.getBuyerByEmail(buyer.email);
+    if(linked?.factory_id)return linked.factory_id;
+  }
+  const fac=await DB.getFacByName(buyer?.factory_name||buyer?.factoryName);
+  return fac?.id||"";
+}
 
 function activityForProfile(action,actor,target,details={}) {
   return {
@@ -2677,14 +2692,17 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   const [fac,setFac]=useState(null);const [quotes,setQuotes]=useState([]);const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState("active");const [search,setSearch]=useState("");const [sortBy,setSortBy]=useState("priority");const [copiedQuote,setCopiedQuote]=useState("");
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
-  const buyerFactoryId=buyer.factory_id||buyer.factoryId;
+  const [resolvedFactoryId,setResolvedFactoryId]=useState(buyer.factory_id||buyer.factoryId||"");
+  const buyerFactoryId=buyer.factory_id||buyer.factoryId||resolvedFactoryId;
   async function load(){
-    if(!buyerFactoryId){setLoading(false);return;}
+    let fid=buyerFactoryId;
+    if(!fid){fid=await resolveBuyerFactoryId(buyer);if(fid)setResolvedFactoryId(fid);}
+    if(!fid){setLoading(false);return;}
     setLoading(true);
-    const [f,qt]=await Promise.all([DB.getFac(buyerFactoryId),DB.buyerQuotes(buyer.email,buyerFactoryId)]);
+    const [f,qt]=await Promise.all([DB.getFac(fid),DB.buyerQuotes(buyer.email,fid)]);
     setFac(f);setQuotes(qt);setLoading(false);
   }
-  useEffect(()=>{load();},[buyer.email,buyerFactoryId]);
+  useEffect(()=>{load();},[buyer.email,buyer.factory_id,buyer.factoryId,resolvedFactoryId]);
   function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
   async function submitQuoteAction(){
     if(!quoteAction||quoteBusy)return;
@@ -2815,11 +2833,20 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
 function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [inquiries,setInquiries]=useState([]);const [quotes,setQuotes]=useState([]);
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
-  const buyerFactoryId=buyer.factory_id||buyer.factoryId;
+  const [resolvedFactoryId,setResolvedFactoryId]=useState(buyer.factory_id||buyer.factoryId||"");
+  const buyerFactoryId=buyer.factory_id||buyer.factoryId||resolvedFactoryId;
   useEffect(()=>{
-    if(!buyerFactoryId)return;
-    Promise.all([DB.getFac(buyerFactoryId),DB.facInsps(buyerFactoryId),DB.buyerInquiries(buyer.email,buyerFactoryId),DB.buyerQuotes(buyer.email,buyerFactoryId)]).then(([f,i,q,qt])=>{setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);});
-  },[buyer.email,buyerFactoryId]);
+    let active=true;
+    async function load(){
+      let fid=buyerFactoryId;
+      if(!fid){fid=await resolveBuyerFactoryId(buyer);if(active&&fid)setResolvedFactoryId(fid);}
+      if(!fid||!active)return;
+      const [f,i,q,qt]=await Promise.all([DB.getFac(fid),DB.facInsps(fid),DB.buyerInquiries(buyer.email,fid),DB.buyerQuotes(buyer.email,fid)]);
+      if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));setInquiries(q);setQuotes(qt);}
+    }
+    load();
+    return()=>{active=false;};
+  },[buyer.email,buyer.factory_id,buyer.factoryId,resolvedFactoryId]);
   const activeInquiries=inquiries.filter(q=>q.status!=="closed").length;
   const visibleQuotes=[...quotes].sort((a,b)=>buyerQuotePriority(a)-buyerQuotePriority(b)||Number(b.created_at||0)-Number(a.created_at||0));
   const activeQuotes=quotes.filter(q=>!(q.status==="sent"&&q.validityTs&&q.validityTs<Date.now())&&!["revised","expired","sold"].includes(q.status)&&activeFulfillment(q)!=="sold").length;
@@ -2968,6 +2995,10 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       if(!fid&&buyer?.email){
         const freshBuyer=await DB.getBuyerByEmail(buyer.email);
         fid=freshBuyer?.factory_id||freshBuyer?.factoryId||"";
+      }
+      if(!fid&&buyer?.factory_name){
+        const namedFac=await DB.getFacByName(buyer.factory_name);
+        fid=namedFac?.id||"";
       }
       if(!fid)return;
       if(active)setPortalFactoryId(fid);
