@@ -86,6 +86,19 @@ function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
   );
 }
 
+function EmptyState({title,body,actionLabel,onAction,secondaryLabel,onSecondary,style={}}) {
+  return (
+    <Card style={{padding:"34px 22px",textAlign:"center",...style}}>
+      <div style={{fontSize:18,fontWeight:900,color:C.text,marginBottom:7}}>{title}</div>
+      {body&&<div style={{fontSize:13,lineHeight:1.55,color:C.textDim,maxWidth:420,margin:"0 auto 16px"}}>{body}</div>}
+      <div style={{display:"flex",gap:9,justifyContent:"center",flexWrap:"wrap"}}>
+        {actionLabel&&<Btn size="sm" onClick={onAction}>{actionLabel}</Btn>}
+        {secondaryLabel&&<Btn size="sm" variant="secondary" onClick={onSecondary}>{secondaryLabel}</Btn>}
+      </div>
+    </Card>
+  );
+}
+
 const DB = {
   // Factories
   async createFac(d) {
@@ -1778,7 +1791,7 @@ function FacHistory({insps}) {
           <button key={f} onClick={()=>setFilterG(f)} style={{padding:"6px 14px",background:filterG===f?C.primary:C.white,border:`1px solid ${filterG===f?C.primary:C.border}`,borderRadius:20,color:filterG===f?C.white:C.textMid,fontSize:12,fontWeight:filterG===f?700:400,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
-      {filtered.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📋</div><div style={{fontWeight:600}}>No inspections yet</div></Card>:
+      {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, or grade.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");}}/>:
       <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);return(
         <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
@@ -2038,7 +2051,7 @@ function FacSuppliers({fac}) {
           <Sel label="Rank By" value={sortBy} onChange={setSortBy} options={[{value:"score",label:"Quality score"},{value:"premium",label:"Premium rate"},{value:"reject",label:"Rejection risk"},{value:"volume",label:"Scan volume"}]}/>
         </div>
       </Card>
-      {scorecards.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,marginBottom:12}}>Suppliers</div><Btn onClick={()=>setShow(true)}>+ Add First Supplier</Btn></Card>:
+      {scorecards.length===0?<EmptyState title="No supplier scorecards yet" body="Add suppliers and select them during scans. Scorecards will show premium rate, rejection risk, defect patterns, and scan volume." actionLabel="+ Add First Supplier" onAction={()=>setShow(true)}/>:
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {ranked.map(s=>{const st=s._stats;return(
           <Card key={s.id} style={{padding:14,cursor:"pointer"}} onClick={()=>setSel(s)}>
@@ -2090,7 +2103,7 @@ function FacBuyers({fac,actor,onActivity}) {
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
       {manage&&<UserAccessModal user={manage} facs={[fac]} fixedRole="buyer" onClose={()=>setManage(null)} onSave={saveBuyer}/>}
-      {buyers.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:12}}>🌐</div><Btn onClick={()=>setShow(true)}>+ Add First Buyer</Btn></Card>:
+      {buyers.length===0?<EmptyState title="No buyers yet" body="Create buyer access so customers can browse verified inventory, request quotes, and track accepted orders." actionLabel="+ Add First Buyer" onAction={()=>setShow(true)}/>:
       <Card>{buyers.map((b,i)=>(
         <div key={b.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<buyers.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={b.name.slice(0,2).toUpperCase()} size={36} color={C.teal} bg="#e0f7fa" border="#80deea"/>
@@ -2191,7 +2204,7 @@ function FacInquiries({fac,onChange}) {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}><div><div style={TEXT.pageHeader}>Buyer Inquiries</div><div style={TEXT.meta}>Prioritize quote requests, hot buyers, and overdue follow-ups</div></div><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn></div>
       <KpiGrid items={[{label:"Open",value:inquiries.filter(q=>q.status!=="closed").length,icon:"Open",color:C.primary},{label:"Quote Requests",value:quoteRequestCount,icon:"Quote",color:C.green},{label:"Hot Buyers",value:hotCount,icon:"Hot",color:C.red},{label:"Overdue",value:overdueCount,icon:"Due",color:overdueCount?C.red:C.textDim}]}/>
       <Card style={{padding:12,marginBottom:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search buyer, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}/><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}><option value="all">All statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="reserved">Reserved</option><option value="closed">Closed</option></select><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}><option value="all">All priorities</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="low">Low</option></select><select value={requestFilter} onChange={e=>setRequestFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}><option value="all">All inquiries</option><option value="quote">Quote requests</option><option value="overdue">Overdue follow-ups</option></select></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:800}}>{filtered.length} of {inquiries.length} inquiries shown</div><button onClick={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset filters</button></div></Card>
-      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900}}>No inquiries yet</div></Card>:filtered.length===0?<Card style={{padding:"42px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,marginBottom:5}}>No matching inquiries</div><div style={TEXT.meta}>Try clearing filters or search.</div></Card>:<Card>{filtered.map((q,i)=>{const req=quoteRequest(q);const overdue=q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed";return(<div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:overdue?C.redBg:q.status==="new"?C.primaryBg:C.white}}><div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} - {q.grade}{req.isQuote?" - Quote request":""}{q.followUpAt?` - Follow up ${fmtD(q.followUpAt)}`:""}</div></div><div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>{overdue&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:20,padding:"3px 8px"}}>Overdue</span>}<span style={{fontSize:10,fontWeight:800,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span><InqPill status={q.status}/></div></div>);})}</Card>}
+      {inquiries.length===0?<EmptyState title="No inquiries yet" body="When buyers scan certificates or browse inventory, their requests will appear here. Share slab QR codes or the public inventory preview to start demand."/>:filtered.length===0?<EmptyState title="No matching inquiries" body="Try clearing filters, widening the status, or searching another buyer, slab, or stone." actionLabel="Clear filters" onAction={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}}/>:<Card>{filtered.map((q,i)=>{const req=quoteRequest(q);const overdue=q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed";return(<div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:overdue?C.redBg:q.status==="new"?C.primaryBg:C.white}}><div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} - {q.grade}{req.isQuote?" - Quote request":""}{q.followUpAt?` - Follow up ${fmtD(q.followUpAt)}`:""}</div></div><div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>{overdue&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:20,padding:"3px 8px"}}>Overdue</span>}<span style={{fontSize:10,fontWeight:800,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span><InqPill status={q.status}/></div></div>);})}</Card>}
     </div>
   );
 }
@@ -2373,7 +2386,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
           {["sent","expiring_soon","accepted","revision_requested","revised","expired","sold"].map(s=>{const cfg=statusStyle(s);const count=s==="expiring_soon"?expiringSoon:counts[s]||0;return <button key={s} onClick={()=>setStatusFilter(statusFilter===s?"all":s)} style={{padding:"5px 10px",background:statusFilter===s?cfg.bg:C.white,border:`1px solid ${statusFilter===s?cfg.b:C.border}`,borderRadius:20,color:statusFilter===s?cfg.c:C.textDim,fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{cfg.label} ({count})</button>;})}
         </div>
       </Card>
-      {filtered.length===0?<Card style={{padding:"44px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,marginBottom:5}}>No quotes found</div><div style={{fontSize:12,color:C.textDim}}>Quotes created from inquiries will appear here for follow-up and closing.</div></Card>:
+      {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes found"} body={quotes.length?"Clear the filters or search another quote, buyer, slab, or stone.":"Create a quote from a buyer inquiry. Sent quotes become buyer links, and accepted quotes become trackable orders."} actionLabel={quotes.length?"Clear filters":undefined} onAction={()=>{setSearch("");setStatusFilter("all");}}/>:
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {filtered.map(q=>{const status=effectiveStatus(q);const cfg=statusStyle(status);const step=nextStep(status,q);const canRevise=status==="revision_requested";const canSell=status==="accepted";const fulfillment=fulfillmentConf(activeFulfillment(q));const buyerEmail=q.buyerEmail||q.buyer_email;return(
           <Card key={q.id} style={{padding:14,borderColor:canRevise?C.amberBorder:canSell?C.greenBorder:C.border}}>
@@ -2648,7 +2661,7 @@ function FacDisputes({fac}) {
         </div>
       </Modal>}
       <div style={TEXT.pageTitle}>Disputes</div>
-      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🤝</div><div style={TEXT.emptyTitle}>No disputes</div></Card>:
+      {disputes.length===0?<EmptyState title="No disputes" body="Buyer certificate disputes and mismatch reports will appear here. For now, your certificate trail is clean."/>:
       <Card>{disputes.map((d,i)=>(
         <div key={d.id} onClick={()=>{setSel(d);setResponse(d.response||"");}} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:d.status==="open"?C.redBg:C.white}}>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone}</div><div style={TEXT.tinyMeta}>{catLabel[d.category]||d.category} · {d.buyer_name}</div></div>
@@ -2664,7 +2677,7 @@ function FacNotifs({notifs,onRead}) {
   return (
     <div>
       <div style={TEXT.pageTitle}>Alerts</div>
-      {notifs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔔</div><div style={{...TEXT.emptyTitle,marginBottom:5}}>No alerts yet</div><div style={TEXT.meta}>Quote updates, buyer decisions, and follow-ups will appear here.</div></Card>:
+      {notifs.length===0?<EmptyState title="No alerts yet" body="Quote updates, buyer decisions, follow-ups, and order movement will appear here."/>:
       <Card>{notifs.map((n,i)=>(
         <div key={n.id} style={{display:"flex",gap:12,padding:"14px 16px",borderBottom:i<notifs.length-1?`1px solid ${C.border}`:"none",background:n.read?C.white:C.primaryBg}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{n.icon||"🔔"}</div>
@@ -2859,11 +2872,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
             <button key={id} onClick={()=>setFilter(id)} style={{padding:"8px 14px",background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:20,color:filter===id?C.white:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
           ))}
         </div>
-        {filtered.length===0?<Card style={{padding:"42px 24px",textAlign:"center"}}>
-          <div style={{fontSize:18,fontWeight:900,marginBottom:6}}>No quotes here yet</div>
-          <div style={{fontSize:13,color:C.textDim,marginBottom:16}}>Browse verified slabs and express interest to receive a quote.</div>
-          <Btn onClick={()=>onViewPortal(buyerFactoryId)}>Browse Inventory</Btn>
-        </Card>:<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes here yet"} body={quotes.length?"Try another status filter or reset sorting to see more quotes.":"Browse verified slabs and express interest to receive a factory quote."} actionLabel="Browse Inventory" onAction={()=>onViewPortal(buyerFactoryId)} secondaryLabel={quotes.length?"Reset filters":undefined} onSecondary={()=>{setSearch("");setSortBy("priority");setFilter("active");}}/>:<div style={{display:"flex",flexDirection:"column",gap:12}}>
           {filtered.map(q=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const next=buyerQuoteNextAction(q);const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";const canRespond=q.status==="sent"&&!expired;return(
             <Card key={q.id} style={{padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
@@ -3215,7 +3224,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             <button onClick={clearFilters} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset filters</button>
           </div>
         </Card>
-        {filtered.length===0?<div style={{background:"#fff",borderRadius:12,padding:"40px 24px",textAlign:"center"}}><div style={{fontSize:36,marginBottom:10}}>🪨</div><div style={{fontSize:15,fontWeight:700}}>{viewMode==="saved"?"No saved slabs yet":"No slabs available yet"}</div></div>:
+        {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to build a shortlist for comparison.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
           {filtered.map(slab=>{
             const g=gradeConf(slab.grade);
