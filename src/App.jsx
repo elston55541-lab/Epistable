@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
-import { acceptInviteWithPassword, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
+import { acceptInviteWithPassword, friendlyAuthError, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
 import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
 import { useBP } from "./hooks/useBP";
@@ -658,10 +658,11 @@ function Login({onOwner,onFactory,onBuyer}) {
   const {isDesktop}=useBP();
 
   async function submit() {
-    if(!email||!pass){setErr("Please enter email and password.");return;}
+    const cleanEmail=email.trim().toLowerCase();
+    if(!cleanEmail||!pass){setErr("Please enter email and password.");return;}
     setLoading(true);setErr("");
     try {
-      const {profile}=await signInWithEmail(email,pass);
+      const {profile}=await signInWithEmail(cleanEmail,pass);
       if(profile.role==="owner"){onOwner();return;}
       if(profile.role==="buyer"){
         DB.updBuyer(profile.id,{last_active:Date.now()}).catch(e=>console.warn("Could not update buyer activity",e));
@@ -669,7 +670,7 @@ function Login({onOwner,onFactory,onBuyer}) {
       }
       DB.updUser(profile.id,{last_active:Date.now()}).catch(e=>console.warn("Could not update user activity",e));
       onFactory(profile);return;
-    } catch(e){setErr("Login error: "+e.message);setLoading(false);}
+    } catch(e){setErr(friendlyAuthError(e,"login"));setLoading(false);}
   }
 
   const fieldStyle={
@@ -681,14 +682,14 @@ function Login({onOwner,onFactory,onBuyer}) {
       <div style={{display:"flex",flexDirection:"column",gap:15,marginBottom:20}}>
         <div>
           <label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:7}}>Email</label>
-          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="email" placeholder="you@example.com" style={fieldStyle}/>
+          <input type="email" value={email} onChange={e=>{setEmail(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="email" placeholder="you@example.com" style={fieldStyle}/>
         </div>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
             <label style={{fontSize:13,fontWeight:600,color:C.text}}>Password</label>
             <button type="button" onClick={()=>setShowP(p=>!p)} style={{background:"none",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{showP?"Hide":"Show"}</button>
           </div>
-          <input type={showP?"text":"password"} value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="current-password" placeholder="Enter password" style={fieldStyle}/>
+          <input type={showP?"text":"password"} value={pass} onChange={e=>{setPass(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="current-password" placeholder="Enter password" style={fieldStyle}/>
         </div>
       </div>
       <Btn full size="lg" onClick={submit} disabled={loading} style={{borderRadius:6,padding:isDesktop?"15px 20px":"13px 20px",fontWeight:700,fontSize:isDesktop?15:14}}>{loading?"Signing in...":"Log In"}</Btn>
@@ -766,14 +767,16 @@ function InviteAccept({onAccepted}) {
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
   async function submit(){
-    if(!email||!pass){setErr("Enter your invited email and password.");return;}
+    const cleanEmail=email.trim().toLowerCase();
+    if(!cleanEmail||!pass){setErr("Enter your invited email and password.");return;}
+    if(pass.length<6){setErr("Password must be at least 6 characters.");return;}
     setLoading(true);setErr("");
     try {
-      const {profile}=await acceptInviteWithPassword(email,pass,mode);
+      const {profile}=await acceptInviteWithPassword(cleanEmail,pass,mode);
       if(!profile)throw new Error("No pending invite found for this email.");
       onAccepted(profile);
     } catch(e) {
-      setErr(e.message||"Could not accept invite.");
+      setErr(friendlyAuthError(e,"invite"));
       setLoading(false);
     }
   }
@@ -781,15 +784,15 @@ function InviteAccept({onAccepted}) {
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif",padding:24}}>
       <Card style={{width:"100%",maxWidth:430,padding:22}}>
         <div style={{fontSize:22,fontWeight:900,color:C.text,marginBottom:6}}>Accept Epistable Invite</div>
-        <div style={{fontSize:13,color:C.textDim,marginBottom:18}}>Use the same email your admin invited. New users can create a password here; existing users can sign in.</div>
+        <div style={{fontSize:13,color:C.textDim,marginBottom:18}}>Use the same email your admin invited. If an email confirmation link fails, come back to this page and use the same email here.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-          <Btn variant={mode==="signup"?"primary":"secondary"} size="sm" onClick={()=>setMode("signup")}>Create Login</Btn>
-          <Btn variant={mode==="signin"?"primary":"secondary"} size="sm" onClick={()=>setMode("signin")}>I Have Login</Btn>
+          <Btn variant={mode==="signup"?"primary":"secondary"} size="sm" onClick={()=>{setMode("signup");setErr("");}}>Create Login</Btn>
+          <Btn variant={mode==="signin"?"primary":"secondary"} size="sm" onClick={()=>{setMode("signin");setErr("");}}>I Have Login</Btn>
         </div>
         {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:700,marginBottom:12}}>{err}</div>}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <Inp label="Invited Email" value={email} onChange={setEmail} type="email" required/>
-          <Inp label="Password" value={pass} onChange={setPass} type="password" required hint={mode==="signup"?"Choose a password for this login.":"Enter your existing password."}/>
+          <Inp label="Invited Email" value={email} onChange={v=>{setEmail(v);if(err)setErr("");}} type="email" required/>
+          <Inp label="Password" value={pass} onChange={v=>{setPass(v);if(err)setErr("");}} type="password" required hint={mode==="signup"?"Choose at least 6 characters.":"Enter your existing password."}/>
           <Btn full onClick={submit} disabled={loading}>{loading?"Accepting...":"Accept Invite"}</Btn>
           <Btn full variant="secondary" onClick={()=>window.location.assign("/")}>Back to Login</Btn>
         </div>
