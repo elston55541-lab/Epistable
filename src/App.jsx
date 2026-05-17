@@ -112,6 +112,34 @@ function ErrorNotice({title="Something went wrong",message,onRetry,style={}}) {
   );
 }
 
+function SetupChecklist({title,subtitle,items=[],style={}}) {
+  const done=items.filter(i=>i.done).length;
+  if(!items.length)return null;
+  return (
+    <Card style={{padding:14,...style}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:900,color:C.text,marginBottom:3}}>{title}</div>
+          {subtitle&&<div style={TEXT.tinyMeta}>{subtitle}</div>}
+        </div>
+        <span style={{background:done===items.length?C.greenBg:C.primaryBg,border:`1px solid ${done===items.length?C.greenBorder:C.primaryBorder}`,borderRadius:20,padding:"4px 9px",fontSize:11,fontWeight:900,color:done===items.length?C.green:C.primary,whiteSpace:"nowrap"}}>{done}/{items.length}</span>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {items.map(item=>(
+          <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:10,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"10px 11px",cursor:item.onClick?"pointer":"default",fontFamily:"sans-serif",textAlign:"left"}}>
+            <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:900,flexShrink:0}}>{item.done?"✓":"•"}</span>
+            <span style={{flex:1,minWidth:0}}>
+              <span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{item.label}</span>
+              <span style={{display:"block",fontSize:11,lineHeight:1.4,color:C.textDim,marginTop:2}}>{item.detail}</span>
+            </span>
+            {item.onClick&&!item.done&&<span style={{fontSize:11,fontWeight:900,color:C.primary,flexShrink:0}}>Open</span>}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 const DB = {
   // Factories
   async createFac(d) {
@@ -1364,6 +1392,15 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
     {label:"2. Grade consistently",detail:"Record measurements and defects before saving.",color:C.green,bg:C.greenBg,border:C.greenBorder},
     {label:"3. Share proof",detail:"Use QR certificates from history when buyers ask.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
   ];
+  const setupItems=isAdmin?[
+    {label:"Scan first verified slab",detail:"Create one certificate with photos and measurements.",done:insps.length>0,onClick:()=>setPage("scan")},
+    {label:"Publish buyer-ready inventory",detail:"Keep Premium and Standard slabs available for buyer browsing.",done:availableSlabs>0,onClick:openPortal},
+    {label:"Turn interest into quotes",detail:"Open inquiries and send quotes when buyers request pricing.",done:quoteRequests.length>0||reservedSlabs>0||soldSlabs>0,onClick:()=>setPage("inquiries")},
+  ]:[
+    {label:"Capture full evidence",detail:"Use required photo slots during the scan.",done:insps.length>0,onClick:()=>setPage("scan")},
+    {label:"Review saved certificates",detail:"Open history to confirm grade, QR, and evidence look right.",done:insps.length>0,onClick:()=>setPage("history")},
+    {label:"Keep scanning today",detail:"More scans improve factory analytics and buyer confidence.",done:today.length>=3,onClick:()=>setPage("scan")},
+  ];
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
@@ -1378,6 +1415,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
       </div>
       <KpiGrid items={homeKpisNext}/>
       <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:14}}/>
+      <SetupChecklist title={isAdmin?"Factory setup checklist":"Inspector checklist"} subtitle={isAdmin?"The shortest path from first slab to buyer trust":"Small habits that make certificates stronger"} items={setupItems} style={{marginBottom:14}}/>
       {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
           <div><div style={{fontSize:14,fontWeight:900}}>Today at a glance</div><div style={TEXT.tinyMeta}>Inventory, buyer demand, and quality signals</div></div>
@@ -2985,6 +3023,11 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   const responseQuotes=quotes.filter(q=>q.status==="sent"&&!(q.validityTs&&q.validityTs<Date.now())).length;
   const priorityQuote=visibleQuotes[0];
   const priorityAction=priorityQuote?buyerQuoteNextAction(priorityQuote):null;
+  const buyerSetupItems=[
+    {label:"Browse verified inventory",detail:"Filter slabs and open certificates before shortlisting.",done:insps.length>0,onClick:()=>onViewPortal(buyerFactoryId)},
+    {label:"Request a quote",detail:"Send area, delivery location, and notes from a slab card.",done:activeInquiries>0||quotes.length>0,onClick:()=>onViewPortal(buyerFactoryId)},
+    {label:"Track quote or order",detail:"Accept, request changes, or follow dispatch status.",done:quotes.length>0,onClick:onViewQuotes},
+  ];
   function openQuoteAction(q,decision){setQuoteAction({quote:q,decision});setQuoteMsg("");setQuoteError("");}
   async function submitQuoteAction(){
     if(!quoteAction||quoteBusy)return;
@@ -3048,6 +3091,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           {label:"2. Request quote",detail:"Send area, delivery location, and requirements.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
           {label:"3. Track order",detail:"Accept the quote and follow payment, dispatch, and delivery.",color:C.green,bg:C.greenBg,border:C.greenBorder},
         ]}/>
+        <SetupChecklist title="Buyer setup checklist" subtitle="The shortest path from browsing to confirmed order" items={buyerSetupItems} style={{marginBottom:14}}/>
         {priorityQuote&&<Card style={{padding:14,marginBottom:14,borderColor:priorityAction.border,background:priorityAction.bg}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
             <div style={{minWidth:0}}>
