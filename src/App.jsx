@@ -1959,10 +1959,34 @@ function FacAnalytics({insps}) {
   const week=insps.filter(i=>Date.now()-i.ts<7*86400000).length;
   const defectMap={};insps.forEach(i=>(i.defects||[]).forEach(d=>{defectMap[d]=(defectMap[d]||0)+1;}));
   const topDefects=Object.entries(defectMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const traceKeys=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"];
+  const traceFieldCount=insps.reduce((s,i)=>{const t=i.measurements?.traceability||{};return s+traceKeys.filter(k=>!!t[k]).length;},0);
+  const traceCoverage=total?Math.round(traceFieldCount/(total*traceKeys.length)*100):0;
+  const auditReadyCount=insps.filter(i=>i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete).length;
+  const auditReadyPct=total?Math.round(auditReadyCount/total*100):0;
+  const capaNeeded=insps.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
+  const batchCount=new Set(insps.map(i=>i.measurements?.traceability?.batchNo).filter(Boolean)).size;
+  function groupQuality(keyFn){
+    const map=new Map();
+    insps.forEach(i=>{
+      const key=keyFn(i)||"Not recorded";
+      const row=map.get(key)||{key,total:0,premium:0,rejected:0,defects:0,trace:0};
+      row.total+=1;
+      row.premium+=i.grade==="Premium"?1:0;
+      row.rejected+=i.grade==="Rejected"?1:0;
+      row.defects+=(i.defects||[]).length;
+      row.trace+=traceKeys.filter(k=>!!i.measurements?.traceability?.[k]).length;
+      map.set(key,row);
+    });
+    return [...map.values()].sort((a,b)=>b.total-a.total).slice(0,5).map(r=>({...r,premiumPct:r.total?Math.round(r.premium/r.total*100):0,rejectPct:r.total?Math.round(r.rejected/r.total*100):0,tracePct:r.total?Math.round(r.trace/(r.total*traceKeys.length)*100):0}));
+  }
+  const sourceQuality=groupQuality(i=>i.measurements?.traceability?.quarrySource||i.supplier);
+  const batchQuality=groupQuality(i=>i.measurements?.traceability?.batchNo);
   return (
     <div>
       <div style={{...TEXT.pageHeader,marginBottom:16}}>Analytics</div>
       <KpiGrid items={[{label:"Today",value:today,icon:"📅",color:C.primary},{label:"This Week",value:week,icon:"📆",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Total",value:total,icon:"📦",color:C.text}]}/>
+      <KpiGrid items={[{label:"Trace Coverage",value:traceCoverage+"%",icon:"Trace",color:traceCoverage>=70?C.green:C.amber},{label:"Audit Ready",value:auditReadyPct+"%",icon:"Audit",color:auditReadyPct>=70?C.green:C.amber},{label:"CAPA Needed",value:capaNeeded,icon:"CAPA",color:capaNeeded?C.red:C.green},{label:"Batches",value:batchCount,icon:"Batch",color:C.primary}]}/>
       <Card style={{marginBottom:14}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Grade Distribution</div>
         <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
@@ -1971,6 +1995,53 @@ function FacAnalytics({insps}) {
           );})}
         </div>
       </Card>
+      <Card style={{marginBottom:14}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+          <div style={TEXT.panelTitle}>Audit Readiness</div>
+          <span style={{fontSize:11,fontWeight:900,color:auditReadyPct>=70?C.green:C.amber}}>{auditReadyCount}/{total||0} complete</span>
+        </div>
+        <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:6}}><span>Traceability coverage</span><span>{traceCoverage}%</span></div>
+            <PBar value={traceCoverage} color={traceCoverage>=70?C.green:C.amber} h={8}/>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:6}}><span>Audit checklist completion</span><span>{auditReadyPct}%</span></div>
+            <PBar value={auditReadyPct} color={auditReadyPct>=70?C.green:C.amber} h={8}/>
+          </div>
+          {capaNeeded>0&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:800}}>CAPA attention needed on {capaNeeded} slab{capaNeeded===1?"":"s"} with defects but no corrective action recorded.</div>}
+        </div>
+      </Card>
+      {sourceQuality.length>0&&<Card style={{marginBottom:14}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Source Quality</div>
+        <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
+          {sourceQuality.map(r=>(
+            <div key={r.key} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",background:r.rejectPct>15?C.redBg:C.white}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:12,marginBottom:6}}>
+                <span style={{fontSize:13,fontWeight:900,color:C.text}}>{r.key}</span>
+                <span style={{fontSize:12,fontWeight:900,color:r.rejectPct>15?C.red:C.green}}>{r.total} slabs</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                {[["Premium",r.premiumPct+"%",C.green],["Rejected",r.rejectPct+"%",r.rejectPct?C.red:C.textDim],["Trace",r.tracePct+"%",r.tracePct>=70?C.green:C.amber]].map(([l,v,col])=><div key={l} style={{background:C.surface,borderRadius:8,padding:"7px 6px",textAlign:"center"}}><div style={{fontSize:13,fontWeight:900,color:col}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>}
+      {batchQuality.some(r=>r.key!=="Not recorded")&&<Card style={{marginBottom:14}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Batch Quality</div>
+        <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
+          {batchQuality.filter(r=>r.key!=="Not recorded").map(r=>(
+            <div key={r.key} style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:900,color:C.text}}>{r.key}</div>
+                <div style={{fontSize:11,color:C.textDim}}>{r.total} slabs - {r.defects} defect records</div>
+              </div>
+              <span style={{fontSize:12,fontWeight:900,color:r.rejectPct>15?C.red:C.green,background:r.rejectPct>15?C.redBg:C.greenBg,border:`1px solid ${r.rejectPct>15?C.redBorder:C.greenBorder}`,borderRadius:20,padding:"4px 9px"}}>{r.premiumPct}% premium</span>
+            </div>
+          ))}
+        </div>
+      </Card>}
       {topDefects.length>0&&<Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Top Defects</div>
         <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
