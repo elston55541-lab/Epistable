@@ -36,3 +36,16 @@ Once usage is proven, these fields can graduate into dedicated tables:
 - `shipments`
 
 That would support richer reporting without changing the current MVP flow.
+
+## Operating rhythm
+
+For factories, the practical workflow should stay simple:
+
+1. Scan every slab with required photo evidence.
+2. Add source, batch, block, line, operator, shipment, and order references whenever available.
+3. Mark calibration and checklist completion during inspection.
+4. Add root cause and corrective action notes when defects are recorded.
+5. Use History filters to find missing traceability, audit-ready slabs, and open CAPA gaps.
+6. Export the audit evidence CSV before buyer reviews, management reviews, or audit preparation.
+
+The public certificate should be positioned as an evidence record, not a third-party certification. It helps buyers and auditors inspect the factory's proof trail quickly.
