@@ -1381,6 +1381,13 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   const reservedSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="reserved").length;
   const soldSlabs=insps.filter(i=>(i.inventoryStatus||"available")==="sold").length;
   const rejectedToday=today.filter(i=>i.grade==="Rejected").length;
+  const traceKeys=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"];
+  const traceFields=insps.reduce((s,i)=>{const t=i.measurements?.traceability||{};return s+traceKeys.filter(k=>!!t[k]).length;},0);
+  const traceCoverage=insps.length?Math.round(traceFields/(insps.length*traceKeys.length)*100):0;
+  const auditReady=insps.filter(i=>i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete).length;
+  const auditReadyPct=insps.length?Math.round(auditReady/insps.length*100):0;
+  const capaNeeded=insps.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
+  const readinessScore=insps.length?Math.round((traceCoverage+auditReadyPct+(capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100))/3):0;
   const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
   const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:"Rs "+b.total,icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
   const factoryNextSteps=isAdmin?[
@@ -1416,6 +1423,27 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
       <KpiGrid items={homeKpisNext}/>
       <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:14}}/>
       <SetupChecklist title={isAdmin?"Factory setup checklist":"Inspector checklist"} subtitle={isAdmin?"The shortest path from first slab to buyer trust":"Small habits that make certificates stronger"} items={setupItems} style={{marginBottom:14}}/>
+      {isAdmin&&<Card style={{padding:14,marginBottom:14,borderColor:readinessScore>=70?C.greenBorder:C.amberBorder,background:readinessScore>=70?C.greenBg:C.amberBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:900,color:readinessScore>=70?C.green:C.amber}}>Certification readiness</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.5,marginTop:2}}>A quick signal for how much audit-ready proof your current scans contain.</div>
+          </div>
+          <div style={{fontSize:26,fontWeight:900,color:readinessScore>=70?C.green:C.amber,lineHeight:1}}>{readinessScore}%</div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {[["Traceability",traceCoverage,traceCoverage>=70?C.green:C.amber],["Audit checklist",auditReadyPct,auditReadyPct>=70?C.green:C.amber],["CAPA closure",capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100,capaNeeded?C.red:C.green]].map(([label,value,color])=>(
+            <div key={label}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:900,marginBottom:5}}><span>{label}</span><span style={{color}}>{value}%</span></div>
+              <PBar value={value} color={color} h={7}/>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:12}}>
+          <div style={{fontSize:11,color:C.textMid,lineHeight:1.45}}>{capaNeeded?`${capaNeeded} defect record${capaNeeded===1?"":"s"} still need corrective action notes.`:"No open CAPA gaps in current scan data."}</div>
+          <Btn size="sm" variant="secondary" onClick={()=>setPage("analytics")}>Analytics</Btn>
+        </div>
+      </Card>}
       {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
           <div><div style={{fontSize:14,fontWeight:900}}>Today at a glance</div><div style={TEXT.tinyMeta}>Inventory, buyer demand, and quality signals</div></div>
