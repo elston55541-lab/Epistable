@@ -1982,9 +1982,30 @@ function FacAnalytics({insps}) {
   }
   const sourceQuality=groupQuality(i=>i.measurements?.traceability?.quarrySource||i.supplier);
   const batchQuality=groupQuality(i=>i.measurements?.traceability?.batchNo);
+  function downloadAuditCsv(){
+    const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const rows=[
+      ["Slab ID","Date","Time","Stone","Grade","Supplier","Source","Batch","Block","Line","Operator","Container","Customer Ref","Calibration Checked","Checklist Complete","Defects","Root Cause","Corrective Action","Action Owner","Action Due","Notes"],
+      ...insps.map(i=>{
+        const t=i.measurements?.traceability||{};
+        const a=i.measurements?.audit||{};
+        return [i.id,i.date,i.time,i.stone,i.grade,i.supplier,t.quarrySource,t.batchNo,t.blockNo,t.productionLine,t.operator,t.containerNo,t.customerRef,a.calibrationChecked?"Yes":"No",a.checklistComplete?"Yes":"No",(i.defects||[]).join("; "),a.rootCause,a.correctiveAction,a.actionOwner,a.actionDue,i.notes];
+      })
+    ];
+    const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`epistable-audit-evidence-${curMon()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   return (
     <div>
-      <div style={{...TEXT.pageHeader,marginBottom:16}}>Analytics</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
+        <div style={TEXT.pageHeader}>Analytics</div>
+        <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
+      </div>
       <KpiGrid items={[{label:"Today",value:today,icon:"📅",color:C.primary},{label:"This Week",value:week,icon:"📆",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Total",value:total,icon:"📦",color:C.text}]}/>
       <KpiGrid items={[{label:"Trace Coverage",value:traceCoverage+"%",icon:"Trace",color:traceCoverage>=70?C.green:C.amber},{label:"Audit Ready",value:auditReadyPct+"%",icon:"Audit",color:auditReadyPct>=70?C.green:C.amber},{label:"CAPA Needed",value:capaNeeded,icon:"CAPA",color:capaNeeded?C.red:C.green},{label:"Batches",value:batchCount,icon:"Batch",color:C.primary}]}/>
       <Card style={{marginBottom:14}}>
