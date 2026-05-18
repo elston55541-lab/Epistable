@@ -70,6 +70,8 @@ export function SlabCertificate({slabId}) {
   },[slabId]);
 
   const measurements=useMemo(()=>asObject(slab?.measurements),[slab]);
+  const traceability=useMemo(()=>asObject(measurements.traceability),[measurements]);
+  const audit=useMemo(()=>asObject(measurements.audit),[measurements]);
   const defects=useMemo(()=>asList(slab?.defects),[slab]);
   const photos=useMemo(()=>asList(slab?.photos).map(normalizePhoto).filter(p=>p?.src),[slab]);
 
@@ -88,6 +90,8 @@ export function SlabCertificate({slabId}) {
   const areaSqFt=Number(inq.areaSqFt);
   const quoteEstimate=Number.isFinite(areaSqFt)&&areaSqFt>0 ? Math.round(areaSqFt*Number(slab.price_per_sq_ft||0)) : 0;
   const evidenceCount=photos.length || (photo ? 1 : 0);
+  const traceabilityCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>traceability[k]).length;
+  const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
   const verificationItems=[
     {label:"Live certificate",detail:"Use this page URL or QR code as the source of truth before buying."},
     {label:"Slab identity",detail:`Match certificate ID ${slab.id} with the physical slab, invoice, or factory record.`},
@@ -100,10 +104,12 @@ export function SlabCertificate({slabId}) {
     `Grade: ${slab.grade}`,
     `Price: Rs ${slab.price_per_sq_ft || 0}/sq ft`,
     `Status: ${inventory.label}`,
+    traceability.quarrySource ? `Source: ${traceability.quarrySource}` : "",
+    traceability.batchNo ? `Batch: ${traceability.batchNo}` : "",
     defects.length ? `Defects recorded: ${defects.join(", ")}` : "Defects recorded: none",
     `Photo evidence: ${evidenceCount} photo${evidenceCount===1 ? "" : "s"}`,
     `Certificate link: ${certificateUrl}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
   const scrollTo=id=>document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
 
   async function copyLink(){
@@ -324,6 +330,37 @@ export function SlabCertificate({slabId}) {
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:6}}><span>Polish level</span><span>{polish}/5</span></div>
                 <PBar value={polish/5*100} color={C.primary} h={8}/>
               </div>}
+            </Card>
+
+            <Card className="cert-card" style={{padding:18}}>
+              <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Traceability</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                <div style={{background:traceabilityCount?C.primaryBg:C.surface,border:`1px solid ${traceabilityCount?C.primaryBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
+                  <div style={{fontSize:11,fontWeight:900,color:traceabilityCount?C.primary:C.textDim,marginBottom:2}}>Trace fields</div>
+                  <div style={{fontSize:13,fontWeight:900,color:C.text}}>{traceabilityCount}/7 recorded</div>
+                </div>
+                <div style={{background:auditCount?C.greenBg:C.surface,border:`1px solid ${auditCount?C.greenBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
+                  <div style={{fontSize:11,fontWeight:900,color:auditCount?C.green:C.textDim,marginBottom:2}}>Audit fields</div>
+                  <div style={{fontSize:13,fontWeight:900,color:C.text}}>{auditCount}/6 recorded</div>
+                </div>
+              </div>
+              <Field label="Quarry / source" value={traceability.quarrySource}/>
+              <Field label="Batch" value={traceability.batchNo}/>
+              <Field label="Block" value={traceability.blockNo}/>
+              <Field label="Production line" value={traceability.productionLine}/>
+              <Field label="Operator" value={traceability.operator}/>
+              <Field label="Container / shipment" value={traceability.containerNo}/>
+              <Field label="Customer / order ref" value={traceability.customerRef}/>
+            </Card>
+
+            <Card className="cert-card" style={{padding:18}}>
+              <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Audit Readiness</div>
+              <Field label="Calibration" value={audit.calibrationChecked ? "Checked" : ""}/>
+              <Field label="Inspection checklist" value={audit.checklistComplete ? "Complete" : ""}/>
+              <Field label="Root cause" value={audit.rootCause}/>
+              <Field label="Corrective action" value={audit.correctiveAction}/>
+              <Field label="Action owner" value={audit.actionOwner}/>
+              <Field label="Action due" value={audit.actionDue}/>
             </Card>
 
             <Card className="cert-card" style={{padding:18}}>

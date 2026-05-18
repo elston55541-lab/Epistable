@@ -1487,9 +1487,36 @@ const PHOTO_SLOTS = [
   {id:"defect",label:"Defect close-up",hint:"Required when defects are selected",required:false},
 ];
 
+const defaultMeasurements = () => ({
+  thickness:"",
+  length:"",
+  width:"",
+  polish:3,
+  soundTest:"clear",
+  edgeCondition:"good",
+  surfaceFinish:"polished",
+  traceability:{
+    quarrySource:"",
+    batchNo:"",
+    blockNo:"",
+    productionLine:"",
+    operator:"",
+    containerNo:"",
+    customerRef:"",
+  },
+  audit:{
+    calibrationChecked:false,
+    checklistComplete:false,
+    rootCause:"",
+    correctiveAction:"",
+    actionOwner:"",
+    actionDue:"",
+  },
+});
+
 function FacScan({user,fac,paused,onSaved}) {
   const [step,setStep]=useState(0);
-  const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});
+  const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});
   const [grade,setGrade]=useState(null);const [loading,setLoading]=useState(false);const [saved,setSaved]=useState(false);
   const [saving,setSaving]=useState(false);const [saveError,setSaveError]=useState("");
   const [photos,setPhotos]=useState({});
@@ -1556,11 +1583,14 @@ function FacScan({user,fac,paused,onSaved}) {
   }
   function toggleDefect(id){setForm(p=>({...p,defects:p.defects.includes(id)?p.defects.filter(d=>d!==id):[...p.defects,id]}));}
   function setMeas(k,v){setForm(p=>({...p,measurements:{...p.measurements,[k]:v}}));}
+  function setTrace(k,v){setForm(p=>({...p,measurements:{...p.measurements,traceability:{...(p.measurements.traceability||{}),[k]:v}}}));}
+  function setAudit(k,v){setForm(p=>({...p,measurements:{...p.measurements,audit:{...(p.measurements.audit||{}),[k]:v}}}));}
 
   async function gradeWithAI(){
     setLoading(true);setGrade(null);
     try {
-      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName()||"Unknown"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
+      const trace=form.measurements.traceability||{};
+      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName()||"Unknown"}\nSource: ${trace.quarrySource||"Not recorded"}, Batch: ${trace.batchNo||"Not recorded"}, Block: ${trace.blockNo||"Not recorded"}, Line: ${trace.productionLine||"Not recorded"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
       const data=await res.json();
       let text=data.content?.[0]?.text||"{}";text=text.replace(/```json|```/g,"").trim();
       setGrade(JSON.parse(text));
@@ -1590,7 +1620,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade?.pricePerSqFt}/sqft</div>
       <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:{thickness:"",length:"",width:"",polish:3,soundTest:"clear",edgeCondition:"good",surfaceFinish:"polished"},defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
+        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
         <Btn onClick={onSaved}>View History</Btn>
       </div>
     </div>
@@ -1692,6 +1722,27 @@ function FacScan({user,fac,paused,onSaved}) {
         <Sel label="Sound Test" value={form.measurements.soundTest} onChange={v=>setMeas("soundTest",v)} options={[{value:"clear",label:"🔔 Clear"},{value:"dull",label:"💀 Dull"},{value:"hollow",label:"💨 Hollow"}]}/>
         <Sel label="Edge Condition" value={form.measurements.edgeCondition} onChange={v=>setMeas("edgeCondition",v)} options={[{value:"good",label:"✅ Good"},{value:"minor",label:"⚠️ Minor chips"},{value:"damaged",label:"❌ Damaged"}]}/>
         <Sel label="Surface Finish" value={form.measurements.surfaceFinish} onChange={v=>setMeas("surfaceFinish",v)} options={[{value:"polished",label:"Polished"},{value:"honed",label:"Honed"},{value:"brushed",label:"Brushed"},{value:"sandblasted",label:"Sandblasted"}]}/>
+        <Card style={{padding:14}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:4}}>Traceability</div>
+          <div style={{fontSize:11,color:C.textDim,lineHeight:1.45,marginBottom:12}}>Optional now, but valuable for export buyers, audits, and batch-level quality history.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Quarry / Source" value={form.measurements.traceability?.quarrySource||""} onChange={v=>setTrace("quarrySource",v)} placeholder="Makrana Quarry A"/>
+            <Inp label="Batch No." value={form.measurements.traceability?.batchNo||""} onChange={v=>setTrace("batchNo",v)} placeholder="B-204"/>
+            <Inp label="Block No." value={form.measurements.traceability?.blockNo||""} onChange={v=>setTrace("blockNo",v)} placeholder="BLK-17"/>
+            <Inp label="Production Line" value={form.measurements.traceability?.productionLine||""} onChange={v=>setTrace("productionLine",v)} placeholder="Line 2"/>
+            <Inp label="Operator" value={form.measurements.traceability?.operator||""} onChange={v=>setTrace("operator",v)} placeholder="Operator name"/>
+            <Inp label="Container / Shipment" value={form.measurements.traceability?.containerNo||""} onChange={v=>setTrace("containerNo",v)} placeholder="CONT-123"/>
+          </div>
+          <div style={{marginTop:10}}><Inp label="Customer / Order Ref" value={form.measurements.traceability?.customerRef||""} onChange={v=>setTrace("customerRef",v)} placeholder="PO-1009"/></div>
+        </Card>
+        <Card style={{padding:14}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:4}}>Audit Readiness</div>
+          <div style={{fontSize:11,color:C.textDim,lineHeight:1.45,marginBottom:12}}>Capture simple proof points that reduce audit and buyer follow-up later.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <button onClick={()=>setAudit("calibrationChecked",!form.measurements.audit?.calibrationChecked)} style={{padding:"10px",background:form.measurements.audit?.calibrationChecked?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.calibrationChecked?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.calibrationChecked?C.green:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{form.measurements.audit?.calibrationChecked?"Calibration checked":"Mark calibration"}</button>
+            <button onClick={()=>setAudit("checklistComplete",!form.measurements.audit?.checklistComplete)} style={{padding:"10px",background:form.measurements.audit?.checklistComplete?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.checklistComplete?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.checklistComplete?C.green:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{form.measurements.audit?.checklistComplete?"Checklist complete":"Mark checklist"}</button>
+          </div>
+        </Card>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
       </div>}
       {step===2&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -1722,6 +1773,16 @@ function FacScan({user,fac,paused,onSaved}) {
               {photos.defect&&<button onClick={()=>removeEvidencePhoto("defect")} style={{padding:"8px",background:"transparent",border:"none",color:C.red,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Remove</button>}
             </div>
           </div>
+        </Card>}
+        {form.defects.length>0&&<Card style={{padding:14,borderColor:C.amberBorder,background:C.amberBg}}>
+          <div style={{fontSize:14,fontWeight:900,color:C.amber,marginBottom:4}}>Corrective Action</div>
+          <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginBottom:12}}>Optional CAPA notes turn this scan into audit evidence, not just a defect record.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Root Cause" value={form.measurements.audit?.rootCause||""} onChange={v=>setAudit("rootCause",v)} placeholder="Handling damage"/>
+            <Inp label="Action Owner" value={form.measurements.audit?.actionOwner||""} onChange={v=>setAudit("actionOwner",v)} placeholder="QC manager"/>
+          </div>
+          <div style={{marginTop:10}}><Inp label="Corrective Action" value={form.measurements.audit?.correctiveAction||""} onChange={v=>setAudit("correctiveAction",v)} placeholder="Re-polish edge and inspect next batch"/></div>
+          <div style={{marginTop:10}}><Inp label="Due Date" value={form.measurements.audit?.actionDue||""} onChange={v=>setAudit("actionDue",v)} placeholder="2026-05-30"/></div>
         </Card>}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}>🤖 Grade with AI</Btn></div>
@@ -1765,6 +1826,8 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
   const [statusBusy,setStatusBusy]=useState(false);
   const g=gradeConf(slab.grade);
   const measurements=slab.measurements||{};
+  const traceability=measurements.traceability||{};
+  const audit=measurements.audit||{};
   const defects=Array.isArray(slab.defects)?slab.defects:[];
   const photos=(Array.isArray(slab.photos)?slab.photos:[]).map((p,idx)=>typeof p==="string"?{src:p,label:idx===0?"Primary photo":`Evidence ${idx+1}`}:p).filter(p=>p?.src);
   const certificateUrl=`${window.location.origin}/slab/${encodeURIComponent(slab.id)}`;
@@ -1822,6 +1885,12 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
         <Card style={{padding:14}}>
           <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Inspection</div>
           {[["Supplier",slab.supplier],["Inspector",slab.inspector],["Thickness",measurements.thickness?`${measurements.thickness} mm`:""],["Size",measurements.length&&measurements.width?`${measurements.length} x ${measurements.width} cm`:""],["Sound",measurements.soundTest],["Edge",measurements.edgeCondition],["Finish",measurements.surfaceFinish],["Export Ready",slab.exportReady?"Yes":"No"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:700}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:800,textAlign:"right"}}>{v||"Not recorded"}</span></div>
+          ))}
+        </Card>
+        <Card style={{padding:14}}>
+          <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Traceability & Audit</div>
+          {[["Quarry / Source",traceability.quarrySource],["Batch",traceability.batchNo],["Block",traceability.blockNo],["Line",traceability.productionLine],["Operator",traceability.operator],["Container",traceability.containerNo],["Customer Ref",traceability.customerRef],["Calibration",audit.calibrationChecked?"Checked":""],["Checklist",audit.checklistComplete?"Complete":""],["Root Cause",audit.rootCause],["Corrective Action",audit.correctiveAction],["Owner",audit.actionOwner],["Due",audit.actionDue]].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:700}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:800,textAlign:"right"}}>{v||"Not recorded"}</span></div>
           ))}
         </Card>
