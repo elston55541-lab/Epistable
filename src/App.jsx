@@ -3635,6 +3635,11 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             const inv=slab.inventoryStatus||"available";
             const canInquire=inv==="available";
             const saved=savedSet.has(slab.id);
+            const trace=slab.measurements?.traceability||{};
+            const audit=slab.measurements?.audit||{};
+            const traceCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>trace[k]).length;
+            const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
+            const readiness=Math.round(((traceCount/7)*100+(auditCount/6)*100+(slab.photo?100:0))/3);
             return (
               <div key={slab.id} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
@@ -3646,6 +3651,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                     <button onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{position:"absolute",top:8,left:58,background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:800,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:"sans-serif"}}>{saved?"Saved":"Save"}</button>
                     <div style={{position:"absolute",bottom:8,left:8,display:"flex",gap:6,flexWrap:"wrap"}}>
                       <InventoryPill status={inv}/>
+                      <span style={{background:readiness>=70?C.greenBg:C.amberBg,border:`1px solid ${readiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:800,color:readiness>=70?C.green:C.amber}}>Evidence {readiness}%</span>
                       {slab.exportReady&&<span style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:800,color:C.green}}>Export ready</span>}
                     </div>
                   </div>
@@ -3654,6 +3660,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                     <div style={{fontSize:11,color:C.textDim,marginBottom:8}}>{slab.date} · {slabDims(slab)}</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                       {slab.supplier&&<span style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.textMid}}>{slab.supplier}</span>}
+                      {trace.batchNo&&<span style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.primary}}>Batch {trace.batchNo}</span>}
                       {(slab.defects||[]).length===0?<span style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.green}}>No defects</span>:<span style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:C.amber}}>{slab.defects.length} defects</span>}
                     </div>
                   </div>
