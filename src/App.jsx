@@ -1427,6 +1427,12 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   const auditReadyPct=insps.length?Math.round(auditReady/insps.length*100):0;
   const capaNeeded=insps.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
   const readinessScore=insps.length?Math.round((traceCoverage+auditReadyPct+(capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100))/3):0;
+  const readinessActions=[
+    traceCoverage<70&&{label:"Add traceability to scans",detail:"Record source, batch, block, line, operator, shipment, and order references on new inspections.",page:"scan",color:C.amber},
+    auditReadyPct<70&&{label:"Complete audit checks",detail:"Mark calibration and inspection checklist completion while recording measurements.",page:"scan",color:C.primary},
+    capaNeeded>0&&{label:"Close CAPA gaps",detail:`${capaNeeded} defect record${capaNeeded===1?"":"s"} need root cause and corrective action notes.`,page:"analytics",color:C.red},
+    insps.length<5&&{label:"Build evidence volume",detail:"Create at least five complete certificates so trends and exports become useful.",page:"scan",color:C.green},
+  ].filter(Boolean).slice(0,3);
   const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
   const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:"Rs "+b.total,icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
   const factoryNextSteps=isAdmin?[
@@ -1482,6 +1488,15 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
           <div style={{fontSize:11,color:C.textMid,lineHeight:1.45}}>{capaNeeded?`${capaNeeded} defect record${capaNeeded===1?"":"s"} still need corrective action notes.`:"No open CAPA gaps in current scan data."}</div>
           <Btn size="sm" variant="secondary" onClick={()=>setPage("analytics")}>Analytics</Btn>
         </div>
+        {readinessActions.length>0&&<div style={{borderTop:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,marginTop:12,paddingTop:12,display:"flex",flexDirection:"column",gap:8}}>
+          {readinessActions.map(action=>(
+            <button key={action.label} onClick={()=>setPage(action.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:action.color,flexShrink:0}}/>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{action.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,lineHeight:1.35}}>{action.detail}</span></span>
+              <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Fix</span>
+            </button>
+          ))}
+        </div>}
       </Card>}
       {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
