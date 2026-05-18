@@ -3552,6 +3552,11 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     }
   }
   const estimateTotal=quoteReq.areaSqFt&&inquiry?Math.round(Number(quoteReq.areaSqFt||0)*Number(inquiry.pricePerSqFt||0)):0;
+  const inquiryTrace=inquiry?.measurements?.traceability||{};
+  const inquiryAudit=inquiry?.measurements?.audit||{};
+  const inquiryTraceCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>inquiryTrace[k]).length;
+  const inquiryAuditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>inquiryAudit[k]).length;
+  const inquiryReadiness=inquiry?Math.round(((inquiryTraceCount/7)*100+(inquiryAuditCount/6)*100+(inquiry.photo?100:0))/3):0;
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
@@ -3694,6 +3699,13 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   <div style={{fontSize:14,fontWeight:900,color:C.green}}>Rs {inquiry.pricePerSqFt}/sqft</div>
                 </div>
                 <div style={{fontSize:11,color:C.textDim}}>{inquiry.id} · {slabDims(inquiry)}</div>
+              </div>
+              <div style={{background:inquiryReadiness>=70?C.greenBg:C.amberBg,border:`1px solid ${inquiryReadiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:12,marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
+                  <div style={{fontSize:13,fontWeight:900,color:inquiryReadiness>=70?C.green:C.amber}}>Evidence readiness</div>
+                  <div style={{fontSize:16,fontWeight:900,color:inquiryReadiness>=70?C.green:C.amber}}>{inquiryReadiness}%</div>
+                </div>
+                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>Includes photo evidence, {inquiryTraceCount}/7 traceability fields, and {inquiryAuditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                 <Inp label="Area Required" value={quoteReq.areaSqFt} onChange={v=>setQuoteReq(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120" hint="sq ft"/>
