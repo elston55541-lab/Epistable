@@ -92,6 +92,7 @@ export function SlabCertificate({slabId}) {
   const evidenceCount=photos.length || (photo ? 1 : 0);
   const traceabilityCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>traceability[k]).length;
   const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
+  const readinessScore=Math.round(((traceabilityCount/7)*100+(auditCount/6)*100+(evidenceCount?100:0))/3);
   const verificationItems=[
     {label:"Live certificate",detail:"Use this page URL or QR code as the source of truth before buying."},
     {label:"Slab identity",detail:`Match certificate ID ${slab.id} with the physical slab, invoice, or factory record.`},
@@ -334,6 +335,13 @@ export function SlabCertificate({slabId}) {
 
             <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Traceability</div>
+              <div style={{background:readinessScore>=70?C.greenBg:C.amberBg,border:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
+                  <span style={{fontSize:12,fontWeight:900,color:readinessScore>=70?C.green:C.amber}}>Evidence readiness</span>
+                  <span style={{fontSize:16,fontWeight:900,color:readinessScore>=70?C.green:C.amber}}>{readinessScore}%</span>
+                </div>
+                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>This score reflects recorded traceability, audit proof, and photo evidence for this slab. It is not a third-party certification.</div>
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <div style={{background:traceabilityCount?C.primaryBg:C.surface,border:`1px solid ${traceabilityCount?C.primaryBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
                   <div style={{fontSize:11,fontWeight:900,color:traceabilityCount?C.primary:C.textDim,marginBottom:2}}>Trace fields</div>
@@ -355,6 +363,7 @@ export function SlabCertificate({slabId}) {
 
             <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Audit Readiness</div>
+              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,lineHeight:1.55,color:C.textMid,marginBottom:10}}>These fields help factories maintain inspection evidence for buyer QC programs, internal reviews, and certification preparation.</div>
               <Field label="Calibration" value={audit.calibrationChecked ? "Checked" : ""}/>
               <Field label="Inspection checklist" value={audit.checklistComplete ? "Complete" : ""}/>
               <Field label="Root cause" value={audit.rootCause}/>
