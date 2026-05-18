@@ -891,6 +891,19 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
   const mon=curMon();
   const ms=facs.reduce((s,f)=>s+(f.current_month===mon?f.current_month_scans||0:0),0);
   const totalScans=facs.reduce((s,f)=>s+(f.scans_total||0),0)||insps.length;
+  const traceKeys=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"];
+  function factoryReadiness(fac){
+    const list=insps.filter(i=>i.factoryId===fac.id||i.factory_id===fac.id);
+    const trace=list.reduce((s,i)=>s+traceKeys.filter(k=>!!i.measurements?.traceability?.[k]).length,0);
+    const tracePct=list.length?Math.round(trace/(list.length*traceKeys.length)*100):0;
+    const audit=list.length?Math.round(list.filter(i=>i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete).length/list.length*100):0;
+    const capa=list.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
+    const score=list.length?Math.round((tracePct+audit+(capa?Math.max(0,100-Math.min(capa*20,100)):100))/3):0;
+    return {fac,list,tracePct,audit,capa,score};
+  }
+  const readiness=facs.map(factoryReadiness).sort((a,b)=>a.score-b.score);
+  const avgReadiness=readiness.length?Math.round(readiness.reduce((s,r)=>s+r.score,0)/readiness.length):0;
+  const needsReadiness=readiness.filter(r=>r.list.length>0&&r.score<70);
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,borderRadius:14,padding:"20px",marginBottom:18,color:C.white}}>
@@ -903,6 +916,32 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
         </div>
       </div>
       <KpiGrid items={[{label:"Billed This Month",value:"₹"+totalBill,icon:"💳",color:C.green},{label:"Scans This Month",value:ms,icon:"🔍",color:C.primary},{label:"Factories",value:facs.length,icon:"🏭",color:C.teal},{label:"Users",value:users.length,icon:"👤",color:C.text}]}/>
+      <Card style={{padding:14,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:900}}>Platform readiness</div>
+            <div style={TEXT.tinyMeta}>Traceability, audit checklist, and CAPA health across factories</div>
+          </div>
+          <div style={{fontSize:26,fontWeight:900,color:avgReadiness>=70?C.green:C.amber,lineHeight:1}}>{avgReadiness}%</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",readiness.filter(r=>r.list.length>0).length,C.primary],["Open CAPA",readiness.reduce((s,r)=>s+r.capa,0),readiness.some(r=>r.capa)?C.red:C.green]].map(([label,value,color])=>(
+            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",textAlign:"center"}}>
+              <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
+              <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
+            </div>
+          ))}
+        </div>
+        {needsReadiness.length>0&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {needsReadiness.slice(0,3).map(r=>(
+            <button key={r.fac.id} onClick={()=>pickFac(r.fac)} style={{display:"flex",alignItems:"center",gap:10,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+              <span style={{fontSize:13,fontWeight:900,color:r.score<50?C.red:C.amber,width:42}}>{r.score}%</span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{r.fac.name}</span><span style={{display:"block",fontSize:11,color:C.textDim}}>Trace {r.tracePct}% - audit {r.audit}% - CAPA {r.capa}</span></span>
+              <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Open</span>
+            </button>
+          ))}
+        </div>}
+      </Card>
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={TEXT.panelTitle}>Factories</div>
