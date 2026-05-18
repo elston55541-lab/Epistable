@@ -902,7 +902,8 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
     return {fac,list,tracePct,audit,capa,score};
   }
   const readiness=facs.map(factoryReadiness).sort((a,b)=>a.score-b.score);
-  const avgReadiness=readiness.length?Math.round(readiness.reduce((s,r)=>s+r.score,0)/readiness.length):0;
+  const trackedReadiness=readiness.filter(r=>r.list.length>0);
+  const avgReadiness=trackedReadiness.length?Math.round(trackedReadiness.reduce((s,r)=>s+r.score,0)/trackedReadiness.length):0;
   const needsReadiness=readiness.filter(r=>r.list.length>0&&r.score<70);
   return (
     <div>
@@ -925,7 +926,7 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
           <div style={{fontSize:26,fontWeight:900,color:avgReadiness>=70?C.green:C.amber,lineHeight:1}}>{avgReadiness}%</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",readiness.filter(r=>r.list.length>0).length,C.primary],["Open CAPA",readiness.reduce((s,r)=>s+r.capa,0),readiness.some(r=>r.capa)?C.red:C.green]].map(([label,value,color])=>(
+          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",readiness.reduce((s,r)=>s+r.capa,0),readiness.some(r=>r.capa)?C.red:C.green]].map(([label,value,color])=>(
             <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",textAlign:"center"}}>
               <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
@@ -2000,6 +2001,9 @@ function FacHistory({insps}) {
   const hasTrace=i=>traceKeys.some(k=>!!i.measurements?.traceability?.[k]);
   const isAuditReady=i=>!!(i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete);
   const needsCapa=i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction;
+  const missingTraceCount=withStatus.filter(i=>!hasTrace(i)).length;
+  const auditReadyCount=withStatus.filter(isAuditReady).length;
+  const capaNeededCount=withStatus.filter(needsCapa).length;
   const filtered=useMemo(()=>{
     const q=search.toLowerCase();
     return withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&
@@ -2027,6 +2031,16 @@ function FacHistory({insps}) {
           <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
+      <Card style={{padding:12,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+          {[["Missing Trace",missingTraceCount,missingTraceCount?C.amber:C.green],["Audit Ready",auditReadyCount,C.green],["CAPA Needed",capaNeededCount,capaNeededCount?C.red:C.green]].map(([label,value,color])=>(
+            <button key={label} onClick={()=>setEvidenceFilter(label)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 6px",textAlign:"center",cursor:"pointer",fontFamily:"sans-serif"}}>
+              <div style={{fontSize:16,fontWeight:900,color,lineHeight:1}}>{value}</div>
+              <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:4}}>{label}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
       {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, grade, batch, or source.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");setEvidenceFilter("All");}}/>:
       <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);return(
         <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
@@ -2079,15 +2093,21 @@ function FacAnalytics({insps}) {
   const batchQuality=groupQuality(i=>i.measurements?.traceability?.batchNo);
   function downloadAuditCsv(){
     const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const readinessFor=i=>{
+      const traceCount=traceKeys.filter(k=>!!i.measurements?.traceability?.[k]).length;
+      const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>!!i.measurements?.audit?.[k]).length;
+      const photoScore=i.photo?100:0;
+      return Math.round(((traceCount/traceKeys.length)*100+(auditCount/6)*100+photoScore)/3);
+    };
     const rows=[
-      ["Slab ID","Date","Time","Stone","Grade","Supplier","Source","Batch","Block","Line","Operator","Container","Customer Ref","Calibration Checked","Checklist Complete","Defects","Root Cause","Corrective Action","Action Owner","Action Due","Notes"],
+      ["Slab ID","Certificate URL","Readiness Score","Date","Time","Stone","Grade","Supplier","Source","Batch","Block","Line","Operator","Container","Customer Ref","Calibration Checked","Checklist Complete","Defects","Root Cause","Corrective Action","Action Owner","Action Due","Notes"],
       ...insps.map(i=>{
         const t=i.measurements?.traceability||{};
         const a=i.measurements?.audit||{};
-        return [i.id,i.date,i.time,i.stone,i.grade,i.supplier,t.quarrySource,t.batchNo,t.blockNo,t.productionLine,t.operator,t.containerNo,t.customerRef,a.calibrationChecked?"Yes":"No",a.checklistComplete?"Yes":"No",(i.defects||[]).join("; "),a.rootCause,a.correctiveAction,a.actionOwner,a.actionDue,i.notes];
+        return [i.id,`${window.location.origin}/slab/${encodeURIComponent(i.id)}`,readinessFor(i),i.date,i.time,i.stone,i.grade,i.supplier,t.quarrySource,t.batchNo,t.blockNo,t.productionLine,t.operator,t.containerNo,t.customerRef,a.calibrationChecked?"Yes":"No",a.checklistComplete?"Yes":"No",(i.defects||[]).join("; "),a.rootCause,a.correctiveAction,a.actionOwner,a.actionDue,i.notes];
       })
     ];
-    const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
+    const csv="\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\n");
     const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
     const a=document.createElement("a");
     a.href=url;
