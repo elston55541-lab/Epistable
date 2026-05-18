@@ -1993,13 +1993,19 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
 }
 
 function FacHistory({insps}) {
-  const [search,setSearch]=useState("");const [filterG,setFilterG]=useState("All");const [qrSlab,setQrSlab]=useState(null);const [detailSlab,setDetailSlab]=useState(null);
+  const [search,setSearch]=useState("");const [filterG,setFilterG]=useState("All");const [evidenceFilter,setEvidenceFilter]=useState("All");const [qrSlab,setQrSlab]=useState(null);const [detailSlab,setDetailSlab]=useState(null);
   const [statusOverrides,setStatusOverrides]=useState({});
   const withStatus=useMemo(()=>insps.map(i=>({...i,inventoryStatus:statusOverrides[i.id]||i.inventoryStatus||"available"})),[insps,statusOverrides]);
+  const traceKeys=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"];
+  const hasTrace=i=>traceKeys.some(k=>!!i.measurements?.traceability?.[k]);
+  const isAuditReady=i=>!!(i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete);
+  const needsCapa=i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction;
   const filtered=useMemo(()=>{
     const q=search.toLowerCase();
-    return withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&(!q||i.stone?.toLowerCase().includes(q)||i.id?.toLowerCase().includes(q)));
-  },[withStatus,filterG,search]);
+    return withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&
+      (evidenceFilter==="All"||(evidenceFilter==="Trace"&&hasTrace(i))||(evidenceFilter==="Missing Trace"&&!hasTrace(i))||(evidenceFilter==="Audit Ready"&&isAuditReady(i))||(evidenceFilter==="CAPA Needed"&&needsCapa(i)))&&
+      (!q||i.stone?.toLowerCase().includes(q)||i.id?.toLowerCase().includes(q)||i.measurements?.traceability?.batchNo?.toLowerCase().includes(q)||i.measurements?.traceability?.quarrySource?.toLowerCase().includes(q)));
+  },[withStatus,filterG,evidenceFilter,search]);
   async function updateStatus(slab,status){
     await DB.updInspStatus(slab.id,status);
     setStatusOverrides(p=>({...p,[slab.id]:status}));
@@ -2016,7 +2022,12 @@ function FacHistory({insps}) {
           <button key={f} onClick={()=>setFilterG(f)} style={{padding:"6px 14px",background:filterG===f?C.primary:C.white,border:`1px solid ${filterG===f?C.primary:C.border}`,borderRadius:20,color:filterG===f?C.white:C.textMid,fontSize:12,fontWeight:filterG===f?700:400,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
-      {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, or grade.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");}}/>:
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
+        {["All","Trace","Missing Trace","Audit Ready","CAPA Needed"].map(f=>(
+          <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
+        ))}
+      </div>
+      {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, grade, batch, or source.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");setEvidenceFilter("All");}}/>:
       <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);return(
         <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
@@ -2025,6 +2036,8 @@ function FacHistory({insps}) {
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}>
             <span style={{...T.pill,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
             <InventoryPill status={r.inventoryStatus}/>
+            {needsCapa(r)&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"2px 8px"}}>CAPA</span>}
+            {!hasTrace(r)&&<span style={{fontSize:10,fontWeight:800,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>No trace</span>}
             <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
           </div>
         </div>
