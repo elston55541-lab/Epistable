@@ -3500,8 +3500,15 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       return next;
     });
   }
+  const evidenceReadiness=s=>{
+    const trace=s.measurements?.traceability||{};
+    const audit=s.measurements?.audit||{};
+    const traceCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>trace[k]).length;
+    const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
+    return {score:Math.round(((traceCount/7)*100+(auditCount/6)*100+(s.photo?100:0))/3),trace,audit,traceCount,auditCount};
+  };
   async function copyShortlist(){
-    const lines=savedSlabs.map(s=>`${s.stone} | ${s.grade} | Rs ${s.pricePerSqFt}/sqft | ${window.location.origin}/slab/${encodeURIComponent(s.id)}`);
+    const lines=savedSlabs.map(s=>{const e=evidenceReadiness(s);return `${s.stone} | ${s.grade} | Rs ${s.pricePerSqFt}/sqft | Evidence ${e.score}%${e.trace.batchNo?` | Batch ${e.trace.batchNo}`:""} | ${window.location.origin}/slab/${encodeURIComponent(s.id)}`;});
     const text=lines.length?lines.join("\n"):"No slabs saved yet.";
     try{await navigator.clipboard.writeText(text);setShortlistCopied(true);setTimeout(()=>setShortlistCopied(false),1400);}catch(e){window.prompt("Copy shortlist",text);}
   }
@@ -3516,7 +3523,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       &&(exportFilter==="All"||(exportFilter==="Export"&&i.exportReady)||(exportFilter==="Domestic"&&!i.exportReady))
       &&(statusFilter==="All"||(i.inventoryStatus||"available")===statusFilter)
       &&(!maxPrice||Number(i.pricePerSqFt||0)<=Number(maxPrice))
-      &&(!q||[i.stone,i.id,i.supplier,i.grade,slabDims(i),...(i.defects||[])].filter(Boolean).join(" ").toLowerCase().includes(q)))
+      &&(!q||[i.stone,i.id,i.supplier,i.grade,slabDims(i),i.measurements?.traceability?.batchNo,i.measurements?.traceability?.quarrySource,i.measurements?.traceability?.containerNo,...(i.defects||[])].filter(Boolean).join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>{
       if(sortBy==="priceLow")return Number(a.pricePerSqFt||0)-Number(b.pricePerSqFt||0);
       if(sortBy==="priceHigh")return Number(b.pricePerSqFt||0)-Number(a.pricePerSqFt||0);
@@ -3534,8 +3541,15 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   async function submitInquiry(){
     if(!inquiry||inquiryBusy)return;
     setInquiryBusy(true);setInquiryError("");
+    const evidence=evidenceReadiness(inquiry);
     const requestLines=[
       "Quote request",
+      `Certificate: ${window.location.origin}/slab/${encodeURIComponent(inquiry.id)}`,
+      `Evidence readiness: ${evidence.score}%`,
+      `Traceability fields: ${evidence.traceCount}/7`,
+      `Audit fields: ${evidence.auditCount}/6`,
+      evidence.trace.batchNo?`Batch: ${evidence.trace.batchNo}`:null,
+      evidence.trace.quarrySource?`Source: ${evidence.trace.quarrySource}`:null,
       quoteReq.areaSqFt?`Area required: ${quoteReq.areaSqFt} sq ft`:null,
       quoteReq.deliveryLocation?`Delivery location: ${quoteReq.deliveryLocation}`:null,
       quoteReq.targetDate?`Target date: ${quoteReq.targetDate}`:null,
@@ -3552,11 +3566,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     }
   }
   const estimateTotal=quoteReq.areaSqFt&&inquiry?Math.round(Number(quoteReq.areaSqFt||0)*Number(inquiry.pricePerSqFt||0)):0;
-  const inquiryTrace=inquiry?.measurements?.traceability||{};
-  const inquiryAudit=inquiry?.measurements?.audit||{};
-  const inquiryTraceCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>inquiryTrace[k]).length;
-  const inquiryAuditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>inquiryAudit[k]).length;
-  const inquiryReadiness=inquiry?Math.round(((inquiryTraceCount/7)*100+(inquiryAuditCount/6)*100+(inquiry.photo?100:0))/3):0;
+  const inquiryEvidence=inquiry?evidenceReadiness(inquiry):{score:0,traceCount:0,auditCount:0};
+  const inquiryReadiness=inquiryEvidence.score;
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
@@ -3640,11 +3651,9 @@ function BuyerPortal({factoryId,onBack,buyer}) {
             const inv=slab.inventoryStatus||"available";
             const canInquire=inv==="available";
             const saved=savedSet.has(slab.id);
-            const trace=slab.measurements?.traceability||{};
-            const audit=slab.measurements?.audit||{};
-            const traceCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>trace[k]).length;
-            const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
-            const readiness=Math.round(((traceCount/7)*100+(auditCount/6)*100+(slab.photo?100:0))/3);
+            const evidence=evidenceReadiness(slab);
+            const trace=evidence.trace;
+            const readiness=evidence.score;
             return (
               <div key={slab.id} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
@@ -3705,7 +3714,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   <div style={{fontSize:13,fontWeight:900,color:inquiryReadiness>=70?C.green:C.amber}}>Evidence readiness</div>
                   <div style={{fontSize:16,fontWeight:900,color:inquiryReadiness>=70?C.green:C.amber}}>{inquiryReadiness}%</div>
                 </div>
-                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>Includes photo evidence, {inquiryTraceCount}/7 traceability fields, and {inquiryAuditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
+                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>Includes photo evidence, {inquiryEvidence.traceCount}/7 traceability fields, and {inquiryEvidence.auditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                 <Inp label="Area Required" value={quoteReq.areaSqFt} onChange={v=>setQuoteReq(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120" hint="sq ft"/>
