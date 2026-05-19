@@ -2232,10 +2232,11 @@ function FacAnalytics({insps}) {
     const rows=insps.map(i=>{
       const t=i.measurements?.traceability||{};
       const a=i.measurements?.audit||{};
+      const ai=i.measurements?.aiReview||{};
       const certificate=`${window.location.origin}/slab/${encodeURIComponent(i.id)}`;
       const traceCount=traceKeys.filter(k=>!!t[k]).length;
       const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>!!a[k]).length;
-      return `<tr><td>${esc(i.id)}</td><td>${esc(i.stone)}</td><td>${esc(i.grade)}</td><td>${esc(i.supplier||"Not recorded")}</td><td>${esc(t.batchNo||"Not recorded")}</td><td>${traceCount}/7</td><td>${auditCount}/6</td><td>${(i.defects||[]).length?esc((i.defects||[]).join(", ")):"None"}</td><td><a href="${certificate}">Certificate</a></td></tr>`;
+      return `<tr><td>${esc(i.id)}</td><td>${esc(i.stone)}</td><td>${esc(i.grade)}</td><td>${esc(ai.suggestedGrade||"Not recorded")}</td><td>${esc(ai.finalGrade||i.grade)}</td><td>${esc(ai.overrideReason||"None")}</td><td>${esc(i.supplier||"Not recorded")}</td><td>${esc(t.batchNo||"Not recorded")}</td><td>${traceCount}/7</td><td>${auditCount}/6</td><td>${(i.defects||[]).length?esc((i.defects||[]).join(", ")):"None"}</td><td><a href="${certificate}">Certificate</a></td></tr>`;
     }).join("");
     const sourceRows=sourceQuality.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.tracePct}%</td></tr>`).join("");
     const batchRows=batchQuality.filter(r=>r.key!=="Not recorded").map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.defects}</td></tr>`).join("");
@@ -2260,7 +2261,7 @@ function FacAnalytics({insps}) {
         <div class="kpi"><b>${auditReadyPct}%</b>Audit checklist completion</div>
       </div>
       <div class="note">This packet organizes Epistable inspection evidence for buyer QC, internal review, and certification-readiness preparation. It is not a third-party certification.</div>
-      <h2>Slab Certificate Register</h2><table><thead><tr><th>Slab</th><th>Stone</th><th>Grade</th><th>Supplier</th><th>Batch</th><th>Trace</th><th>Audit</th><th>Defects</th><th>Link</th></tr></thead><tbody>${rows||"<tr><td colspan='9'>No inspections recorded</td></tr>"}</tbody></table>
+      <h2>Slab Certificate Register</h2><table><thead><tr><th>Slab</th><th>Stone</th><th>Grade</th><th>AI Suggested</th><th>Final Grade</th><th>Override Reason</th><th>Supplier</th><th>Batch</th><th>Trace</th><th>Audit</th><th>Defects</th><th>Link</th></tr></thead><tbody>${rows||"<tr><td colspan='12'>No inspections recorded</td></tr>"}</tbody></table>
       <h2>Source Quality Summary</h2><table><thead><tr><th>Source/Supplier</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Trace Coverage</th></tr></thead><tbody>${sourceRows||"<tr><td colspan='5'>No source data recorded</td></tr>"}</tbody></table>
       <h2>Batch Quality Summary</h2><table><thead><tr><th>Batch</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Defect Records</th></tr></thead><tbody>${batchRows||"<tr><td colspan='5'>No batch data recorded</td></tr>"}</tbody></table>
       <h2>Top Defects</h2><table><thead><tr><th>Defect</th><th>Count</th></tr></thead><tbody>${defectRows}</tbody></table>
