@@ -2227,10 +2227,12 @@ function FacAnalytics({insps}) {
       .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:12px}.kpi b{display:block;font-size:22px}
       table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
       .note{border:1px solid #b8d0f0;background:#e8f0fa;border-radius:8px;padding:12px;margin-top:18px;color:#0057a8}
-      @media print{body{margin:16px}.grid{grid-template-columns:repeat(4,1fr)}a{color:#0057a8}}
+      .actions{display:flex;gap:8px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+      @media print{body{margin:16px}.grid{grid-template-columns:repeat(4,1fr)}a{color:#0057a8}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Audit Evidence Packet</h1>
       <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())} · ${total} inspections</div>
+      <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
       <div class="grid">
         <div class="kpi"><b>${total}</b>Total inspections</div>
         <div class="kpi"><b>${pp}%</b>Premium rate</div>
