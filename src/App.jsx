@@ -2084,6 +2084,13 @@ function FacHistory({insps}) {
   const hasTrace=i=>traceKeys.some(k=>!!i.measurements?.traceability?.[k]);
   const isAuditReady=i=>!!(i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete);
   const needsCapa=i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction;
+  const evidenceScore=i=>{
+    const photos=Array.isArray(i.photos)?i.photos.filter(Boolean).length:(i.photo?1:0);
+    const traceCount=traceKeys.filter(k=>!!i.measurements?.traceability?.[k]).length;
+    const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>!!i.measurements?.audit?.[k]).length;
+    const capaOk=!needsCapa(i);
+    return Math.round(((photos?100:0)+(traceCount/traceKeys.length*100)+(auditCount/6*100)+(capaOk?100:0))/4);
+  };
   const missingTraceCount=withStatus.filter(i=>!hasTrace(i)).length;
   const auditReadyCount=withStatus.filter(isAuditReady).length;
   const capaNeededCount=withStatus.filter(needsCapa).length;
@@ -2125,13 +2132,14 @@ function FacHistory({insps}) {
         </div>
       </Card>
       {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, grade, batch, or source.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");setEvidenceFilter("All");}}/>:
-      <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);const trace=r.measurements?.traceability||{};const traceMeta=[trace.batchNo&&`Batch ${trace.batchNo}`,trace.quarrySource].filter(Boolean).join(" - ");return(
+      <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);const trace=r.measurements?.traceability||{};const traceMeta=[trace.batchNo&&`Batch ${trace.batchNo}`,trace.quarrySource].filter(Boolean).join(" - ");const ev=evidenceScore(r);return(
         <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
           <div style={{width:44,height:44,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.emoji}</div>}
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{r.stone}</div><div style={TEXT.tinyMeta}>{traceMeta||`${r.date} - ${r.time}`}</div>{traceMeta&&<div style={{...TEXT.tinyMeta,marginTop:2}}>{r.date} - {r.time}</div>}</div>
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}>
             <span style={{...T.pill,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
+            <span style={{fontSize:10,fontWeight:900,color:ev>=70?C.green:C.amber,background:ev>=70?C.greenBg:C.amberBg,border:`1px solid ${ev>=70?C.greenBorder:C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>Evidence {ev}%</span>
             <InventoryPill status={r.inventoryStatus}/>
             {needsCapa(r)&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"2px 8px"}}>CAPA</span>}
             {!hasTrace(r)&&<span style={{fontSize:10,fontWeight:800,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>No trace</span>}
