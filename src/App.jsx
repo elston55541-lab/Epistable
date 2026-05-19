@@ -1654,6 +1654,7 @@ function FacScan({user,fac,paused,onSaved}) {
   const [step,setStep]=useState(0);
   const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});
   const [grade,setGrade]=useState(null);const [loading,setLoading]=useState(false);const [saved,setSaved]=useState(false);
+  const [aiGrade,setAiGrade]=useState("");const [overrideReason,setOverrideReason]=useState("");
   const [saving,setSaving]=useState(false);const [saveError,setSaveError]=useState("");
   const [photos,setPhotos]=useState({});
   const [photoSlot,setPhotoSlot]=useState("front");
@@ -1742,8 +1743,9 @@ function FacScan({user,fac,paused,onSaved}) {
       const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName()||"Unknown"}\nSource: ${trace.quarrySource||"Not recorded"}, Batch: ${trace.batchNo||"Not recorded"}, Block: ${trace.blockNo||"Not recorded"}, Line: ${trace.productionLine||"Not recorded"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
       const data=await res.json();
       let text=data.content?.[0]?.text||"{}";text=text.replace(/```json|```/g,"").trim();
-      setGrade(JSON.parse(text));
-    } catch(e){setGrade({grade:"Standard",reason:"AI unavailable. Default grade assigned.",pricePerSqFt:480,exportReady:false,tips:"Check connection."});}
+      const parsed=JSON.parse(text);
+      setGrade(parsed);setAiGrade(parsed.grade||"");
+    } catch(e){const fallback={grade:"Standard",reason:"AI unavailable. Default grade assigned.",pricePerSqFt:480,exportReady:false,tips:"Check connection."};setGrade(fallback);setAiGrade(fallback.grade);}
     setLoading(false);
   }
 
@@ -1752,7 +1754,8 @@ function FacScan({user,fac,paused,onSaved}) {
     setSaving(true);setSaveError("");
     try {
       const capturedSupplier=supplierName();
-      const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:capturedSupplier,supplierId:supplierMode==="registered"?form.supplierId||null:null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:form.measurements,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
+      const measurementsWithReview={...form.measurements,aiReview:{suggestedGrade:aiGrade||grade.grade,finalGrade:grade.grade,overrideReason:overrideReason.trim(),reviewedAt:Date.now()}};
+      const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:capturedSupplier,supplierId:supplierMode==="registered"?form.supplierId||null:null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:measurementsWithReview,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
       await DB.saveInsp(insp);
       setSaved(true);
     } catch(e) {
@@ -1769,7 +1772,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade?.pricePerSqFt}/sqft</div>
       <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
+        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setAiGrade("");setOverrideReason("");setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
         <Btn onClick={onSaved}>View History</Btn>
       </div>
     </div>
@@ -1953,7 +1956,13 @@ function FacScan({user,fac,paused,onSaved}) {
             <Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder,background:C.amberBg}}>
               <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:5}}>AI-assisted, inspector-confirmed</div>
               <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Review the evidence photos, measurements, defects, and price before saving. If the AI grade does not match the slab, override it below so the certificate reflects the human inspection.</div>
+              {aiGrade&&<div style={{fontSize:11,color:C.textMid,fontWeight:800,marginTop:8}}>AI suggested: {aiGrade} · Final: {grade.grade}</div>}
             </Card>
+            {aiGrade&&grade.grade!==aiGrade&&<Card style={{padding:14,marginBottom:12,borderColor:C.primaryBorder,background:C.primaryBg}}>
+              <div style={{fontSize:13,fontWeight:900,color:C.primary,marginBottom:6}}>Override reason</div>
+              <textarea value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} rows={2} placeholder="Why did the inspector change the AI grade?" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:9,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"sans-serif"}}/>
+              <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginTop:6}}>This helps build a future training dataset for AI grading confidence and human overrides.</div>
+            </Card>}
             <Card style={{padding:14,marginBottom:12,borderColor:evidenceScore>=70?C.greenBorder:C.amberBorder,background:evidenceScore>=70?C.greenBg:C.amberBg}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}>
                 <div>
@@ -1973,13 +1982,13 @@ function FacScan({user,fac,paused,onSaved}) {
             </Card>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
               {GRADES.map(g=>(
-                <button key={g.id} onClick={()=>setGrade({...grade,grade:g.id,pricePerSqFt:g.price})} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"sans-serif",textAlign:"center"}}>
+                <button key={g.id} onClick={()=>{setGrade({...grade,grade:g.id,pricePerSqFt:g.price});if(g.id===aiGrade)setOverrideReason("");}} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"sans-serif",textAlign:"center"}}>
                   <div style={{fontSize:14,marginBottom:3}}>{g.emoji}</div><div style={{fontSize:9,fontWeight:700,color:grade.grade===g.id?g.color:C.textDim}}>{g.id}</div>
                 </button>
               ))}
             </div>
             <ErrorNotice title="Could not save slab" message={saveError} onRetry={save}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setSaveError("");}}>← Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"✓ Save Slab"}</Btn></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setAiGrade("");setOverrideReason("");setSaveError("");}}>← Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"✓ Save Slab"}</Btn></div>
           </div>
         );})():null}
       </div>}
