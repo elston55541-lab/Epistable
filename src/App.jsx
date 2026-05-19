@@ -2243,13 +2243,14 @@ function FacAnalytics({insps}) {
   function downloadAiReviewCsv(){
     const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
     const rows=[
-      ["Slab ID","Certificate URL","Stone","Supplier","Date","Time","Defects","Photo Count","Photo Evidence Labels","AI Suggested Grade","Final Inspector Grade","Override Reason","Reviewed At","Thickness","Length","Width","Polish","Notes"],
+      ["Slab ID","Certificate URL","Stone","Supplier","Source","Batch","Date","Time","Defects","Photo Count","Photo Evidence Labels","AI Suggested Grade","Final Inspector Grade","Override Reason","Reviewed At","Thickness","Length","Width","Polish","Notes"],
       ...aiReviewed.map(i=>{
         const ai=i.measurements?.aiReview||{};
         const m=i.measurements||{};
+        const t=i.measurements?.traceability||{};
         const photos=Array.isArray(i.photos)?i.photos.filter(Boolean):[];
         const photoLabels=photos.map((p,idx)=>typeof p==="string"?`Evidence ${idx+1}`:(p.label||p.slot||`Evidence ${idx+1}`)).join("; ");
-        return [i.id,`${window.location.origin}/slab/${encodeURIComponent(i.id)}`,i.stone,i.supplier,i.date,i.time,(i.defects||[]).join("; "),photos.length||(i.photo?1:0),photoLabels||((i.photo&&!photos.length)?"Primary photo":""),ai.suggestedGrade,ai.finalGrade||i.grade,ai.overrideReason,ai.reviewedAt?`${fmtD(ai.reviewedAt)} ${fmtT(ai.reviewedAt)}`:"",m.thickness,m.length,m.width,m.polish,i.notes];
+        return [i.id,`${window.location.origin}/slab/${encodeURIComponent(i.id)}`,i.stone,i.supplier,t.quarrySource,t.batchNo,i.date,i.time,(i.defects||[]).join("; "),photos.length||(i.photo?1:0),photoLabels||((i.photo&&!photos.length)?"Primary photo":""),ai.suggestedGrade,ai.finalGrade||i.grade,ai.overrideReason,ai.reviewedAt?`${fmtD(ai.reviewedAt)} ${fmtT(ai.reviewedAt)}`:"",m.thickness,m.length,m.width,m.polish,i.notes];
       })
     ];
     const csv="\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\n");
