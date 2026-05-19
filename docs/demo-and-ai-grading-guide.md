@@ -174,6 +174,24 @@ Analytics should use this to monitor:
 
 This is the right pre-training step. It creates an evaluation loop before investing in a custom vision model.
 
+## AI Review Dataset Export
+
+Factory analytics now includes an `Export AI Dataset` action in the AI Review Learning panel.
+
+Use this export to review the human-in-the-loop grading dataset before any custom model work. It includes:
+
+- slab ID and certificate URL,
+- stone and supplier,
+- defect tags,
+- photo count and photo evidence labels,
+- AI suggested grade,
+- final inspector grade,
+- override reason,
+- review timestamp,
+- key measurements and notes.
+
+This export is not a model-training pipeline by itself. It is the dataset quality checkpoint: confirm that photo evidence is consistent, override reasons are useful, and final grades are reliable before spending money on image model training.
+
 ## Sales Demo Checklist
 
 Before a demo:
