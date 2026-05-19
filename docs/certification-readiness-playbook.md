@@ -57,6 +57,7 @@ Before selling seriously, the product should pass these gates:
 - Buyer workflow: buyer can browse inventory, view certificate, send inquiry, receive quote, accept quote, and see status.
 - Factory workflow: factory admin can manage team, buyers, inquiries, quotes, inventory status, disputes, and evidence exports.
 - Owner workflow: owner can see factories, users, billing, readiness, activity, and platform-level risk.
+- AI review loop: factories can see AI reviewed scans, AI overrides, override reasons, and export a focused AI review dataset before model training.
 - Reliability: login, reload, buyer add, user management, certificate, inquiry, quote, and accept flows are tested end to end.
 - Performance: login and dashboard load should feel fast enough for repeated daily use.
 
@@ -86,4 +87,12 @@ The right path:
 3. Build an evaluation set before training anything.
 4. Start with AI-assisted recommendations and human override.
 5. Only later market automated grading confidence once the model has enough real factory data.
+
+Current product signals to monitor:
+
+- AI reviewed scan count.
+- AI override count and override rate.
+- Repeated override reasons.
+- Photo count and photo evidence labels in the AI dataset export.
+- Whether final inspector grades stay consistent across stone types, suppliers, and batches.
 
