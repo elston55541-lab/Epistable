@@ -906,12 +906,16 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
   const trackedReadiness=readiness.filter(r=>r.list.length>0);
   const avgReadiness=trackedReadiness.length?Math.round(trackedReadiness.reduce((s,r)=>s+r.score,0)/trackedReadiness.length):0;
   const needsReadiness=readiness.filter(r=>r.list.length>0&&r.score<70);
+  const openCapa=readiness.reduce((s,r)=>s+r.capa,0);
+  const releaseReady=trackedReadiness.length>0&&avgReadiness>=70&&needsReadiness.length===0&&openCapa===0&&overdue===0;
   async function copyReadinessSummary(){
     const lines=[
       `Epistable platform readiness: ${avgReadiness}%`,
+      `Demo readiness: ${releaseReady?"Ready":"Needs review"}`,
       `Tracked factories: ${trackedReadiness.length}/${facs.length}`,
       `Factories needing work: ${needsReadiness.length}`,
-      `Open CAPA gaps: ${readiness.reduce((s,r)=>s+r.capa,0)}`,
+      `Open CAPA gaps: ${openCapa}`,
+      `Overdue billing accounts: ${overdue}`,
       "",
       ...readiness.filter(r=>r.list.length>0).slice(0,8).map(r=>`${r.fac.name}: ${r.score}% readiness | Trace ${r.tracePct}% | Audit ${r.audit}% | CAPA ${r.capa} | Scans ${r.list.length}`),
     ];
@@ -942,12 +946,19 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",readiness.reduce((s,r)=>s+r.capa,0),readiness.some(r=>r.capa)?C.red:C.green]].map(([label,value,color])=>(
+          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",openCapa,openCapa?C.red:C.green]].map(([label,value,color])=>(
             <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",textAlign:"center"}}>
               <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
             </div>
           ))}
+        </div>
+        <div style={{background:releaseReady?C.greenBg:C.amberBg,border:`1px solid ${releaseReady?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:needsReadiness.length>0?12:0,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+          <div>
+            <div style={{fontSize:12,fontWeight:900,color:releaseReady?C.green:C.amber}}>Demo readiness: {releaseReady?"Ready":"Needs review"}</div>
+            <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginTop:2}}>{releaseReady?"Tracked factories have clean readiness signals for a sales demo.":"Review low-readiness factories, CAPA gaps, or overdue accounts before a serious pilot demo."}</div>
+          </div>
+          <Btn size="sm" variant="secondary" onClick={()=>setPage(overdue?"billing":"factories")}>{overdue?"Billing":"Factories"}</Btn>
         </div>
         {needsReadiness.length>0&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {needsReadiness.slice(0,3).map(r=>(
