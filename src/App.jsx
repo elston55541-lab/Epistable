@@ -2116,6 +2116,7 @@ function FacHistory({insps}) {
   const missingTraceCount=withStatus.filter(i=>!hasTrace(i)).length;
   const auditReadyCount=withStatus.filter(isAuditReady).length;
   const capaNeededCount=withStatus.filter(needsCapa).length;
+  const aiReviewedCount=withStatus.filter(i=>i.measurements?.aiReview?.suggestedGrade).length;
   const aiOverrideCount=withStatus.filter(i=>{
     const ai=i.measurements?.aiReview;
     return ai?.suggestedGrade&&ai?.finalGrade&&ai.suggestedGrade!==ai.finalGrade;
@@ -2123,7 +2124,7 @@ function FacHistory({insps}) {
   const filtered=useMemo(()=>{
     const q=search.toLowerCase();
     return withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&
-      (evidenceFilter==="All"||(evidenceFilter==="Trace"&&hasTrace(i))||(evidenceFilter==="Missing Trace"&&!hasTrace(i))||(evidenceFilter==="Audit Ready"&&isAuditReady(i))||(evidenceFilter==="CAPA Needed"&&needsCapa(i))||(evidenceFilter==="AI Overrides"&&i.measurements?.aiReview?.suggestedGrade&&i.measurements?.aiReview?.finalGrade&&i.measurements.aiReview.suggestedGrade!==i.measurements.aiReview.finalGrade)||(evidenceFilter==="Strong Evidence"&&evidenceScore(i)>=70)||(evidenceFilter==="Weak Evidence"&&evidenceScore(i)<70))&&
+      (evidenceFilter==="All"||(evidenceFilter==="Trace"&&hasTrace(i))||(evidenceFilter==="Missing Trace"&&!hasTrace(i))||(evidenceFilter==="Audit Ready"&&isAuditReady(i))||(evidenceFilter==="CAPA Needed"&&needsCapa(i))||(evidenceFilter==="AI Reviewed"&&i.measurements?.aiReview?.suggestedGrade)||(evidenceFilter==="AI Overrides"&&i.measurements?.aiReview?.suggestedGrade&&i.measurements?.aiReview?.finalGrade&&i.measurements.aiReview.suggestedGrade!==i.measurements.aiReview.finalGrade)||(evidenceFilter==="Strong Evidence"&&evidenceScore(i)>=70)||(evidenceFilter==="Weak Evidence"&&evidenceScore(i)<70))&&
       (!q||i.stone?.toLowerCase().includes(q)||i.id?.toLowerCase().includes(q)||i.measurements?.traceability?.batchNo?.toLowerCase().includes(q)||i.measurements?.traceability?.quarrySource?.toLowerCase().includes(q)));
   },[withStatus,filterG,evidenceFilter,search]);
   async function updateStatus(slab,status){
@@ -2143,13 +2144,13 @@ function FacHistory({insps}) {
         ))}
       </div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
-        {["All","Strong Evidence","Weak Evidence","Trace","Missing Trace","Audit Ready","CAPA Needed","AI Overrides"].map(f=>(
+        {["All","Strong Evidence","Weak Evidence","Trace","Missing Trace","Audit Ready","CAPA Needed","AI Reviewed","AI Overrides"].map(f=>(
           <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
       <Card style={{padding:12,marginBottom:14}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
-          {[["Missing Trace",missingTraceCount,missingTraceCount?C.amber:C.green],["Audit Ready",auditReadyCount,C.green],["CAPA Needed",capaNeededCount,capaNeededCount?C.red:C.green],["AI Overrides",aiOverrideCount,aiOverrideCount?C.amber:C.green]].map(([label,value,color])=>(
+          {[["Missing Trace",missingTraceCount,missingTraceCount?C.amber:C.green],["Audit Ready",auditReadyCount,C.green],["CAPA Needed",capaNeededCount,capaNeededCount?C.red:C.green],["AI Reviewed",aiReviewedCount,C.primary],["AI Overrides",aiOverrideCount,aiOverrideCount?C.amber:C.green]].map(([label,value,color])=>(
             <button key={label} onClick={()=>setEvidenceFilter(label)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 6px",textAlign:"center",cursor:"pointer",fontFamily:"sans-serif"}}>
               <div style={{fontSize:16,fontWeight:900,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:4}}>{label}</div>
