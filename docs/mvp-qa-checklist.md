@@ -132,3 +132,18 @@ Do not release if any of these fail:
 - Factory cannot create or update a quote.
 - Accepted quote cannot be tracked.
 - Any critical user flow hangs without a visible error or retry option.
+
+## Release Confidence Rule
+
+Before a sales demo or pilot handoff, run the full critical path twice:
+
+1. Factory admin login.
+2. Create or open a verified slab.
+3. Open the public certificate.
+4. Submit buyer inquiry.
+5. Create quote.
+6. Open public quote.
+7. Accept quote.
+8. Confirm factory sales status updates.
+
+If the same step fails twice, stop feature work and fix that step first.
