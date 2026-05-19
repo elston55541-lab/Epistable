@@ -2232,6 +2232,24 @@ function FacAnalytics({insps}) {
     a.click();
     URL.revokeObjectURL(url);
   }
+  function downloadAiReviewCsv(){
+    const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const rows=[
+      ["Slab ID","Certificate URL","Stone","Supplier","Date","Time","Defects","AI Suggested Grade","Final Inspector Grade","Override Reason","Reviewed At","Thickness","Length","Width","Polish","Notes"],
+      ...aiReviewed.map(i=>{
+        const ai=i.measurements?.aiReview||{};
+        const m=i.measurements||{};
+        return [i.id,`${window.location.origin}/slab/${encodeURIComponent(i.id)}`,i.stone,i.supplier,i.date,i.time,(i.defects||[]).join("; "),ai.suggestedGrade,ai.finalGrade||i.grade,ai.overrideReason,ai.reviewedAt?`${fmtD(ai.reviewedAt)} ${fmtT(ai.reviewedAt)}`:"",m.thickness,m.length,m.width,m.polish,i.notes];
+      })
+    ];
+    const csv="\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`epistable-ai-review-dataset-${curMon()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   function downloadAuditPacket(){
     const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
     const rows=insps.map(i=>{
@@ -2322,7 +2340,10 @@ function FacAnalytics({insps}) {
       {aiReviewed.length>0&&<Card style={{marginBottom:14}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
           <div style={TEXT.panelTitle}>AI Review Learning</div>
-          <span style={{fontSize:11,fontWeight:900,color:aiOverrideRate>25?C.amber:C.green}}>{aiOverrideRate}% override rate</span>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <span style={{fontSize:11,fontWeight:900,color:aiOverrideRate>25?C.amber:C.green}}>{aiOverrideRate}% override rate</span>
+            <Btn size="sm" variant="secondary" onClick={downloadAiReviewCsv}>Export AI Dataset</Btn>
+          </div>
         </div>
         <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
           {[["Reviewed",aiReviewed.length,C.primary],["Overrides",aiOverrides.length,aiOverrides.length?C.amber:C.green],["Aligned",aiReviewed.length-aiOverrides.length,C.green]].map(([label,value,color])=>(
