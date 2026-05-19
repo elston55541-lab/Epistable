@@ -181,7 +181,7 @@ Factory analytics now includes an `Export AI Dataset` action in the AI Review Le
 Use this export to review the human-in-the-loop grading dataset before any custom model work. It includes:
 
 - slab ID and certificate URL,
-- stone and supplier,
+- stone, supplier, source, and batch,
 - defect tags,
 - photo count and photo evidence labels,
 - AI suggested grade,
