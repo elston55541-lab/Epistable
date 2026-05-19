@@ -146,13 +146,33 @@ Each scan should ideally retain:
 - defect close-up when defects exist,
 - stone type,
 - supplier,
+- AI suggested grade,
 - final human-confirmed grade,
+- override reason when the inspector changes the AI grade,
 - measurements,
 - defects,
 - notes,
 - buyer dispute outcome if any.
 
 This creates the dataset needed for a future grading model.
+
+## Current AI Review Capture
+
+The scan workflow now stores the AI review record inside inspection measurements:
+
+- suggested grade
+- final inspector grade
+- override reason
+- review timestamp
+
+Analytics should use this to monitor:
+
+- reviewed scan count,
+- AI/inspector alignment,
+- override rate,
+- repeated override reasons.
+
+This is the right pre-training step. It creates an evaluation loop before investing in a custom vision model.
 
 ## Sales Demo Checklist
 
