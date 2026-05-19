@@ -2066,7 +2066,7 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
         </Card>
         {aiReview.suggestedGrade&&<Card style={{padding:14,borderColor:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder,background:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBg:C.amberBg}}>
           <div style={{fontSize:14,fontWeight:900,color:aiReview.suggestedGrade===aiReview.finalGrade?C.green:C.amber,marginBottom:8}}>AI Review</div>
-          {[["AI Suggested",aiReview.suggestedGrade],["Final Grade",aiReview.finalGrade],["Override Reason",aiReview.overrideReason]].map(([l,v])=>(
+          {[["AI Suggested",aiReview.suggestedGrade],["Final Grade",aiReview.finalGrade],["Override Reason",aiReview.overrideReason],["Reviewed",aiReview.reviewedAt?`${fmtD(aiReview.reviewedAt)} ${fmtT(aiReview.reviewedAt)}`:"Not recorded"]].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:700}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:800,textAlign:"right"}}>{v||"Not recorded"}</span></div>
           ))}
         </Card>}
