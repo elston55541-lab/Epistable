@@ -2152,7 +2152,7 @@ function FacHistory({insps}) {
         </div>
       </Card>
       {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, grade, batch, or source.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");setEvidenceFilter("All");}}/>:
-      <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);const trace=r.measurements?.traceability||{};const traceMeta=[trace.batchNo&&`Batch ${trace.batchNo}`,trace.quarrySource].filter(Boolean).join(" - ");const ev=evidenceScore(r);return(
+      <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);const trace=r.measurements?.traceability||{};const ai=r.measurements?.aiReview||{};const hasAiOverride=ai.suggestedGrade&&ai.finalGrade&&ai.suggestedGrade!==ai.finalGrade;const traceMeta=[trace.batchNo&&`Batch ${trace.batchNo}`,trace.quarrySource].filter(Boolean).join(" - ");const ev=evidenceScore(r);return(
         <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
           <div style={{width:44,height:44,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.emoji}</div>}
@@ -2161,6 +2161,7 @@ function FacHistory({insps}) {
             <span style={{...T.pill,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20}}>{r.grade}</span>
             <span style={{fontSize:10,fontWeight:900,color:ev>=70?C.green:C.amber,background:ev>=70?C.greenBg:C.amberBg,border:`1px solid ${ev>=70?C.greenBorder:C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>Evidence {ev}%</span>
             <InventoryPill status={r.inventoryStatus}/>
+            {hasAiOverride&&<span style={{fontSize:10,fontWeight:800,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>AI override</span>}
             {needsCapa(r)&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"2px 8px"}}>CAPA</span>}
             {!hasTrace(r)&&<span style={{fontSize:10,fontWeight:800,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>No trace</span>}
             <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
