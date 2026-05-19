@@ -899,14 +899,18 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
     const tracePct=list.length?Math.round(trace/(list.length*traceKeys.length)*100):0;
     const audit=list.length?Math.round(list.filter(i=>i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete).length/list.length*100):0;
     const capa=list.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
+    const aiReviewed=list.filter(i=>i.measurements?.aiReview?.suggestedGrade).length;
+    const aiOverrides=list.filter(i=>i.measurements?.aiReview?.suggestedGrade&&i.measurements?.aiReview?.finalGrade&&i.measurements.aiReview.suggestedGrade!==i.measurements.aiReview.finalGrade).length;
     const score=list.length?Math.round((tracePct+audit+(capa?Math.max(0,100-Math.min(capa*20,100)):100))/3):0;
-    return {fac,list,tracePct,audit,capa,score};
+    return {fac,list,tracePct,audit,capa,aiReviewed,aiOverrides,score};
   }
   const readiness=facs.map(factoryReadiness).sort((a,b)=>a.score-b.score);
   const trackedReadiness=readiness.filter(r=>r.list.length>0);
   const avgReadiness=trackedReadiness.length?Math.round(trackedReadiness.reduce((s,r)=>s+r.score,0)/trackedReadiness.length):0;
   const needsReadiness=readiness.filter(r=>r.list.length>0&&r.score<70);
   const openCapa=readiness.reduce((s,r)=>s+r.capa,0);
+  const aiReviewedTotal=readiness.reduce((s,r)=>s+r.aiReviewed,0);
+  const aiOverridesTotal=readiness.reduce((s,r)=>s+r.aiOverrides,0);
   const releaseReady=trackedReadiness.length>0&&avgReadiness>=70&&needsReadiness.length===0&&openCapa===0&&overdue===0;
   async function copyReadinessSummary(){
     const lines=[
@@ -915,9 +919,11 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
       `Tracked factories: ${trackedReadiness.length}/${facs.length}`,
       `Factories needing work: ${needsReadiness.length}`,
       `Open CAPA gaps: ${openCapa}`,
+      `AI reviewed scans: ${aiReviewedTotal}`,
+      `AI overrides: ${aiOverridesTotal}`,
       `Overdue billing accounts: ${overdue}`,
       "",
-      ...readiness.filter(r=>r.list.length>0).slice(0,8).map(r=>`${r.fac.name}: ${r.score}% readiness | Trace ${r.tracePct}% | Audit ${r.audit}% | CAPA ${r.capa} | Scans ${r.list.length}`),
+      ...readiness.filter(r=>r.list.length>0).slice(0,8).map(r=>`${r.fac.name}: ${r.score}% readiness | Trace ${r.tracePct}% | Audit ${r.audit}% | CAPA ${r.capa} | AI reviewed ${r.aiReviewed} | AI overrides ${r.aiOverrides} | Scans ${r.list.length}`),
     ];
     const text=lines.join("\n");
     try{await navigator.clipboard.writeText(text);setReadinessCopied(true);setTimeout(()=>setReadinessCopied(false),1400);}catch(e){window.prompt("Copy readiness summary",text);}
@@ -945,8 +951,8 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
             <div style={{fontSize:26,fontWeight:900,color:avgReadiness>=70?C.green:C.amber,lineHeight:1}}>{avgReadiness}%</div>
           </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",openCapa,openCapa?C.red:C.green]].map(([label,value,color])=>(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:12}}>
+          {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",openCapa,openCapa?C.red:C.green],["AI Reviews",aiReviewedTotal,C.primary],["AI Overrides",aiOverridesTotal,aiOverridesTotal?C.amber:C.green]].map(([label,value,color])=>(
             <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",textAlign:"center"}}>
               <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
