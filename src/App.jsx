@@ -2207,6 +2207,49 @@ function FacAnalytics({insps}) {
     a.click();
     URL.revokeObjectURL(url);
   }
+  function downloadAuditPacket(){
+    const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+    const rows=insps.slice(0,80).map(i=>{
+      const t=i.measurements?.traceability||{};
+      const a=i.measurements?.audit||{};
+      const certificate=`${window.location.origin}/slab/${encodeURIComponent(i.id)}`;
+      const traceCount=traceKeys.filter(k=>!!t[k]).length;
+      const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>!!a[k]).length;
+      return `<tr><td>${esc(i.id)}</td><td>${esc(i.stone)}</td><td>${esc(i.grade)}</td><td>${esc(i.supplier||"Not recorded")}</td><td>${esc(t.batchNo||"Not recorded")}</td><td>${traceCount}/7</td><td>${auditCount}/6</td><td>${(i.defects||[]).length?esc((i.defects||[]).join(", ")):"None"}</td><td><a href="${certificate}">Certificate</a></td></tr>`;
+    }).join("");
+    const sourceRows=sourceQuality.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.tracePct}%</td></tr>`).join("");
+    const batchRows=batchQuality.filter(r=>r.key!=="Not recorded").map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.defects}</td></tr>`).join("");
+    const defectRows=topDefects.length?topDefects.map(([d,c])=>`<tr><td>${esc(d)}</td><td>${c}</td></tr>`).join(""):`<tr><td colspan="2">No defects recorded</td></tr>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Audit Packet ${curMon()}</title><style>
+      body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
+      h1{margin:0 0 4px;font-size:28px} h2{margin-top:28px;font-size:18px}
+      .meta{color:#4a5568;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+      .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:12px}.kpi b{display:block;font-size:22px}
+      table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
+      .note{border:1px solid #b8d0f0;background:#e8f0fa;border-radius:8px;padding:12px;margin-top:18px;color:#0057a8}
+      @media print{body{margin:16px}.grid{grid-template-columns:repeat(4,1fr)}a{color:#0057a8}}
+    </style></head><body>
+      <h1>Epistable Audit Evidence Packet</h1>
+      <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())} · ${total} inspections</div>
+      <div class="grid">
+        <div class="kpi"><b>${total}</b>Total inspections</div>
+        <div class="kpi"><b>${pp}%</b>Premium rate</div>
+        <div class="kpi"><b>${traceCoverage}%</b>Trace coverage</div>
+        <div class="kpi"><b>${auditReadyPct}%</b>Audit checklist completion</div>
+      </div>
+      <div class="note">This packet organizes Epistable inspection evidence for buyer QC, internal review, and certification-readiness preparation. It is not a third-party certification.</div>
+      <h2>Slab Certificate Register</h2><table><thead><tr><th>Slab</th><th>Stone</th><th>Grade</th><th>Supplier</th><th>Batch</th><th>Trace</th><th>Audit</th><th>Defects</th><th>Link</th></tr></thead><tbody>${rows||"<tr><td colspan='9'>No inspections recorded</td></tr>"}</tbody></table>
+      <h2>Source Quality Summary</h2><table><thead><tr><th>Source/Supplier</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Trace Coverage</th></tr></thead><tbody>${sourceRows||"<tr><td colspan='5'>No source data recorded</td></tr>"}</tbody></table>
+      <h2>Batch Quality Summary</h2><table><thead><tr><th>Batch</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Defect Records</th></tr></thead><tbody>${batchRows||"<tr><td colspan='5'>No batch data recorded</td></tr>"}</tbody></table>
+      <h2>Top Defects</h2><table><thead><tr><th>Defect</th><th>Count</th></tr></thead><tbody>${defectRows}</tbody></table>
+    </body></html>`;
+    const url=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`epistable-audit-packet-${curMon()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   async function copyEvidenceBrief(){
     const lines=[
       `Epistable factory evidence brief - ${curMon()}`,
@@ -2240,6 +2283,7 @@ function FacAnalytics({insps}) {
         <div style={TEXT.pageHeader}>Analytics</div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           <Btn size="sm" variant="ghost" onClick={copyEvidenceBrief} disabled={!insps.length}>{briefCopied?"Copied":"Copy Brief"}</Btn>
+          <Btn size="sm" variant="secondary" onClick={downloadAuditPacket} disabled={!insps.length}>Export Audit Packet</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
         </div>
       </div>
