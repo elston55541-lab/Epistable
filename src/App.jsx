@@ -1671,6 +1671,19 @@ function FacScan({user,fac,paused,onSaved}) {
   const completePhotoSlots=requiredPhotoSlots.filter(s=>photos[s.id]?.src).length;
   const photoReady=completePhotoSlots===requiredPhotoSlots.length;
   const photoEvidence=PHOTO_SLOTS.map(s=>photos[s.id]?{slot:s.id,label:s.label,src:photos[s.id].src}:null).filter(Boolean);
+  const scanTrace=form.measurements.traceability||{};
+  const scanAudit=form.measurements.audit||{};
+  const scanTraceKeys=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"];
+  const scanTraceCount=scanTraceKeys.filter(k=>!!scanTrace[k]).length;
+  const scanAuditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>!!scanAudit[k]).length;
+  const scanCapaOk=form.defects.length===0||!!scanAudit.correctiveAction;
+  const evidenceScore=Math.round(((photoReady?100:0)+(scanTraceCount/scanTraceKeys.length*100)+(scanAuditCount/6*100)+(scanCapaOk?100:0))/4);
+  const evidenceChecklist=[
+    {label:"Photo evidence",done:photoReady,detail:`${completePhotoSlots}/${requiredPhotoSlots.length} required slots captured`},
+    {label:"Traceability",done:scanTraceCount>=4,detail:`${scanTraceCount}/7 fields recorded`},
+    {label:"Audit checks",done:!!scanAudit.calibrationChecked&&!!scanAudit.checklistComplete,detail:`${scanAuditCount}/6 audit fields recorded`},
+    {label:"CAPA notes",done:scanCapaOk,detail:scanCapaOk?"No open corrective-action gap":"Defect scan needs corrective action"},
+  ];
   const selectedSupplier=suppliers.find(s=>s.id===form.supplierId);
   const supplierReady=supplierMode==="unknown"||(supplierMode==="registered"&&!!form.supplierId)||(supplierMode==="manual"&&!!form.supplier.trim());
   const supplierName=()=>supplierMode==="unknown"?"Unknown supplier":supplierMode==="registered"?(selectedSupplier?.name||""):form.supplier.trim();
@@ -1940,6 +1953,23 @@ function FacScan({user,fac,paused,onSaved}) {
             <Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder,background:C.amberBg}}>
               <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:5}}>AI-assisted, inspector-confirmed</div>
               <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Review the evidence photos, measurements, defects, and price before saving. If the AI grade does not match the slab, override it below so the certificate reflects the human inspection.</div>
+            </Card>
+            <Card style={{padding:14,marginBottom:12,borderColor:evidenceScore>=70?C.greenBorder:C.amberBorder,background:evidenceScore>=70?C.greenBg:C.amberBg}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:900,color:evidenceScore>=70?C.green:C.amber}}>Evidence completeness</div>
+                  <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginTop:2}}>Stronger evidence improves buyer confidence and audit readiness.</div>
+                </div>
+                <div style={{fontSize:22,fontWeight:900,color:evidenceScore>=70?C.green:C.amber,lineHeight:1}}>{evidenceScore}%</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {evidenceChecklist.map(item=>(
+                  <div key={item.label} style={{background:C.white,border:`1px solid ${item.done?C.greenBorder:C.amberBorder}`,borderRadius:9,padding:"8px 9px"}}>
+                    <div style={{fontSize:11,fontWeight:900,color:item.done?C.green:C.amber,marginBottom:3}}>{item.done?"Complete":"Review"} - {item.label}</div>
+                    <div style={{fontSize:11,color:C.textDim,lineHeight:1.35}}>{item.detail}</div>
+                  </div>
+                ))}
+              </div>
             </Card>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
               {GRADES.map(g=>(
