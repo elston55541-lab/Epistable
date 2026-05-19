@@ -1427,6 +1427,7 @@ function FactoryApp({user,onLogout}) {
 }
 
 function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPortal}) {
+  const [readinessCopied,setReadinessCopied]=useState(false);
   const today=insps.filter(i=>Date.now()-i.ts<86400000);
   const byG=g=>insps.filter(i=>i.grade===g).length;
   const pp=insps.length?Math.round(byG("Premium")/insps.length*100):0;
@@ -1450,6 +1451,28 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
     capaNeeded>0&&{label:"Close CAPA gaps",detail:`${capaNeeded} defect record${capaNeeded===1?"":"s"} need root cause and corrective action notes.`,page:"analytics",color:C.red},
     insps.length<5&&{label:"Build evidence volume",detail:"Create at least five complete certificates so trends and exports become useful.",page:"scan",color:C.green},
   ].filter(Boolean).slice(0,3);
+  async function copyFactoryReadinessSummary(){
+    const lines=[
+      `${fac?.name||user.factory_name||"Factory"} readiness: ${readinessScore}%`,
+      `Scans: ${insps.length}`,
+      `Traceability coverage: ${traceCoverage}%`,
+      `Audit checklist completion: ${auditReadyPct}%`,
+      `CAPA gaps: ${capaNeeded}`,
+      `Available slabs: ${availableSlabs}`,
+      `Premium rate: ${pp}%`,
+      "",
+      "Next actions:",
+      ...(readinessActions.length?readinessActions.map(a=>`- ${a.label}: ${a.detail}`):["- Maintain current scan discipline and export evidence before buyer or audit reviews."]),
+    ];
+    const text=lines.join("\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      setReadinessCopied(true);
+      setTimeout(()=>setReadinessCopied(false),1400);
+    }catch(e){
+      window.prompt("Copy readiness summary",text);
+    }
+  }
   const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
   const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:"Rs "+b.total,icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
   const factoryNextSteps=isAdmin?[
@@ -1491,7 +1514,10 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
             <div style={{fontSize:14,fontWeight:900,color:readinessScore>=70?C.green:C.amber}}>Certification readiness</div>
             <div style={{fontSize:12,color:C.textMid,lineHeight:1.5,marginTop:2}}>A quick signal for how much audit-ready proof your current scans contain.</div>
           </div>
-          <div style={{fontSize:26,fontWeight:900,color:readinessScore>=70?C.green:C.amber,lineHeight:1}}>{readinessScore}%</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <Btn size="sm" variant="secondary" onClick={copyFactoryReadinessSummary}>{readinessCopied?"Copied":"Copy"}</Btn>
+            <div style={{fontSize:26,fontWeight:900,color:readinessScore>=70?C.green:C.amber,lineHeight:1}}>{readinessScore}%</div>
+          </div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {[["Traceability",traceCoverage,traceCoverage>=70?C.green:C.amber],["Audit checklist",auditReadyPct,auditReadyPct>=70?C.green:C.amber],["CAPA closure",capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100,capaNeeded?C.red:C.green]].map(([label,value,color])=>(
