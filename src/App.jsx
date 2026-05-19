@@ -2229,7 +2229,7 @@ function FacAnalytics({insps}) {
   }
   function downloadAuditPacket(){
     const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
-    const rows=insps.slice(0,80).map(i=>{
+    const rows=insps.map(i=>{
       const t=i.measurements?.traceability||{};
       const a=i.measurements?.audit||{};
       const certificate=`${window.location.origin}/slab/${encodeURIComponent(i.id)}`;
