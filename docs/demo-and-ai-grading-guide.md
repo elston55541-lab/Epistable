@@ -31,6 +31,65 @@ Create one demo factory with:
 - 2 quotes: one sent, one accepted
 - 1 order moving through fulfillment
 
+## Ideal Demo Factory
+
+Use one clean fictional factory so every screen tells the same story.
+
+- Factory: Jodhpur Export Stone Works
+- Location: Rajasthan
+- Plan: Pro
+- Admin: factory admin
+- Inspector: one day-shift inspector
+- Buyer: one export buyer
+- Suppliers: Aravalli Quarry Co., Desert Stone Supply, Makrana Select Blocks
+
+## Demo Slab Mix
+
+The sample inventory should include:
+
+- 3 Premium export-ready slabs with complete traceability and no defects
+- 3 Standard slabs with minor issues but good evidence
+- 2 Commercial slabs with visible defects and corrective actions
+- 1 Rejected slab with defect photos, root cause, and CAPA owner
+
+At least five slabs should have:
+
+- front photo
+- surface close-up
+- edge/corner photo
+- source
+- batch number
+- production line
+- operator
+- calibration checked
+- checklist complete
+
+## Demo Batch Story
+
+Create one batch that makes traceability obvious:
+
+- Source: Aravalli Quarry Co.
+- Batch: ARV-B-2405
+- Block: BLK-17
+- Line: Line 2
+- Operator: R. Kumar
+- Customer/export order: PO-DXB-1029
+- Container/shipment: CONT-JDH-4421
+
+Use this batch across three slabs so the audit packet and batch quality views have something meaningful to show.
+
+## Demo Commercial Story
+
+Use one buyer workflow:
+
+1. Buyer opens a Premium slab certificate.
+2. Buyer requests a quote for a specific area and delivery city.
+3. Factory creates a quote.
+4. Buyer accepts the quote.
+5. Factory marks fulfillment as payment pending or dispatch scheduled.
+
+This is the clearest way to show that Epistable is not just inspection software; it turns evidence into buyer movement.
+
 ## Buyer Value Proposition
 
 For buyers:
