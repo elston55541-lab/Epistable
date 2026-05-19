@@ -2318,6 +2318,9 @@ function FacAnalytics({insps}) {
       "Top defects:",
       ...(topDefects.length?topDefects.map(([d,c])=>`- ${d}: ${c}`):["- None recorded"]),
       "",
+      "Stone quality:",
+      ...(stoneQuality.length?stoneQuality.slice(0,3).map(r=>`- ${r.key}: ${r.total} slabs, ${r.premiumPct}% premium, ${r.rejectPct}% rejected`):["- Not enough stone data"]),
+      "",
       "Source quality:",
       ...(sourceQuality.length?sourceQuality.slice(0,3).map(r=>`- ${r.key}: ${r.total} slabs, ${r.premiumPct}% premium, ${r.rejectPct}% rejected, ${r.tracePct}% trace coverage`):["- Not enough source data"]),
     ];
