@@ -48,6 +48,7 @@ export function SlabCertificate({slabId}) {
   const [disputeError,setDisputeError]=useState("");
   const [copied,setCopied]=useState(false);
   const [summaryCopied,setSummaryCopied]=useState(false);
+  const [auditNoteCopied,setAuditNoteCopied]=useState(false);
   const {isMobile}=useBP();
 
   useEffect(()=>{
@@ -93,6 +94,13 @@ export function SlabCertificate({slabId}) {
   const traceabilityCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>traceability[k]).length;
   const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
   const readinessScore=Math.round(((traceabilityCount/7)*100+(auditCount/6)*100+(evidenceCount?100:0))/3);
+  const auditReadinessLabel=readinessScore>=80?"Strong":readinessScore>=55?"Partial":"Needs attention";
+  const auditGaps=[
+    traceabilityCount<7&&`${7-traceabilityCount} traceability field${7-traceabilityCount===1?"":"s"} missing`,
+    auditCount<6&&`${6-auditCount} audit field${6-auditCount===1?"":"s"} missing`,
+    !evidenceCount&&"photo evidence missing",
+    defects.length&&!audit.correctiveAction&&"defects recorded without corrective action",
+  ].filter(Boolean);
   const verificationItems=[
     {label:"Live certificate",detail:"Use this page URL or QR code as the source of truth before buying."},
     {label:"Slab identity",detail:`Match certificate ID ${slab.id} with the physical slab, invoice, or factory record.`},
@@ -116,6 +124,18 @@ export function SlabCertificate({slabId}) {
     `Photo evidence: ${evidenceCount} photo${evidenceCount===1 ? "" : "s"}`,
     `Certificate link: ${certificateUrl}`,
   ].filter(Boolean).join("\n");
+  const auditNote=[
+    `Audit readiness note for ${slab.id}`,
+    `Status: ${auditReadinessLabel} (${readinessScore}%)`,
+    `Factory: ${slab.factory_name}`,
+    `Slab: ${slab.stone} | Grade: ${slab.grade}`,
+    `Traceability: ${traceabilityCount}/7 fields recorded`,
+    `Audit evidence: ${auditCount}/6 fields recorded`,
+    `Photo evidence: ${evidenceCount} photo${evidenceCount===1?"":"s"}`,
+    defects.length?`Defects: ${defects.join(", ")}`:"Defects: none recorded",
+    auditGaps.length?`Gaps: ${auditGaps.join("; ")}`:"Gaps: none flagged from current certificate data",
+    `Certificate: ${certificateUrl}`,
+  ].join("\n");
   const scrollTo=id=>document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
 
   async function copyLink(){
@@ -135,6 +155,16 @@ export function SlabCertificate({slabId}) {
       setTimeout(()=>setSummaryCopied(false),1600);
     } catch(e) {
       window.prompt("Copy certificate summary",certificateSummary);
+    }
+  }
+
+  async function copyAuditNote(){
+    try {
+      await navigator.clipboard.writeText(auditNote);
+      setAuditNoteCopied(true);
+      setTimeout(()=>setAuditNoteCopied(false),1600);
+    } catch(e) {
+      window.prompt("Copy audit readiness note",auditNote);
     }
   }
 
@@ -198,6 +228,7 @@ export function SlabCertificate({slabId}) {
           </div>
           <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
             <button onClick={copySummary} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Summary Copied":"Copy Summary"}</button>
+            <button onClick={copyAuditNote} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Audit Copied":"Copy Audit Note"}</button>
             <button onClick={copyLink} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{copied?"Copied":"Copy Link"}</button>
             <button onClick={()=>window.print()} style={{padding:"9px 12px",border:"none",borderRadius:9,background:C.primary,color:C.white,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Print / Save PDF</button>
           </div>
@@ -369,6 +400,13 @@ export function SlabCertificate({slabId}) {
             <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:900,marginBottom:8}}>Audit Readiness</div>
               <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,lineHeight:1.55,color:C.textMid,marginBottom:10}}>These fields help factories maintain inspection evidence for buyer QC programs, internal reviews, and certification preparation.</div>
+              <div style={{background:readinessScore>=80?C.greenBg:readinessScore>=55?C.amberBg:C.redBg,border:`1px solid ${readinessScore>=80?C.greenBorder:readinessScore>=55?C.amberBorder:C.redBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
+                  <span style={{fontSize:12,fontWeight:900,color:readinessScore>=80?C.green:readinessScore>=55?C.amber:C.red}}>{auditReadinessLabel} evidence file</span>
+                  <button onClick={copyAuditNote} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 9px",fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Copied":"Copy note"}</button>
+                </div>
+                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>{auditGaps.length?auditGaps.join("; "):"No evidence gaps are flagged from the current certificate data."}</div>
+              </div>
               <Field label="Calibration" value={audit.calibrationChecked ? "Checked" : ""}/>
               <Field label="Inspection checklist" value={audit.checklistComplete ? "Complete" : ""}/>
               <Field label="Root cause" value={audit.rootCause}/>
