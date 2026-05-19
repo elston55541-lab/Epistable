@@ -3650,6 +3650,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       if(sortBy==="priceLow")return Number(a.pricePerSqFt||0)-Number(b.pricePerSqFt||0);
       if(sortBy==="priceHigh")return Number(b.pricePerSqFt||0)-Number(a.pricePerSqFt||0);
       if(sortBy==="grade")return (a.grade==="Premium"?0:1)-(b.grade==="Premium"?0:1);
+      if(sortBy==="evidence")return evidenceReadiness(b).score-evidenceReadiness(a).score;
       return Number(b.ts||0)-Number(a.ts||0);
     });
   },[insps,filter,viewMode,savedSet,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,search,sortBy]);
@@ -3759,6 +3760,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
               <option value="priceLow">Price low-high</option>
               <option value="priceHigh">Price high-low</option>
               <option value="grade">Premium first</option>
+              <option value="evidence">Evidence first</option>
             </select>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}>
