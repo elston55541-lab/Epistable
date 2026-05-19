@@ -2204,11 +2204,12 @@ function FacAnalytics({insps}) {
       return Math.round(((traceCount/traceKeys.length)*100+(auditCount/6)*100+photoScore)/3);
     };
     const rows=[
-      ["Slab ID","Certificate URL","Readiness Score","Date","Time","Stone","Grade","Supplier","Source","Batch","Block","Line","Operator","Container","Customer Ref","Calibration Checked","Checklist Complete","Defects","Root Cause","Corrective Action","Action Owner","Action Due","Notes"],
+      ["Slab ID","Certificate URL","Readiness Score","Date","Time","Stone","Grade","AI Suggested Grade","AI Final Grade","AI Override Reason","Supplier","Source","Batch","Block","Line","Operator","Container","Customer Ref","Calibration Checked","Checklist Complete","Defects","Root Cause","Corrective Action","Action Owner","Action Due","Notes"],
       ...insps.map(i=>{
         const t=i.measurements?.traceability||{};
         const a=i.measurements?.audit||{};
-        return [i.id,`${window.location.origin}/slab/${encodeURIComponent(i.id)}`,readinessFor(i),i.date,i.time,i.stone,i.grade,i.supplier,t.quarrySource,t.batchNo,t.blockNo,t.productionLine,t.operator,t.containerNo,t.customerRef,a.calibrationChecked?"Yes":"No",a.checklistComplete?"Yes":"No",(i.defects||[]).join("; "),a.rootCause,a.correctiveAction,a.actionOwner,a.actionDue,i.notes];
+        const ai=i.measurements?.aiReview||{};
+        return [i.id,`${window.location.origin}/slab/${encodeURIComponent(i.id)}`,readinessFor(i),i.date,i.time,i.stone,i.grade,ai.suggestedGrade,ai.finalGrade,ai.overrideReason,i.supplier,t.quarrySource,t.batchNo,t.blockNo,t.productionLine,t.operator,t.containerNo,t.customerRef,a.calibrationChecked?"Yes":"No",a.checklistComplete?"Yes":"No",(i.defects||[]).join("; "),a.rootCause,a.correctiveAction,a.actionOwner,a.actionDue,i.notes];
       })
     ];
     const csv="\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\n");
