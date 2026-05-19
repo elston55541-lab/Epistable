@@ -2176,6 +2176,9 @@ function FacAnalytics({insps}) {
   const auditReadyPct=total?Math.round(auditReadyCount/total*100):0;
   const capaNeeded=insps.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
   const batchCount=new Set(insps.map(i=>i.measurements?.traceability?.batchNo).filter(Boolean)).size;
+  const aiReviewed=insps.filter(i=>i.measurements?.aiReview?.suggestedGrade);
+  const aiOverrides=aiReviewed.filter(i=>i.measurements?.aiReview?.suggestedGrade&&i.measurements?.aiReview?.suggestedGrade!==i.measurements?.aiReview?.finalGrade);
+  const aiOverrideRate=aiReviewed.length?Math.round(aiOverrides.length/aiReviewed.length*100):0;
   function groupQuality(keyFn){
     const map=new Map();
     insps.forEach(i=>{
@@ -2272,6 +2275,8 @@ function FacAnalytics({insps}) {
       `Audit checklist completion: ${auditReadyPct}% (${auditReadyCount}/${total||0})`,
       `CAPA needed: ${capaNeeded}`,
       `Recorded batches: ${batchCount}`,
+      `AI reviewed scans: ${aiReviewed.length}`,
+      `AI override rate: ${aiOverrideRate}%`,
       "",
       "Top defects:",
       ...(topDefects.length?topDefects.map(([d,c])=>`- ${d}: ${c}`):["- None recorded"]),
@@ -2300,6 +2305,26 @@ function FacAnalytics({insps}) {
       </div>
       <KpiGrid items={[{label:"Today",value:today,icon:"📅",color:C.primary},{label:"This Week",value:week,icon:"📆",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Total",value:total,icon:"📦",color:C.text}]}/>
       <KpiGrid items={[{label:"Trace Coverage",value:traceCoverage+"%",icon:"Trace",color:traceCoverage>=70?C.green:C.amber},{label:"Audit Ready",value:auditReadyPct+"%",icon:"Audit",color:auditReadyPct>=70?C.green:C.amber},{label:"CAPA Needed",value:capaNeeded,icon:"CAPA",color:capaNeeded?C.red:C.green},{label:"Batches",value:batchCount,icon:"Batch",color:C.primary}]}/>
+      {aiReviewed.length>0&&<Card style={{marginBottom:14}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+          <div style={TEXT.panelTitle}>AI Review Learning</div>
+          <span style={{fontSize:11,fontWeight:900,color:aiOverrideRate>25?C.amber:C.green}}>{aiOverrideRate}% override rate</span>
+        </div>
+        <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+          {[["Reviewed",aiReviewed.length,C.primary],["Overrides",aiOverrides.length,aiOverrides.length?C.amber:C.green],["Aligned",aiReviewed.length-aiOverrides.length,C.green]].map(([label,value,color])=>(
+            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"10px",textAlign:"center"}}>
+              <div style={{fontSize:18,fontWeight:900,color,lineHeight:1}}>{value}</div>
+              <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:5}}>{label}</div>
+            </div>
+          ))}
+        </div>
+        {aiOverrides.length>0&&<div style={{padding:"0 16px 16px",display:"flex",flexDirection:"column",gap:8}}>
+          {aiOverrides.slice(0,3).map(i=><div key={i.id} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:9,padding:"9px 10px"}}>
+            <div style={{fontSize:12,fontWeight:900,color:C.amber}}>{i.stone}: {i.measurements.aiReview.suggestedGrade} -&gt; {i.measurements.aiReview.finalGrade}</div>
+            <div style={{fontSize:11,color:C.textMid,lineHeight:1.4,marginTop:3}}>{i.measurements.aiReview.overrideReason||"No override reason recorded"}</div>
+          </div>)}
+        </div>}
+      </Card>}
       <Card style={{marginBottom:14}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Grade Distribution</div>
         <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
