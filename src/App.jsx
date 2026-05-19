@@ -888,6 +888,7 @@ function Owner({onLogout}) {
 }
 
 function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pickFac}) {
+  const [readinessCopied,setReadinessCopied]=useState(false);
   const mon=curMon();
   const ms=facs.reduce((s,f)=>s+(f.current_month===mon?f.current_month_scans||0:0),0);
   const totalScans=facs.reduce((s,f)=>s+(f.scans_total||0),0)||insps.length;
@@ -905,6 +906,18 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
   const trackedReadiness=readiness.filter(r=>r.list.length>0);
   const avgReadiness=trackedReadiness.length?Math.round(trackedReadiness.reduce((s,r)=>s+r.score,0)/trackedReadiness.length):0;
   const needsReadiness=readiness.filter(r=>r.list.length>0&&r.score<70);
+  async function copyReadinessSummary(){
+    const lines=[
+      `Epistable platform readiness: ${avgReadiness}%`,
+      `Tracked factories: ${trackedReadiness.length}/${facs.length}`,
+      `Factories needing work: ${needsReadiness.length}`,
+      `Open CAPA gaps: ${readiness.reduce((s,r)=>s+r.capa,0)}`,
+      "",
+      ...readiness.filter(r=>r.list.length>0).slice(0,8).map(r=>`${r.fac.name}: ${r.score}% readiness | Trace ${r.tracePct}% | Audit ${r.audit}% | CAPA ${r.capa} | Scans ${r.list.length}`),
+    ];
+    const text=lines.join("\n");
+    try{await navigator.clipboard.writeText(text);setReadinessCopied(true);setTimeout(()=>setReadinessCopied(false),1400);}catch(e){window.prompt("Copy readiness summary",text);}
+  }
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,borderRadius:14,padding:"20px",marginBottom:18,color:C.white}}>
@@ -923,7 +936,10 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
             <div style={{fontSize:14,fontWeight:900}}>Platform readiness</div>
             <div style={TEXT.tinyMeta}>Traceability, audit checklist, and CAPA health across factories</div>
           </div>
-          <div style={{fontSize:26,fontWeight:900,color:avgReadiness>=70?C.green:C.amber,lineHeight:1}}>{avgReadiness}%</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <Btn size="sm" variant="secondary" onClick={copyReadinessSummary}>{readinessCopied?"Copied":"Copy"}</Btn>
+            <div style={{fontSize:26,fontWeight:900,color:avgReadiness>=70?C.green:C.amber,lineHeight:1}}>{avgReadiness}%</div>
+          </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
           {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",readiness.reduce((s,r)=>s+r.capa,0),readiness.some(r=>r.capa)?C.red:C.green]].map(([label,value,color])=>(
