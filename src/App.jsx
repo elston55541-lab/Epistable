@@ -2104,6 +2104,7 @@ function FacHistory({insps}) {
 }
 
 function FacAnalytics({insps}) {
+  const [briefCopied,setBriefCopied]=useState(false);
   const byG=g=>insps.filter(i=>i.grade===g).length;
   const total=insps.length;const pp=total?Math.round(byG("Premium")/total*100):0;
   const today=insps.filter(i=>Date.now()-i.ts<86400000).length;
@@ -2157,11 +2158,41 @@ function FacAnalytics({insps}) {
     a.click();
     URL.revokeObjectURL(url);
   }
+  async function copyEvidenceBrief(){
+    const lines=[
+      `Epistable factory evidence brief - ${curMon()}`,
+      `Total inspections: ${total}`,
+      `Today: ${today}`,
+      `This week: ${week}`,
+      `Premium rate: ${pp}%`,
+      `Traceability coverage: ${traceCoverage}%`,
+      `Audit checklist completion: ${auditReadyPct}% (${auditReadyCount}/${total||0})`,
+      `CAPA needed: ${capaNeeded}`,
+      `Recorded batches: ${batchCount}`,
+      "",
+      "Top defects:",
+      ...(topDefects.length?topDefects.map(([d,c])=>`- ${d}: ${c}`):["- None recorded"]),
+      "",
+      "Source quality:",
+      ...(sourceQuality.length?sourceQuality.slice(0,3).map(r=>`- ${r.key}: ${r.total} slabs, ${r.premiumPct}% premium, ${r.rejectPct}% rejected, ${r.tracePct}% trace coverage`):["- Not enough source data"]),
+    ];
+    const text=lines.join("\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      setBriefCopied(true);
+      setTimeout(()=>setBriefCopied(false),1400);
+    }catch(e){
+      window.prompt("Copy evidence brief",text);
+    }
+  }
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
         <div style={TEXT.pageHeader}>Analytics</div>
-        <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <Btn size="sm" variant="ghost" onClick={copyEvidenceBrief} disabled={!insps.length}>{briefCopied?"Copied":"Copy Brief"}</Btn>
+          <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
+        </div>
       </div>
       <KpiGrid items={[{label:"Today",value:today,icon:"📅",color:C.primary},{label:"This Week",value:week,icon:"📆",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Total",value:total,icon:"📦",color:C.text}]}/>
       <KpiGrid items={[{label:"Trace Coverage",value:traceCoverage+"%",icon:"Trace",color:traceCoverage>=70?C.green:C.amber},{label:"Audit Ready",value:auditReadyPct+"%",icon:"Audit",color:auditReadyPct>=70?C.green:C.amber},{label:"CAPA Needed",value:capaNeeded,icon:"CAPA",color:capaNeeded?C.red:C.green},{label:"Batches",value:batchCount,icon:"Batch",color:C.primary}]}/>
