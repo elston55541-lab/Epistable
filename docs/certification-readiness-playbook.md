@@ -76,6 +76,8 @@ Before selling seriously, the product should pass these gates:
 4. Make readiness summaries easy to copy, export, and explain.
 5. Add QA coverage around the critical buyer and factory flows.
 
+Use `docs/factory-pilot-plan.md` to structure the first serious factory pilot and measure whether the product is ready to sell beyond demos.
+
 ## AI Grading Path
 
 AI image grading should be treated as a later confidence layer, not the first sales dependency.
