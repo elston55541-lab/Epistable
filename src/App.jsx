@@ -2003,6 +2003,7 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
   const measurements=slab.measurements||{};
   const traceability=measurements.traceability||{};
   const audit=measurements.audit||{};
+  const aiReview=measurements.aiReview||{};
   const defects=Array.isArray(slab.defects)?slab.defects:[];
   const photos=(Array.isArray(slab.photos)?slab.photos:[]).map((p,idx)=>typeof p==="string"?{src:p,label:idx===0?"Primary photo":`Evidence ${idx+1}`}:p).filter(p=>p?.src);
   const certificateUrl=`${window.location.origin}/slab/${encodeURIComponent(slab.id)}`;
@@ -2063,6 +2064,12 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
             <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:700}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:800,textAlign:"right"}}>{v||"Not recorded"}</span></div>
           ))}
         </Card>
+        {aiReview.suggestedGrade&&<Card style={{padding:14,borderColor:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder,background:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBg:C.amberBg}}>
+          <div style={{fontSize:14,fontWeight:900,color:aiReview.suggestedGrade===aiReview.finalGrade?C.green:C.amber,marginBottom:8}}>AI Review</div>
+          {[["AI Suggested",aiReview.suggestedGrade],["Final Grade",aiReview.finalGrade],["Override Reason",aiReview.overrideReason]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:700}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:800,textAlign:"right"}}>{v||"Not recorded"}</span></div>
+          ))}
+        </Card>}
         <Card style={{padding:14}}>
           <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Traceability & Audit</div>
           {[["Quarry / Source",traceability.quarrySource],["Batch",traceability.batchNo],["Block",traceability.blockNo],["Line",traceability.productionLine],["Operator",traceability.operator],["Container",traceability.containerNo],["Customer Ref",traceability.customerRef],["Calibration",audit.calibrationChecked?"Checked":""],["Checklist",audit.checklistComplete?"Complete":""],["Root Cause",audit.rootCause],["Corrective Action",audit.correctiveAction],["Owner",audit.actionOwner],["Due",audit.actionDue]].map(([l,v])=>(
