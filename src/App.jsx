@@ -2097,7 +2097,7 @@ function FacHistory({insps}) {
   const filtered=useMemo(()=>{
     const q=search.toLowerCase();
     return withStatus.filter(i=>(filterG==="All"||i.grade===filterG)&&
-      (evidenceFilter==="All"||(evidenceFilter==="Trace"&&hasTrace(i))||(evidenceFilter==="Missing Trace"&&!hasTrace(i))||(evidenceFilter==="Audit Ready"&&isAuditReady(i))||(evidenceFilter==="CAPA Needed"&&needsCapa(i)))&&
+      (evidenceFilter==="All"||(evidenceFilter==="Trace"&&hasTrace(i))||(evidenceFilter==="Missing Trace"&&!hasTrace(i))||(evidenceFilter==="Audit Ready"&&isAuditReady(i))||(evidenceFilter==="CAPA Needed"&&needsCapa(i))||(evidenceFilter==="Strong Evidence"&&evidenceScore(i)>=70)||(evidenceFilter==="Weak Evidence"&&evidenceScore(i)<70))&&
       (!q||i.stone?.toLowerCase().includes(q)||i.id?.toLowerCase().includes(q)||i.measurements?.traceability?.batchNo?.toLowerCase().includes(q)||i.measurements?.traceability?.quarrySource?.toLowerCase().includes(q)));
   },[withStatus,filterG,evidenceFilter,search]);
   async function updateStatus(slab,status){
@@ -2117,7 +2117,7 @@ function FacHistory({insps}) {
         ))}
       </div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
-        {["All","Trace","Missing Trace","Audit Ready","CAPA Needed"].map(f=>(
+        {["All","Strong Evidence","Weak Evidence","Trace","Missing Trace","Audit Ready","CAPA Needed"].map(f=>(
           <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
