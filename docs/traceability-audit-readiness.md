@@ -46,6 +46,56 @@ For factories, the practical workflow should stay simple:
 3. Mark calibration and checklist completion during inspection.
 4. Add root cause and corrective action notes when defects are recorded.
 5. Use History filters to find missing traceability, audit-ready slabs, and open CAPA gaps.
-6. Export the audit evidence CSV before buyer reviews, management reviews, or audit preparation.
+6. Export the audit packet before buyer reviews, management reviews, or audit preparation.
+7. Export the CSV when the reviewer needs spreadsheet analysis.
 
 The public certificate should be positioned as an evidence record, not a third-party certification. It helps buyers and auditors inspect the factory's proof trail quickly.
+
+## Starter compliance templates
+
+These are not formal legal templates. They are practical record shapes Epistable should support for factory operations and buyer communication.
+
+### ISO-style QC record
+
+- Inspection ID and QR certificate link
+- Factory, inspector, date, and time
+- Stone type, grade, supplier, and batch
+- Measurements and photo evidence
+- Defects and severity
+- Calibration checked
+- Inspection checklist complete
+- Root cause and corrective action when defects exist
+- Responsible person and due date
+
+### Buyer inspection record
+
+- Slab ID and certificate link
+- Grade and price per sq ft
+- Photos, defects, and notes
+- Dimensions and polish/sound/edge checks
+- Export-ready status
+- Supplier/source and batch if available
+- Quote or order reference if commercial discussion has started
+
+### Export batch evidence checklist
+
+- Quarry/source
+- Supplier
+- Batch/block number
+- Production line and operator
+- Customer/export order reference
+- Container or shipment reference
+- Slab certificate register
+- Batch quality summary
+- Defect summary
+- Corrective actions for problem slabs
+
+### Supplier quality scorecard
+
+- Total slabs inspected
+- Premium rate
+- Rejection rate
+- Top defect types
+- Traceability coverage
+- Repeat issue notes
+- Recent CAPA actions
