@@ -2206,6 +2206,7 @@ function FacAnalytics({insps}) {
     return [...map.values()].sort((a,b)=>b.total-a.total).slice(0,5).map(r=>({...r,premiumPct:r.total?Math.round(r.premium/r.total*100):0,rejectPct:r.total?Math.round(r.rejected/r.total*100):0,tracePct:r.total?Math.round(r.trace/(r.total*traceKeys.length)*100):0}));
   }
   const sourceQuality=groupQuality(i=>i.measurements?.traceability?.quarrySource||i.supplier);
+  const stoneQuality=groupQuality(i=>i.stone);
   const batchQuality=groupQuality(i=>i.measurements?.traceability?.batchNo);
   function downloadAuditCsv(){
     const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
@@ -2263,6 +2264,7 @@ function FacAnalytics({insps}) {
       const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>!!a[k]).length;
       return `<tr><td>${esc(i.id)}</td><td>${esc(i.stone)}</td><td>${esc(i.grade)}</td><td>${esc(ai.suggestedGrade||"Not recorded")}</td><td>${esc(ai.finalGrade||i.grade)}</td><td>${esc(ai.overrideReason||"None")}</td><td>${esc(ai.reviewedAt?`${fmtD(ai.reviewedAt)} ${fmtT(ai.reviewedAt)}`:"Not recorded")}</td><td>${esc(i.supplier||"Not recorded")}</td><td>${esc(t.batchNo||"Not recorded")}</td><td>${traceCount}/7</td><td>${auditCount}/6</td><td>${(i.defects||[]).length?esc((i.defects||[]).join(", ")):"None"}</td><td><a href="${certificate}">Certificate</a></td></tr>`;
     }).join("");
+    const stoneRows=stoneQuality.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.defects}</td></tr>`).join("");
     const sourceRows=sourceQuality.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.tracePct}%</td></tr>`).join("");
     const batchRows=batchQuality.filter(r=>r.key!=="Not recorded").map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.defects}</td></tr>`).join("");
     const defectRows=topDefects.length?topDefects.map(([d,c])=>`<tr><td>${esc(d)}</td><td>${c}</td></tr>`).join(""):`<tr><td colspan="2">No defects recorded</td></tr>`;
@@ -2287,6 +2289,7 @@ function FacAnalytics({insps}) {
       </div>
       <div class="note">This packet organizes Epistable inspection evidence for buyer QC, internal review, and certification-readiness preparation. It is not a third-party certification.</div>
       <h2>Slab Certificate Register</h2><table><thead><tr><th>Slab</th><th>Stone</th><th>Grade</th><th>AI Suggested</th><th>Final Grade</th><th>Override Reason</th><th>Reviewed</th><th>Supplier</th><th>Batch</th><th>Trace</th><th>Audit</th><th>Defects</th><th>Link</th></tr></thead><tbody>${rows||"<tr><td colspan='13'>No inspections recorded</td></tr>"}</tbody></table>
+      <h2>Stone Quality Summary</h2><table><thead><tr><th>Stone</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Defect Records</th></tr></thead><tbody>${stoneRows||"<tr><td colspan='5'>No stone data recorded</td></tr>"}</tbody></table>
       <h2>Source Quality Summary</h2><table><thead><tr><th>Source/Supplier</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Trace Coverage</th></tr></thead><tbody>${sourceRows||"<tr><td colspan='5'>No source data recorded</td></tr>"}</tbody></table>
       <h2>Batch Quality Summary</h2><table><thead><tr><th>Batch</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Defect Records</th></tr></thead><tbody>${batchRows||"<tr><td colspan='5'>No batch data recorded</td></tr>"}</tbody></table>
       <h2>Top Defects</h2><table><thead><tr><th>Defect</th><th>Count</th></tr></thead><tbody>${defectRows}</tbody></table>
@@ -2370,6 +2373,19 @@ function FacAnalytics({insps}) {
           );})}
         </div>
       </Card>
+      {stoneQuality.length>0&&<Card style={{marginBottom:14}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Stone Quality</div>
+        <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
+          {stoneQuality.map(r=>(
+            <div key={r.key} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",background:r.rejectPct>15?C.redBg:C.white}}>
+              <div style={{fontSize:13,fontWeight:900,color:C.text,marginBottom:8}}>{r.key}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+                {[["Slabs",r.total,C.text],["Premium",r.premiumPct+"%",C.green],["Rejected",r.rejectPct+"%",r.rejectPct?C.red:C.textDim]].map(([l,v,col])=><div key={l} style={{background:C.surface,borderRadius:8,padding:"7px 5px",textAlign:"center"}}><div style={{fontSize:13,fontWeight:900,color:col}}>{v}</div><div style={{fontSize:9,color:C.textDim,fontWeight:800}}>{l}</div></div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>}
       <Card style={{marginBottom:14}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
           <div style={TEXT.panelTitle}>Audit Readiness</div>
