@@ -22,6 +22,7 @@ For the sector/compliance foundation, apply:
 4. `202605200004_inspection_integrity_fields.sql`
 5. `202605200005_backfill_generic_inspection_fields.sql`
 6. `202605200006_compliance_template_lifecycle.sql`
+7. `202605200007_activity_log_evidence_fields.sql`
 
 ## After Running SQL
 
