@@ -41,6 +41,8 @@ The `capa_actions` foundation is the first step toward that richer workflow: it 
 
 The `production_batches` foundation is the traceability companion: it groups source, supplier, production, customer, shipment, and sector-specific attributes while keeping the core schema reusable outside stone.
 
+Batch-to-inspection links keep traceability flexible: a packet can show every slab in a batch, a sample set, representative records, or exceptions without duplicating inspection data.
+
 ## Operating rhythm
 
 For factories, the practical workflow should stay simple:

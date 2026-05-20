@@ -26,6 +26,7 @@ For the sector/compliance foundation, apply:
 8. `202605200008_evidence_packets.sql`
 9. `202605200009_capa_actions.sql`
 10. `202605200010_production_batches.sql`
+11. `202605200011_batch_inspection_links.sql`
 
 ## After Running SQL
 
