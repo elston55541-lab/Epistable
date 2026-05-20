@@ -70,6 +70,7 @@ The first foundation migrations add:
 - `compliance_templates`
 - starter `stone_qc_basic` template.
 - inspection finalization, locking, and revision metadata for future audit trail enforcement.
+- backfill from existing stone inspection records into generic JSONB fields.
 
 Use `docs/supabase-migration-runbook.md` when applying these migrations manually in Supabase.
 
