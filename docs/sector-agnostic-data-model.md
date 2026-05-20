@@ -71,6 +71,8 @@ The first foundation migrations add:
 - starter `stone_qc_basic` template.
 - inspection finalization, locking, and revision metadata for future audit trail enforcement.
 
+Use `docs/supabase-migration-runbook.md` when applying these migrations manually in Supabase.
+
 Current stone workflows can continue using existing fields while future code gradually writes normalized data into the generic fields.
 
 ## Product Guidance
