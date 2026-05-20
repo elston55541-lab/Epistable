@@ -17,6 +17,7 @@ Prefer:
 - `compliance_templates.requirements`
 - `compliance_templates.scoring`
 - `compliance_templates.report_sections`
+- compliance template lifecycle metadata such as effective dates, retired dates, replacement links, and authoring metadata
 - inspection finalization, locking, and revision metadata for audit integrity
 
 ## What Belongs In Core Columns
@@ -71,6 +72,7 @@ The first foundation migrations add:
 - starter `stone_qc_basic` template.
 - inspection finalization, locking, and revision metadata for future audit trail enforcement.
 - backfill from existing stone inspection records into generic JSONB fields.
+- compliance template lifecycle metadata for future template versioning and rollout control.
 
 Use `docs/supabase-migration-runbook.md` when applying these migrations manually in Supabase.
 
