@@ -39,6 +39,8 @@ That would support richer reporting without changing the current MVP flow.
 
 The `capa_actions` foundation is the first step toward that richer workflow: it can track issue, root cause, corrective action, preventive action, owner, due date, closure, verification, and supporting evidence without changing current inspections.
 
+The `production_batches` foundation is the traceability companion: it groups source, supplier, production, customer, shipment, and sector-specific attributes while keeping the core schema reusable outside stone.
+
 ## Operating rhythm
 
 For factories, the practical workflow should stay simple:
