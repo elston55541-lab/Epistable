@@ -1461,6 +1461,12 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   const auditReady=insps.filter(i=>i.measurements?.audit?.calibrationChecked&&i.measurements?.audit?.checklistComplete).length;
   const auditReadyPct=insps.length?Math.round(auditReady/insps.length*100):0;
   const capaNeeded=insps.filter(i=>(i.defects||[]).length>0&&!i.measurements?.audit?.correctiveAction).length;
+  const photoComplete=insps.filter(i=>Array.isArray(i.photos)&&["front","surface","edge"].every(slot=>i.photos.some(p=>{
+    const label=`${p?.slot||""} ${p?.label||""}`.toLowerCase();
+    return label.includes(slot)||label.includes(slot==="front"?"slab":slot);
+  }))).length;
+  const aiReviewed=insps.filter(i=>i.measurements?.aiReview?.suggestedGrade).length;
+  const traceReady=insps.filter(i=>traceKeys.filter(k=>!!i.measurements?.traceability?.[k]).length>=4).length;
   const readinessScore=insps.length?Math.round((traceCoverage+auditReadyPct+(capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100))/3):0;
   const readinessActions=[
     traceCoverage<70&&{label:"Add traceability to scans",detail:"Record source, batch, block, line, operator, shipment, and order references on new inspections.",page:"scan",color:C.amber},
@@ -1510,6 +1516,18 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
     {label:"Review saved certificates",detail:"Open history to confirm grade, QR, and evidence look right.",done:insps.length>0,onClick:()=>setPage("history")},
     {label:"Keep scanning today",detail:"More scans improve factory analytics and buyer confidence.",done:today.length>=3,onClick:()=>setPage("scan")},
   ];
+  const pilotItems=isAdmin?[
+    {label:"100 inspection records",value:`${Math.min(insps.length,100)}/100`,done:insps.length>=100,page:"history"},
+    {label:"Photo evidence discipline",value:`${photoComplete}/${insps.length||0}`,done:insps.length>0&&photoComplete/insps.length>=0.8,page:"history"},
+    {label:"Traceability coverage",value:`${traceCoverage}%`,done:traceCoverage>=70,page:"analytics"},
+    {label:"Audit checklist completion",value:`${auditReadyPct}%`,done:auditReadyPct>=70,page:"analytics"},
+    {label:"CAPA gaps closed",value:capaNeeded?`${capaNeeded} open`:"Clear",done:capaNeeded===0,page:"analytics"},
+    {label:"Buyer demand captured",value:`${inquiries.length}`,done:inquiries.length>=5,page:"inquiries"},
+    {label:"AI review dataset",value:`${aiReviewed} reviewed`,done:aiReviewed>=20,page:"analytics"},
+    {label:"Trace-ready slabs",value:`${traceReady}/${insps.length||0}`,done:insps.length>0&&traceReady/insps.length>=0.7,page:"history"},
+  ]:[];
+  const pilotDone=pilotItems.filter(i=>i.done).length;
+  const pilotPct=pilotItems.length?Math.round(pilotDone/pilotItems.length*100):0;
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
@@ -1525,6 +1543,27 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
       <KpiGrid items={homeKpisNext}/>
       <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:14}}/>
       <SetupChecklist title={isAdmin?"Factory setup checklist":"Inspector checklist"} subtitle={isAdmin?"The shortest path from first slab to buyer trust":"Small habits that make certificates stronger"} items={setupItems} style={{marginBottom:14}}/>
+      {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:900}}>Pilot readiness checklist</div>
+            <div style={TEXT.tinyMeta}>Evidence, buyer demand, traceability, CAPA, and AI review signals for a serious factory pilot</div>
+          </div>
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{fontSize:24,fontWeight:900,color:pilotPct>=70?C.green:C.amber,lineHeight:1}}>{pilotPct}%</div>
+            <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:3}}>{pilotDone}/{pilotItems.length} ready</div>
+          </div>
+        </div>
+        <PBar value={pilotPct} color={pilotPct>=70?C.green:C.amber} h={8}/>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:12}}>
+          {pilotItems.map(item=>(
+            <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:9,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+              <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}}>{item.done?"✓":"•"}</span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{item.label}</span><span style={{display:"block",fontSize:11,color:item.done?C.green:C.textDim,fontWeight:800,marginTop:2}}>{item.value}</span></span>
+            </button>
+          ))}
+        </div>
+      </Card>}
       {isAdmin&&<Card style={{padding:14,marginBottom:14,borderColor:readinessScore>=70?C.greenBorder:C.amberBorder,background:readinessScore>=70?C.greenBg:C.amberBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
           <div>
