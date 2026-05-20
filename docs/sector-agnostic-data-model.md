@@ -81,6 +81,7 @@ The first foundation migrations add:
 - evidence packet records for future saved/shared audit, buyer, pilot, and internal exports.
 - CAPA action records for future owner, due date, closure, verification, and evidence workflows.
 - production batch records for sector-safe traceability grouping.
+- batch-to-inspection links for flexible packet and traceability evidence.
 
 Use `docs/supabase-migration-runbook.md` when applying these migrations manually in Supabase.
 
