@@ -33,6 +33,7 @@ Core columns should describe universal inspection concepts:
 - buyer/commercial workflow state,
 - generic evidence and readiness fields,
 - saved evidence packets assembled from source records,
+- corrective and preventive action records linked to source evidence,
 - audit integrity state such as finalized, locked, and revision metadata.
 - audit event metadata such as source, severity, entity version, evidence hash, and snapshot.
 
@@ -77,6 +78,7 @@ The first foundation migrations add:
 - compliance template lifecycle metadata for future template versioning and rollout control.
 - activity log evidence fields for richer audit trails without changing current app behavior.
 - evidence packet records for future saved/shared audit, buyer, pilot, and internal exports.
+- CAPA action records for future owner, due date, closure, verification, and evidence workflows.
 
 Use `docs/supabase-migration-runbook.md` when applying these migrations manually in Supabase.
 
