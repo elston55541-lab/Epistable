@@ -30,6 +30,7 @@ Core columns should describe universal inspection concepts:
 - status,
 - grade/outcome,
 - public certificate link identity,
+- production or source batch identity,
 - buyer/commercial workflow state,
 - generic evidence and readiness fields,
 - saved evidence packets assembled from source records,
@@ -79,6 +80,7 @@ The first foundation migrations add:
 - activity log evidence fields for richer audit trails without changing current app behavior.
 - evidence packet records for future saved/shared audit, buyer, pilot, and internal exports.
 - CAPA action records for future owner, due date, closure, verification, and evidence workflows.
+- production batch records for sector-safe traceability grouping.
 
 Use `docs/supabase-migration-runbook.md` when applying these migrations manually in Supabase.
 
