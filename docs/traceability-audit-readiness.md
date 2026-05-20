@@ -51,6 +51,8 @@ For factories, the practical workflow should stay simple:
 
 The public certificate should be positioned as an evidence record, not a third-party certification. It helps buyers and auditors inspect the factory's proof trail quickly.
 
+Audit events should preserve enough context to explain who changed what, when it happened, which entity version was affected, and which evidence snapshot or packet was shared. The current activity log foundation can grow into that trail without changing the inspection workflow.
+
 ## Starter compliance templates
 
 These are not formal legal templates. They are practical record shapes Epistable should support for factory operations and buyer communication.
