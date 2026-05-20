@@ -2422,6 +2422,42 @@ function FacAnalytics({insps}) {
     a.click();
     URL.revokeObjectURL(url);
   }
+  function downloadGapReport(){
+    const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+    const gapRows=insps.map(i=>{
+      const t=i.measurements?.traceability||{};
+      const audit=i.measurements?.audit||{};
+      const photos=Array.isArray(i.photos)?i.photos.filter(Boolean):[];
+      const missing=[];
+      if(!photos.length&&!i.photo)missing.push("photo evidence");
+      if(traceKeys.filter(k=>!!t[k]).length<4)missing.push("traceability");
+      if(!audit.calibrationChecked)missing.push("calibration check");
+      if(!audit.checklistComplete)missing.push("inspection checklist");
+      if((i.defects||[]).length>0&&!audit.correctiveAction)missing.push("corrective action");
+      return {i,missing};
+    }).filter(r=>r.missing.length);
+    const rows=gapRows.map(({i,missing})=>`<tr><td>${esc(i.id)}</td><td>${esc(i.stone)}</td><td>${esc(i.grade)}</td><td>${esc(i.supplier||"Not recorded")}</td><td>${esc(missing.join(", "))}</td><td><a href="${window.location.origin}/slab/${encodeURIComponent(i.id)}">Certificate</a></td></tr>`).join("");
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Readiness Gap Report ${curMon()}</title><style>
+      body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
+      h1{margin:0 0 4px;font-size:28px}.meta{color:#4a5568;margin-bottom:18px}
+      .summary{border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:14px;margin:16px 0;color:#b45309}.summary b{font-size:28px;display:block}
+      table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
+      .actions{display:flex;gap:8px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+      @media print{body{margin:16px}.actions{display:none}}
+    </style></head><body>
+      <h1>Epistable Readiness Gap Report</h1>
+      <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())}</div>
+      <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
+      <div class="summary"><b>${gapRows.length}</b>Slabs need evidence or compliance-readiness follow-up.</div>
+      <table><thead><tr><th>Slab</th><th>Stone</th><th>Grade</th><th>Supplier</th><th>Missing / Needs Work</th><th>Link</th></tr></thead><tbody>${rows||"<tr><td colspan='6'>No readiness gaps found in current inspection data.</td></tr>"}</tbody></table>
+    </body></html>`;
+    const url=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`epistable-readiness-gap-report-${curMon()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
@@ -2429,6 +2465,7 @@ function FacAnalytics({insps}) {
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           <Btn size="sm" variant="ghost" onClick={copyEvidenceBrief} disabled={!insps.length}>{briefCopied?"Copied":"Copy Brief"}</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadPilotReport} disabled={!insps.length}>Export Pilot Report</Btn>
+          <Btn size="sm" variant="secondary" onClick={downloadGapReport} disabled={!insps.length}>Gap Report</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditPacket} disabled={!insps.length}>Export Audit Packet</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
         </div>
