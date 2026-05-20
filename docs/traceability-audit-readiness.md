@@ -53,6 +53,8 @@ The public certificate should be positioned as an evidence record, not a third-p
 
 Audit events should preserve enough context to explain who changed what, when it happened, which entity version was affected, and which evidence snapshot or packet was shared. The current activity log foundation can grow into that trail without changing the inspection workflow.
 
+Saved evidence packets should become the durable record of what was shared for a buyer review, pilot review, internal review, or audit-readiness discussion. The packet is the shareable package; the inspection records remain the source evidence.
+
 ## Starter compliance templates
 
 These are not formal legal templates. They are practical record shapes Epistable should support for factory operations and buyer communication.
