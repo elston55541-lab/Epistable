@@ -80,6 +80,8 @@ Use `docs/factory-pilot-plan.md` to structure the first serious factory pilot an
 
 Use `docs/sector-agnostic-data-model.md` when adding schema, compliance, or inspection fields so the platform can support future sectors without a core rewrite.
 
+Use `docs/compliance-foundation-map.md` to understand how templates, batches, CAPA, calibration records, evidence packets, and activity logs fit together.
+
 ## AI Grading Path
 
 AI image grading should be treated as a later confidence layer, not the first sales dependency.
