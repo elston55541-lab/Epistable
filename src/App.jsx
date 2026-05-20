@@ -2380,12 +2380,55 @@ function FacAnalytics({insps}) {
       window.prompt("Copy evidence brief",text);
     }
   }
+  function downloadPilotReport(){
+    const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+    const readyScore=Math.round((Math.min(total,100)+traceCoverage+auditReadyPct+(capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100)+(aiReviewed.length?Math.min(100,aiReviewed.length*5):0))/5);
+    const metricRows=[
+      ["Inspection records",`${total}/100 target`],
+      ["Premium rate",`${pp}%`],
+      ["Traceability coverage",`${traceCoverage}%`],
+      ["Audit checklist completion",`${auditReadyPct}%`],
+      ["CAPA gaps",capaNeeded],
+      ["Recorded batches",batchCount],
+      ["AI reviewed scans",aiReviewed.length],
+      ["AI override rate",`${aiOverrideRate}%`],
+    ].map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("");
+    const defectRows=topDefects.length?topDefects.map(([d,c])=>`<tr><td>${esc(d)}</td><td>${c}</td></tr>`).join(""):`<tr><td colspan="2">No defects recorded</td></tr>`;
+    const stoneRows=stoneQuality.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td></tr>`).join("");
+    const sourceRows=sourceQuality.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.total}</td><td>${r.premiumPct}%</td><td>${r.rejectPct}%</td><td>${r.tracePct}%</td></tr>`).join("");
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Pilot Report ${curMon()}</title><style>
+      body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
+      h1{margin:0 0 4px;font-size:28px} h2{margin-top:26px;font-size:18px}.meta{color:#4a5568;margin-bottom:18px}
+      .score{border:1px solid #b8d0f0;background:#e8f0fa;border-radius:10px;padding:14px;margin:16px 0;color:#0057a8}.score b{font-size:30px;display:block}
+      table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
+      .note{border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:12px;margin-top:18px;color:#b45309}
+      .actions{display:flex;gap:8px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+      @media print{body{margin:16px}.actions{display:none}}
+    </style></head><body>
+      <h1>Epistable Factory Pilot Report</h1>
+      <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())}</div>
+      <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
+      <div class="score"><b>${readyScore}%</b>Pilot readiness signal based on scan volume, traceability, audit completion, CAPA closure, and AI review coverage.</div>
+      <div class="note">This is an internal pilot outcome report for buyer-audit readiness and compliance-readiness preparation. It is not a third-party certification.</div>
+      <h2>Pilot Metrics</h2><table><tbody>${metricRows}</tbody></table>
+      <h2>Stone Quality</h2><table><thead><tr><th>Stone</th><th>Slabs</th><th>Premium</th><th>Rejected</th></tr></thead><tbody>${stoneRows||"<tr><td colspan='4'>No stone data recorded</td></tr>"}</tbody></table>
+      <h2>Source Quality</h2><table><thead><tr><th>Source/Supplier</th><th>Slabs</th><th>Premium</th><th>Rejected</th><th>Trace Coverage</th></tr></thead><tbody>${sourceRows||"<tr><td colspan='5'>No source data recorded</td></tr>"}</tbody></table>
+      <h2>Top Defects</h2><table><thead><tr><th>Defect</th><th>Count</th></tr></thead><tbody>${defectRows}</tbody></table>
+    </body></html>`;
+    const url=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`epistable-pilot-report-${curMon()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
         <div style={TEXT.pageHeader}>Analytics</div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           <Btn size="sm" variant="ghost" onClick={copyEvidenceBrief} disabled={!insps.length}>{briefCopied?"Copied":"Copy Brief"}</Btn>
+          <Btn size="sm" variant="secondary" onClick={downloadPilotReport} disabled={!insps.length}>Export Pilot Report</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditPacket} disabled={!insps.length}>Export Audit Packet</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
         </div>
