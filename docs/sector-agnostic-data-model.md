@@ -17,6 +17,7 @@ Prefer:
 - `compliance_templates.requirements`
 - `compliance_templates.scoring`
 - `compliance_templates.report_sections`
+- inspection finalization, locking, and revision metadata for audit integrity
 
 ## What Belongs In Core Columns
 
@@ -29,7 +30,8 @@ Core columns should describe universal inspection concepts:
 - grade/outcome,
 - public certificate link identity,
 - buyer/commercial workflow state,
-- generic evidence and readiness fields.
+- generic evidence and readiness fields,
+- audit integrity state such as finalized, locked, and revision metadata.
 
 ## What Belongs In JSONB Attributes
 
@@ -67,6 +69,7 @@ The first foundation migrations add:
 - inspection template and JSONB foundation fields,
 - `compliance_templates`
 - starter `stone_qc_basic` template.
+- inspection finalization, locking, and revision metadata for future audit trail enforcement.
 
 Current stone workflows can continue using existing fields while future code gradually writes normalized data into the generic fields.
 
