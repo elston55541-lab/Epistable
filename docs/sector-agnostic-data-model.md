@@ -91,6 +91,8 @@ Current stone workflows can continue using existing fields while future code gra
 
 Use `docs/compliance-template-authoring.md` before adding or activating a new sector template.
 
+Use `docs/compliance-foundation-map.md` when deciding whether a new feature belongs in inspections, batches, CAPA, calibration, evidence packets, activity logs, or template configuration.
+
 ## Product Guidance
 
 Keep the product sellable for stone factories now.
