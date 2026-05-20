@@ -37,6 +37,8 @@ Once usage is proven, these fields can graduate into dedicated tables:
 
 That would support richer reporting without changing the current MVP flow.
 
+The `capa_actions` foundation is the first step toward that richer workflow: it can track issue, root cause, corrective action, preventive action, owner, due date, closure, verification, and supporting evidence without changing current inspections.
+
 ## Operating rhythm
 
 For factories, the practical workflow should stay simple:

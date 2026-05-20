@@ -24,6 +24,7 @@ For the sector/compliance foundation, apply:
 6. `202605200006_compliance_template_lifecycle.sql`
 7. `202605200007_activity_log_evidence_fields.sql`
 8. `202605200008_evidence_packets.sql`
+9. `202605200009_capa_actions.sql`
 
 ## After Running SQL
 
