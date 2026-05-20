@@ -43,6 +43,8 @@ The `production_batches` foundation is the traceability companion: it groups sou
 
 Batch-to-inspection links keep traceability flexible: a packet can show every slab in a batch, a sample set, representative records, or exceptions without duplicating inspection data.
 
+Calibration records provide the tool-control evidence behind inspection measurements. They should support equipment identity, calibration date, next due date, certificate reference, and evidence attachments.
+
 ## Operating rhythm
 
 For factories, the practical workflow should stay simple:
