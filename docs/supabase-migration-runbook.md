@@ -27,6 +27,7 @@ For the sector/compliance foundation, apply:
 9. `202605200009_capa_actions.sql`
 10. `202605200010_production_batches.sql`
 11. `202605200011_batch_inspection_links.sql`
+12. `202605200012_calibration_records.sql`
 
 ## After Running SQL
 
