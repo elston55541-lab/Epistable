@@ -2221,6 +2221,7 @@ function FacHistory({insps}) {
 
 function FacAnalytics({insps}) {
   const [briefCopied,setBriefCopied]=useState(false);
+  const [gapCopied,setGapCopied]=useState(false);
   const byG=g=>insps.filter(i=>i.grade===g).length;
   const total=insps.length;const pp=total?Math.round(byG("Premium")/total*100):0;
   const today=insps.filter(i=>Date.now()-i.ts<86400000).length;
@@ -2380,6 +2381,37 @@ function FacAnalytics({insps}) {
       window.prompt("Copy evidence brief",text);
     }
   }
+  function readinessGapRows(){
+    return insps.map(i=>{
+      const t=i.measurements?.traceability||{};
+      const audit=i.measurements?.audit||{};
+      const photos=Array.isArray(i.photos)?i.photos.filter(Boolean):[];
+      const missing=[];
+      if(!photos.length&&!i.photo)missing.push("photo evidence");
+      if(traceKeys.filter(k=>!!t[k]).length<4)missing.push("traceability");
+      if(!audit.calibrationChecked)missing.push("calibration check");
+      if(!audit.checklistComplete)missing.push("inspection checklist");
+      if((i.defects||[]).length>0&&!audit.correctiveAction)missing.push("corrective action");
+      return {i,missing};
+    }).filter(r=>r.missing.length);
+  }
+  async function copyGapSummary(){
+    const gapRows=readinessGapRows();
+    const lines=[
+      `Epistable readiness gap summary - ${curMon()}`,
+      `Slabs needing follow-up: ${gapRows.length}`,
+      "",
+      ...(gapRows.length?gapRows.slice(0,10).map(({i,missing})=>`- ${i.id} | ${i.stone} | ${missing.join(", ")}`):["- No readiness gaps found in current inspection data."]),
+    ];
+    const text=lines.join("\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      setGapCopied(true);
+      setTimeout(()=>setGapCopied(false),1400);
+    }catch(e){
+      window.prompt("Copy gap summary",text);
+    }
+  }
   function downloadPilotReport(){
     const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
     const readyScore=Math.round((Math.min(total,100)+traceCoverage+auditReadyPct+(capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100)+(aiReviewed.length?Math.min(100,aiReviewed.length*5):0))/5);
@@ -2424,18 +2456,7 @@ function FacAnalytics({insps}) {
   }
   function downloadGapReport(){
     const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
-    const gapRows=insps.map(i=>{
-      const t=i.measurements?.traceability||{};
-      const audit=i.measurements?.audit||{};
-      const photos=Array.isArray(i.photos)?i.photos.filter(Boolean):[];
-      const missing=[];
-      if(!photos.length&&!i.photo)missing.push("photo evidence");
-      if(traceKeys.filter(k=>!!t[k]).length<4)missing.push("traceability");
-      if(!audit.calibrationChecked)missing.push("calibration check");
-      if(!audit.checklistComplete)missing.push("inspection checklist");
-      if((i.defects||[]).length>0&&!audit.correctiveAction)missing.push("corrective action");
-      return {i,missing};
-    }).filter(r=>r.missing.length);
+    const gapRows=readinessGapRows();
     const rows=gapRows.map(({i,missing})=>`<tr><td>${esc(i.id)}</td><td>${esc(i.stone)}</td><td>${esc(i.grade)}</td><td>${esc(i.supplier||"Not recorded")}</td><td>${esc(missing.join(", "))}</td><td><a href="${window.location.origin}/slab/${encodeURIComponent(i.id)}">Certificate</a></td></tr>`).join("");
     const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Readiness Gap Report ${curMon()}</title><style>
       body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
@@ -2465,6 +2486,7 @@ function FacAnalytics({insps}) {
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           <Btn size="sm" variant="ghost" onClick={copyEvidenceBrief} disabled={!insps.length}>{briefCopied?"Copied":"Copy Brief"}</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadPilotReport} disabled={!insps.length}>Export Pilot Report</Btn>
+          <Btn size="sm" variant="ghost" onClick={copyGapSummary} disabled={!insps.length}>{gapCopied?"Gaps Copied":"Copy Gaps"}</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadGapReport} disabled={!insps.length}>Gap Report</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditPacket} disabled={!insps.length}>Export Audit Packet</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
