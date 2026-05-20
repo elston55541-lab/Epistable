@@ -78,6 +78,8 @@ Before selling seriously, the product should pass these gates:
 
 Use `docs/factory-pilot-plan.md` to structure the first serious factory pilot and measure whether the product is ready to sell beyond demos.
 
+Use `docs/sector-agnostic-data-model.md` when adding schema, compliance, or inspection fields so the platform can support future sectors without a core rewrite.
+
 ## AI Grading Path
 
 AI image grading should be treated as a later confidence layer, not the first sales dependency.
