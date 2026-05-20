@@ -18,6 +18,8 @@ Minimum pilot dataset:
 - 5 batch/source records with traceability fields completed.
 - 3 CAPA records for rejected/problem slabs.
 - 1 audit evidence packet exported and reviewed with the factory owner or quality manager.
+- 1 pilot report exported from Analytics and reviewed with decision makers.
+- 1 readiness gap report exported or copied and used for follow-up.
 - 1 AI review dataset export reviewed for photo consistency and override quality.
 
 ## Success Metrics
@@ -31,6 +33,7 @@ Measure:
 - Buyer response to certificate links and quote workflow.
 - Number of WhatsApp/manual follow-ups replaced by certificate links.
 - AI override rate and common override reasons.
+- Number of readiness gaps found and closed.
 - Factory owner confidence in audit packet and readiness summary.
 
 ## Demo Narrative
@@ -48,7 +51,7 @@ After Epistable:
 - every certificate carries evidence,
 - every batch has traceability,
 - every rejected slab can become CAPA,
-- every factory can export an audit packet.
+- every factory can export an audit packet, pilot report, and readiness gap report.
 
 ## Pilot Exit Criteria
 
@@ -57,6 +60,7 @@ The pilot is successful when:
 - factory staff can complete scans without hand-holding,
 - certificates are credible enough to share with buyers,
 - readiness summaries identify real gaps,
+- readiness gap reports help staff close missing evidence,
 - export packets reduce audit/documentation effort,
 - AI review data is consistent enough to justify deeper model work.
 
