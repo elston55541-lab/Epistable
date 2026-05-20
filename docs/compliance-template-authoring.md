@@ -14,6 +14,8 @@ Every template should have a stable key:
 
 Use lowercase words separated by underscores. Do not rename a template key after inspections have started using it.
 
+When requirements change, create a new template key or versioned template row and link it with `supersedes_template_id`. Existing inspections should remain interpretable under the template they originally used.
+
 ## Required Shape
 
 Each template should define:
@@ -25,6 +27,10 @@ Each template should define:
 - `scoring`: weights or scoring rules for readiness.
 - `report_sections`: sections that should appear in buyer, audit, or pilot exports.
 - `status`: use `active` only when the workflow is ready for users.
+- `effective_from`: when this template version should become valid for new inspections.
+- `retired_at`: when this template should stop being assigned to new inspections.
+- `supersedes_template_id`: the older template key this one replaces, when applicable.
+- `metadata`: authoring notes, standard references, rollout notes, and display hints.
 
 ## Requirement Categories
 
