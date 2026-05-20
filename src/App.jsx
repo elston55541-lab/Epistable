@@ -501,15 +501,35 @@ function SlabQRModal({slab,onClose}) {
 }
 
 function ActivityList({items=[],compact=false}) {
+  const [copied,setCopied]=useState(false);
   const labels={
     profile_created:"created access",
     profile_updated:"updated access",
     profile_suspended:"suspended access",
     profile_restored:"restored access"
   };
+  async function copyActivitySummary(){
+    const visible=items.slice(0,compact?5:8);
+    const text=[
+      `Epistable activity summary - ${fmtD(Date.now())} ${fmtT(Date.now())}`,
+      `Events shown: ${visible.length}`,
+      "",
+      ...(visible.length?visible.map(a=>`${fmtD(a.ts)} ${fmtT(a.ts)} | ${a.actor_name||"Someone"} ${labels[a.action]||a.action} | Target: ${a.target_name||a.target_id} | Factory: ${a.factory_name||"Platform"}`):["No activity yet"]),
+    ].join("\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(()=>setCopied(false),1400);
+    }catch(e){
+      window.prompt("Copy activity summary",text);
+    }
+  }
   return (
     <Card style={{marginTop:compact?12:14}}>
-      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,fontSize:14,fontWeight:800}}>Recent Activity</div>
+      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+        <div style={{fontSize:14,fontWeight:800}}>Recent Activity</div>
+        {items.length>0&&<Btn size="sm" variant="secondary" onClick={copyActivitySummary}>{copied?"Copied":"Copy"}</Btn>}
+      </div>
       {items.length===0?<div style={{padding:"24px 16px",textAlign:"center",fontSize:13,color:C.textDim}}>No activity yet</div>:
       items.slice(0,compact?5:8).map((a,i)=>(
         <div key={a.id} style={{display:"flex",gap:10,padding:"12px 16px",borderBottom:i<Math.min(items.length,compact?5:8)-1?`1px solid ${C.border}`:"none"}}>
