@@ -38,6 +38,8 @@ These migrations are additive foundation work.
 
 They should not change current stone workflows until application code starts reading or writing the new fields.
 
+Use `docs/compliance-template-authoring.md` before adding a new `compliance_templates` migration.
+
 If a migration fails, stop and fix that migration before applying later files.
 
 Do not skip RLS migrations for new tables.

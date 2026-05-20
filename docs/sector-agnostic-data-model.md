@@ -76,6 +76,8 @@ Use `docs/supabase-migration-runbook.md` when applying these migrations manually
 
 Current stone workflows can continue using existing fields while future code gradually writes normalized data into the generic fields.
 
+Use `docs/compliance-template-authoring.md` before adding or activating a new sector template.
+
 ## Product Guidance
 
 Keep the product sellable for stone factories now.
