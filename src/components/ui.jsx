@@ -2,6 +2,7 @@ import { useState } from "react";
 import { C } from "../lib/domain";
 import { useBP } from "../hooks/useBP";
 import { FONT_STACK, RADIUS, SHADOW, SPACE, TYPE, WEIGHT } from "../lib/tokens";
+import { Icon } from "./Icon";
 import { Pill } from "./Pill";
 
 export const fontStack = FONT_STACK;
@@ -126,6 +127,60 @@ export const PBar = ({value,color=C.primary,h=6}) => {
   );
 };
 
+const KPI_ICON = {
+  "\u{1F4B3}": "billing",
+  "\u{1F50D}": "search",
+  "\u{1F3ED}": "factory",
+  "\u{1F464}": "user",
+  "\u{1F465}": "users",
+  "\u{1F6A8}": "alert",
+  "\u{23F8}": "pause",
+  "\u{1F4E6}": "package",
+  "\u{1F4C5}": "date",
+  "\u{1F4C6}": "date",
+  "\u{1F3C6}": "verified",
+  Scan: "search",
+  Stock: "box",
+  Grade: "verified",
+  Bill: "billing",
+  Quote: "message",
+  Won: "check",
+  Reply: "message",
+  New: "bell",
+  Hot: "alert",
+  Due: "date",
+  Mill: "factory",
+  Trace: "list",
+  Audit: "verified",
+  CAPA: "alert",
+  Batch: "package",
+  Vol: "chart",
+  Risk: "alert",
+  Sold: "check",
+  Now: "alert",
+};
+
+function KpiIcon({icon,color}) {
+  if (!icon) return null;
+  const name = KPI_ICON[icon] || (typeof icon === "string" && icon.length < 14 ? "chart" : null);
+  if (!name || typeof icon !== "string") return icon;
+  return <Icon name={name} size={TYPE.display.size - 2} color={color || C.primary}/>;
+}
+
+const INPUT_ICON = {
+  "\u{1F50D}": "search",
+  "\u{2709}\uFE0F": "mail",
+  search: "search",
+  mail: "mail",
+};
+
+function InputIcon({icon}) {
+  if (!icon) return null;
+  const name = INPUT_ICON[icon] || icon;
+  if (typeof name === "string") return <Icon name={name} size={TYPE.body.size + 1} color={C.textDim}/>;
+  return name;
+}
+
 export function Btn({children,onClick,variant="primary",full,disabled,style={},size="md"}) {
   const pad = CONTROL_PAD[size] || CONTROL_PAD.md;
   const fs = CONTROL_FONT[size] || CONTROL_FONT.md;
@@ -170,7 +225,7 @@ export function Inp({label,value,onChange,type="text",placeholder,required,icon,
     <div>
       {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.xs + 2,...T.label}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>}
       <div style={{position:"relative"}}>
-        {icon&&<span style={{position:"absolute",left:SPACE.base - 2,top:"50%",transform:"translateY(-50%)",fontSize:TYPE.body.size + 1,pointerEvents:"none"}}>{icon}</span>}
+        {icon&&<span style={{position:"absolute",left:SPACE.base - 2,top:"50%",transform:"translateY(-50%)",fontSize:TYPE.body.size + 1,pointerEvents:"none",display:"flex",alignItems:"center"}}><InputIcon icon={icon}/></span>}
         <input
           type={type}
           value={value}
@@ -247,7 +302,7 @@ export function KpiGrid({items}) {
     <div style={{display:"grid",gridTemplateColumns:`repeat(${isMobile?2:Math.min(items.length,4)},1fr)`,gap:SPACE.md,marginBottom:TYPE.heading.size}}>
       {items.map(({label,value,color,icon})=>(
         <Card key={label} style={{padding:`${SPACE.base}px ${SPACE.base - 2}px`}}>
-          <div style={{fontSize:TYPE.display.size - 2,marginBottom:SPACE.xs + 2,lineHeight:1}}>{icon}</div>
+          <div style={{fontSize:TYPE.display.size - 2,marginBottom:SPACE.xs + 2,lineHeight:1}}><KpiIcon icon={icon} color={color}/></div>
           <div style={{fontSize:TYPE.display.size - 2,fontWeight:WEIGHT.bold,color:color||C.text,lineHeight:1.1,marginBottom:SPACE.xs - 1,letterSpacing:0}}>{value}</div>
           <div style={{color:C.textMid,fontWeight:WEIGHT.bold,...T.hint}}>{label}</div>
         </Card>
