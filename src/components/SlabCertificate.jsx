@@ -16,7 +16,7 @@ const invConf = status => ({
 function Field({label,value}) {
   return (
     <div style={{padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-      <div style={{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",marginBottom:3}}>{label}</div>
+      <div style={{fontSize:12,fontWeight:600,color:C.textDim,textTransform:"uppercase",marginBottom:3}}>{label}</div>
       <div style={{fontSize:14,fontWeight:700,color:C.text}}>{value || "Not recorded"}</div>
     </div>
   );
@@ -223,14 +223,14 @@ export function SlabCertificate({slabId}) {
       <div className="cert-actions" style={{position:"sticky",top:0,zIndex:50,background:"rgba(255,255,255,0.96)",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(8px)"}}>
         <div style={{maxWidth:980,margin:"0 auto",padding:"10px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
           <div style={{minWidth:0}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.text}}>Certificate {slab.id}</div>
-            <div style={{fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slab.stone} · {slab.factory_name}</div>
+            <div style={{fontSize:12,fontWeight:600,color:C.text}}>Certificate {slab.id}</div>
+            <div style={{fontSize:12,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slab.stone} · {slab.factory_name}</div>
           </div>
           <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <button onClick={copySummary} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Summary Copied":"Copy Summary"}</button>
-            <button onClick={copyAuditNote} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Audit Copied":"Copy Audit Note"}</button>
-            <button onClick={copyLink} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>{copied?"Copied":"Copy Link"}</button>
-            <button onClick={()=>window.print()} style={{padding:"9px 12px",border:"none",borderRadius:9,background:C.primary,color:C.white,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>Print / Save PDF</button>
+            <button onClick={copySummary} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Summary Copied":"Copy Summary"}</button>
+            <button onClick={copyAuditNote} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Audit Copied":"Copy Audit Note"}</button>
+            <button onClick={copyLink} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{copied?"Copied":"Copy Link"}</button>
+            <button onClick={()=>window.print()} style={{padding:"9px 12px",border:"none",borderRadius:9,background:C.primary,color:C.white,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Print / Save PDF</button>
           </div>
         </div>
       </div>
@@ -241,7 +241,7 @@ export function SlabCertificate({slabId}) {
               <div style={{fontSize:22,fontWeight:700,letterSpacing:0}}>Epistable AI</div>
               <div style={{fontSize:12,color:"rgba(255,255,255,0.72)"}}>Verified slab certificate</div>
             </div>
-            <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:999,padding:"6px 12px",fontSize:12,fontWeight:700}}>VERIFIED</div>
+            <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:999,padding:"6px 12px",fontSize:12,fontWeight:600}}>VERIFIED</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.2fr) minmax(220px,0.8fr)",gap:16,alignItems:"stretch"}}>
             <div>
@@ -249,25 +249,25 @@ export function SlabCertificate({slabId}) {
               <div style={{fontSize:30,fontWeight:700,lineHeight:1.08,marginBottom:8}}>{slab.stone}</div>
               <div style={{fontSize:14,color:"rgba(255,255,255,0.78)",lineHeight:1.5}}>{slab.factory_name}{slab.factory_location ? `, ${slab.factory_location}` : ""}</div>
               <div className="cert-interactive" style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:16}}>
-                <button onClick={()=>scrollTo("certificate-inquiry")} disabled={!canInquire} style={{padding:"10px 14px",border:"none",borderRadius:10,background:canInquire?C.white:"rgba(255,255,255,0.18)",color:canInquire?C.primary:"rgba(255,255,255,0.62)",fontSize:13,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"Interested in this slab":inventory.label}</button>
-                <button onClick={()=>scrollTo("certificate-dispute")} style={{padding:"10px 14px",border:"1px solid rgba(255,255,255,0.28)",borderRadius:10,background:"rgba(255,255,255,0.1)",color:C.white,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>Report mismatch</button>
+                <button onClick={()=>scrollTo("certificate-inquiry")} disabled={!canInquire} style={{padding:"10px 14px",border:"none",borderRadius:10,background:canInquire?C.white:"rgba(255,255,255,0.18)",color:canInquire?C.primary:"rgba(255,255,255,0.62)",fontSize:13,fontWeight:600,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"Interested in this slab":inventory.label}</button>
+                <button onClick={()=>scrollTo("certificate-dispute")} style={{padding:"10px 14px",border:"1px solid rgba(255,255,255,0.28)",borderRadius:10,background:"rgba(255,255,255,0.1)",color:C.white,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Report mismatch</button>
               </div>
             </div>
             <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8}}>
                 <div>
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.68)",textTransform:"uppercase",fontWeight:700}}>Grade</div>
+                  <div style={{fontSize:12,color:"rgba(255,255,255,0.68)",textTransform:"uppercase",fontWeight:600}}>Grade</div>
                   <div style={{fontSize:24,fontWeight:700,color:C.white}}>{slab.grade}</div>
                 </div>
-                <div style={{background:g.bg,border:`1px solid ${g.border}`,color:g.color,borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:700}}>{g.label}</div>
+                <div style={{background:g.bg,border:`1px solid ${g.border}`,color:g.color,borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:600}}>{g.label}</div>
               </div>
               <div style={{fontSize:26,fontWeight:700}}>Rs {slab.price_per_sq_ft || 0}<span style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)"}}> / sq ft</span></div>
-              <div style={{display:"inline-flex",marginTop:10,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:700,color:inventory.color}}>{inventory.label}</div>
+              <div style={{display:"inline-flex",marginTop:10,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:600,color:inventory.color}}>{inventory.label}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
                 {[["Defects",defects.length||"None"],["Photos",evidenceCount],["Export",slab.export_ready ? "Ready" : "No"]].map(([label,value])=>(
                   <div key={label} style={{background:"rgba(255,255,255,0.11)",border:"1px solid rgba(255,255,255,0.16)",borderRadius:9,padding:"8px 6px",textAlign:"center"}}>
                     <div style={{fontSize:14,fontWeight:700,color:C.white,lineHeight:1.1}}>{value}</div>
-                    <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.62)",marginTop:3}}>{label}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.62)",marginTop:3}}>{label}</div>
                   </div>
                 ))}
               </div>
@@ -289,16 +289,16 @@ export function SlabCertificate({slabId}) {
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Inspection Summary</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:8,marginBottom:12}}>
                 <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:2}}>Trust Signal</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{slab.export_ready ? "Export ready" : "Factory verified"}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.green,marginBottom:2}}>Trust Signal</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{slab.export_ready ? "Export ready" : "Factory verified"}</div>
                 </div>
                 <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 10px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.primary,marginBottom:2}}>Evidence</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{evidenceCount} photo{evidenceCount===1 ? "" : "s"}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.primary,marginBottom:2}}>Evidence</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{evidenceCount} photo{evidenceCount===1 ? "" : "s"}</div>
                 </div>
                 <div style={{background:defects.length?C.amberBg:C.greenBg,border:`1px solid ${defects.length?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:defects.length?C.amber:C.green,marginBottom:2}}>Defects</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{defects.length ? `${defects.length} recorded` : "None recorded"}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:defects.length?C.amber:C.green,marginBottom:2}}>Defects</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{defects.length ? `${defects.length} recorded` : "None recorded"}</div>
                 </div>
               </div>
               <div style={{fontSize:14,lineHeight:1.7,color:C.textMid}}>{slab.reason || "No grading reason was recorded for this slab."}</div>
@@ -314,7 +314,7 @@ export function SlabCertificate({slabId}) {
                   ["Request quote",canInquire?"Send area and delivery needs from this certificate.":"Ask the factory for alternatives."],
                 ].map(([label,detail])=>(
                   <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.primary,marginBottom:4}}>{label}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:C.primary,marginBottom:4}}>{label}</div>
                     <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{detail}</div>
                   </div>
                 ))}
@@ -326,7 +326,7 @@ export function SlabCertificate({slabId}) {
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
                 {photos.slice(1,7).map((p,idx)=><div key={idx} style={{position:"relative"}}>
                   <img src={p.src} alt="" style={{width:"100%",aspectRatio:"1",objectFit:"cover",borderRadius:10,border:`1px solid ${C.border}`,display:"block"}}/>
-                  {p.label&&<div style={{position:"absolute",left:6,bottom:6,right:6,background:"rgba(0,0,0,0.62)",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,color:"#fff",textAlign:"center"}}>{p.label}</div>}
+                  {p.label&&<div style={{position:"absolute",left:6,bottom:6,right:6,background:"rgba(0,0,0,0.62)",borderRadius:6,padding:"4px 6px",fontSize:12,fontWeight:600,color:"#fff",textAlign:"center"}}>{p.label}</div>}
                 </div>)}
               </div>
             </Card>}
@@ -349,7 +349,7 @@ export function SlabCertificate({slabId}) {
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {verificationItems.map(item=>(
                   <div key={item.label} style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:3}}>{item.label}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:C.green,marginBottom:3}}>{item.label}</div>
                     <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{item.detail}</div>
                   </div>
                 ))}
@@ -364,7 +364,7 @@ export function SlabCertificate({slabId}) {
               <Field label="Edge condition" value={measurements.edgeCondition}/>
               <Field label="Surface finish" value={measurements.surfaceFinish}/>
               {polish>0&&<div style={{paddingTop:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700,marginBottom:6}}><span>Polish level</span><span>{polish}/5</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:6}}><span>Polish level</span><span>{polish}/5</span></div>
                 <PBar value={polish/5*100} color={C.primary} h={8}/>
               </div>}
             </Card>
@@ -373,19 +373,19 @@ export function SlabCertificate({slabId}) {
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Traceability</div>
               <div style={{background:readinessScore>=70?C.greenBg:C.amberBg,border:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
-                  <span style={{fontSize:12,fontWeight:700,color:readinessScore>=70?C.green:C.amber}}>Evidence readiness</span>
+                  <span style={{fontSize:12,fontWeight:600,color:readinessScore>=70?C.green:C.amber}}>Evidence readiness</span>
                   <span style={{fontSize:16,fontWeight:700,color:readinessScore>=70?C.green:C.amber}}>{readinessScore}%</span>
                 </div>
                 <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>This score reflects recorded traceability, audit proof, and photo evidence for this slab. It is not a third-party certification.</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <div style={{background:traceabilityCount?C.primaryBg:C.surface,border:`1px solid ${traceabilityCount?C.primaryBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:traceabilityCount?C.primary:C.textDim,marginBottom:2}}>Trace fields</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{traceabilityCount}/7 recorded</div>
+                  <div style={{fontSize:12,fontWeight:600,color:traceabilityCount?C.primary:C.textDim,marginBottom:2}}>Trace fields</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{traceabilityCount}/7 recorded</div>
                 </div>
                 <div style={{background:auditCount?C.greenBg:C.surface,border:`1px solid ${auditCount?C.greenBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:auditCount?C.green:C.textDim,marginBottom:2}}>Audit fields</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{auditCount}/6 recorded</div>
+                  <div style={{fontSize:12,fontWeight:600,color:auditCount?C.green:C.textDim,marginBottom:2}}>Audit fields</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{auditCount}/6 recorded</div>
                 </div>
               </div>
               <Field label="Quarry / source" value={traceability.quarrySource}/>
@@ -402,8 +402,8 @@ export function SlabCertificate({slabId}) {
               <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,lineHeight:1.55,color:C.textMid,marginBottom:10}}>These fields help factories maintain inspection evidence for buyer QC programs, internal reviews, and certification preparation.</div>
               <div style={{background:readinessScore>=80?C.greenBg:readinessScore>=55?C.amberBg:C.redBg,border:`1px solid ${readinessScore>=80?C.greenBorder:readinessScore>=55?C.amberBorder:C.redBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
-                  <span style={{fontSize:12,fontWeight:700,color:readinessScore>=80?C.green:readinessScore>=55?C.amber:C.red}}>{auditReadinessLabel} evidence file</span>
-                  <button onClick={copyAuditNote} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 9px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Copied":"Copy note"}</button>
+                  <span style={{fontSize:12,fontWeight:600,color:readinessScore>=80?C.green:readinessScore>=55?C.amber:C.red}}>{auditReadinessLabel} evidence file</span>
+                  <button onClick={copyAuditNote} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 9px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Copied":"Copy note"}</button>
                 </div>
                 <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>{auditGaps.length?auditGaps.join("; "):"No evidence gaps are flagged from the current certificate data."}</div>
               </div>
@@ -417,9 +417,9 @@ export function SlabCertificate({slabId}) {
 
             <Card className="cert-card" style={{padding:18}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:10}}>Defects</div>
-              {defects.length===0?<div style={{fontSize:13,color:C.green,fontWeight:700}}>No defects recorded</div>:
+              {defects.length===0?<div style={{fontSize:13,color:C.green,fontWeight:600}}>No defects recorded</div>:
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {defects.map(d=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:999,padding:"5px 10px",fontSize:12,fontWeight:700,color:C.amber,textTransform:"capitalize"}}>{d}</span>)}
+                {defects.map(d=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:999,padding:"5px 10px",fontSize:12,fontWeight:600,color:C.amber,textTransform:"capitalize"}}>{d}</span>)}
               </div>}
             </Card>
 
@@ -440,13 +440,13 @@ export function SlabCertificate({slabId}) {
                 </div>
                 <input value={inq.areaSqFt} onChange={e=>setInq(p=>({...p,areaSqFt:e.target.value.replace(/[^\d.]/g,"")}))} placeholder="Area required in sq ft (optional)" inputMode="decimal" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
                 {quoteEstimate>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12}}>
-                  <span style={{fontSize:12,fontWeight:700,color:C.green}}>Estimated value</span>
+                  <span style={{fontSize:12,fontWeight:600,color:C.green}}>Estimated value</span>
                   <span style={{fontSize:14,fontWeight:700,color:C.green}}>Rs {quoteEstimate}</span>
                 </div>}
                 <textarea value={inq.message} onChange={e=>setInq(p=>({...p,message:e.target.value}))} rows={3} placeholder="Message (quantity, timeline, destination...)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
-                {inqError&&<div style={{fontSize:12,color:C.red,fontWeight:700}}>{inqError}</div>}
+                {inqError&&<div style={{fontSize:12,color:C.red,fontWeight:600}}>{inqError}</div>}
                 <Btn full disabled={!inquiryReady||inqBusy} onClick={submitInquiry}>{inqBusy?"Sending...":"Send Inquiry"}</Btn>
-                <div style={{fontSize:11,color:C.textDim,lineHeight:1.5}}>Name and either email or phone are required.</div>
+                <div style={{fontSize:12,color:C.textDim,lineHeight:1.5}}>Name and either email or phone are required.</div>
               </div>}
             </Card>
 
@@ -470,14 +470,14 @@ export function SlabCertificate({slabId}) {
                   <option value="other">Other</option>
                 </select>
                 <textarea value={dispute.details} onChange={e=>setDispute(p=>({...p,details:e.target.value}))} rows={3} placeholder="Describe what does not match..." style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
-                {disputeError&&<div style={{fontSize:12,color:C.red,fontWeight:700}}>{disputeError}</div>}
+                {disputeError&&<div style={{fontSize:12,color:C.red,fontWeight:600}}>{disputeError}</div>}
                 <Btn full variant="secondary" disabled={!disputeReady||disputeBusy} onClick={submitDispute}>{disputeBusy?"Sending...":"Report Issue"}</Btn>
-                <div style={{fontSize:11,color:C.textDim,lineHeight:1.5}}>Name, contact, and issue details are required.</div>
+                <div style={{fontSize:12,color:C.textDim,lineHeight:1.5}}>Name, contact, and issue details are required.</div>
               </div>}
             </Card>
           </div>
         </div>
-        <div className="cert-print-footer" style={{display:"none",marginTop:14,paddingTop:10,borderTop:`1px solid ${C.border}`,fontSize:10,color:C.textDim,lineHeight:1.5}}>
+        <div className="cert-print-footer" style={{display:"none",marginTop:14,paddingTop:10,borderTop:`1px solid ${C.border}`,fontSize:12,color:C.textDim,lineHeight:1.5}}>
           Verified by Epistable AI · Certificate ID {slab.id} · Generated from {certificateUrl}
         </div>
       </main>
