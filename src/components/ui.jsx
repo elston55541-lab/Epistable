@@ -1,74 +1,197 @@
 import { useState } from "react";
 import { C } from "../lib/domain";
 import { useBP } from "../hooks/useBP";
+import { FONT_STACK, RADIUS, SHADOW, SPACE, TYPE, WEIGHT } from "../lib/tokens";
+import { Pill } from "./Pill";
 
-export const fontStack = "\"Segoe UI\", system-ui, -apple-system, BlinkMacSystemFont, \"Roboto\", \"Helvetica Neue\", Arial, sans-serif";
+export const fontStack = FONT_STACK;
+
+const typeStyle = key => ({
+  fontFamily: FONT_STACK,
+  fontSize: TYPE[key].size,
+  lineHeight: TYPE[key].lineHeight,
+  fontWeight: TYPE[key].weight,
+  letterSpacing: TYPE[key].letterSpacing,
+});
 
 export const T = {
-  body: {fontFamily:fontStack,fontSize:14,lineHeight:1.5,letterSpacing:0},
-  label: {fontSize:13,lineHeight:1.35,fontWeight:700,letterSpacing:0},
-  hint: {fontSize:12,lineHeight:1.45,letterSpacing:0},
-  control: {fontFamily:fontStack,lineHeight:1.2,fontWeight:800,letterSpacing:0},
-  title: {fontSize:18,lineHeight:1.25,fontWeight:800,letterSpacing:0},
-  pill: {fontSize:11,lineHeight:1.25,fontWeight:800,letterSpacing:0},
+  body: typeStyle("body"),
+  label: { ...typeStyle("label"), fontWeight: WEIGHT.bold },
+  hint: typeStyle("caption"),
+  control: { ...typeStyle("body"), lineHeight: 1.2, fontWeight: WEIGHT.bold },
+  title: { ...typeStyle("heading"), fontWeight: WEIGHT.bold },
+  pill: { ...typeStyle("caption"), lineHeight: 1.25, fontWeight: WEIGHT.bold },
+};
+
+const CONTROL_PAD = {
+  sm: `${SPACE.sm}px ${SPACE.base}px`,
+  md: `${SPACE.md}px ${SPACE.lg}px`,
+  lg: `${SPACE.base - 1}px ${SPACE.xl}px`,
+};
+
+const CONTROL_FONT = {
+  sm: TYPE.label.size,
+  md: TYPE.body.size,
+  lg: TYPE.body.size + 1,
 };
 
 export const Card = ({children,style={},onClick,className,...props}) =>
-  <div {...props} className={className} onClick={onClick} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:C.shadow,...style}}>{children}</div>;
+  <div
+    {...props}
+    className={className}
+    onClick={onClick}
+    style={{
+      background: C.white,
+      border: `1px solid ${C.border}`,
+      borderRadius: RADIUS.lg - 2,
+      boxShadow: C.shadow,
+      ...style,
+    }}
+  >
+    {children}
+  </div>;
 
 export const BillPill = ({status}) => {
-  const m={paid:{c:C.green,bg:C.greenBg,b:C.greenBorder,l:"✓ Paid"},overdue:{c:C.red,bg:C.redBg,b:C.redBorder,l:"⚠ Overdue"},pending:{c:C.amber,bg:C.amberBg,b:C.amberBorder,l:"● Pending"}};
-  const s=m[status]||m.pending;
-  return <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",...T.pill}}>{s.l}</span>;
+  const m = {
+    paid: { tone: "success", label: "Paid" },
+    overdue: { tone: "danger", label: "Overdue" },
+    pending: { tone: "warning", label: "Pending" },
+  };
+  const s = m[status] || m.pending;
+  return <Pill tone={s.tone}>{s.label}</Pill>;
 };
 
 export const StatPill = ({status}) => {
-  const m={active:{c:C.green,bg:C.greenBg,b:C.greenBorder,l:"Active"},paused:{c:C.red,bg:C.redBg,b:C.redBorder,l:"Paused"},suspended:{c:C.red,bg:C.redBg,b:C.redBorder,l:"Suspended"},inactive:{c:C.amber,bg:C.amberBg,b:C.amberBorder,l:"Inactive"},flagged:{c:C.red,bg:C.redBg,b:C.redBorder,l:"⚑ Flagged"}};
-  const s=m[status]||m.inactive;
-  return <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",...T.pill}}>{s.l}</span>;
+  const m = {
+    active: { tone: "success", label: "Active" },
+    paused: { tone: "danger", label: "Paused" },
+    suspended: { tone: "danger", label: "Suspended" },
+    inactive: { tone: "warning", label: "Inactive" },
+    flagged: { tone: "danger", label: "Flagged" },
+  };
+  const s = m[status] || m.inactive;
+  return <Pill tone={s.tone}>{s.label}</Pill>;
 };
 
 export const DisputeStatusPill = ({status}) => {
-  const m={open:{c:C.red,bg:C.redBg,b:C.redBorder,l:"🔴 Open"},reviewing:{c:C.amber,bg:C.amberBg,b:C.amberBorder,l:"🔍 Reviewing"},resolved:{c:C.green,bg:C.greenBg,b:C.greenBorder,l:"✅ Resolved"},dismissed:{c:C.textDim,bg:C.surface,b:C.border,l:"✗ Dismissed"}};
-  const s=m[status]||m.open;
-  return <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",...T.pill}}>{s.l}</span>;
+  const m = {
+    open: { tone: "danger", label: "Open" },
+    reviewing: { tone: "warning", label: "Reviewing" },
+    resolved: { tone: "success", label: "Resolved" },
+    dismissed: { tone: "neutral", label: "Dismissed" },
+  };
+  const s = m[status] || m.open;
+  return <Pill tone={s.tone}>{s.label}</Pill>;
 };
 
 export const InqPill = ({status}) => {
-  if(status==="reserved")return <span style={{background:C.purpleBg,border:`1px solid ${C.purpleBorder}`,color:C.purple,padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",...T.pill}}>Reserved</span>;
-  const m={new:{c:C.primary,bg:C.primaryBg,b:C.primaryBorder,l:"🔔 New"},contacted:{c:C.amber,bg:C.amberBg,b:C.amberBorder,l:"📞 Contacted"},closed:{c:C.green,bg:C.greenBg,b:C.greenBorder,l:"✅ Closed"}};
-  const s=m[status]||m.new;
-  return <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",...T.pill}}>{s.l}</span>;
+  const m = {
+    reserved: { tone: "info", label: "Reserved" },
+    new: { tone: "primary", label: "New" },
+    contacted: { tone: "warning", label: "Contacted" },
+    closed: { tone: "success", label: "Closed" },
+  };
+  const s = m[status] || m.new;
+  return <Pill tone={s.tone}>{s.label}</Pill>;
 };
 
 export const Avi = ({initials,size=36,color=C.primary,bg=C.primaryBg,border=C.primaryBorder}) =>
-  <div style={{width:size,height:size,borderRadius:"50%",background:bg,border:`2px solid ${border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.33,fontWeight:800,lineHeight:1,color,flexShrink:0}}>{initials}</div>;
-
-export const PBar = ({value,color=C.primary,h=6}) =>
-  <div style={{background:"#e9ecef",borderRadius:h,height:h,overflow:"hidden"}}>
-    <div style={{background:color,width:`${Math.min(Math.max(value,0),100)}%`,height:"100%",borderRadius:h,transition:"width 0.4s"}}/>
+  <div
+    style={{
+      width: size,
+      height: size,
+      borderRadius: "50%",
+      background: bg,
+      border: `2px solid ${border}`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: Math.max(TYPE.caption.size, Math.round(size * 0.33)),
+      fontWeight: WEIGHT.bold,
+      lineHeight: 1,
+      color,
+      flexShrink: 0,
+      fontFamily: FONT_STACK,
+    }}
+  >
+    {initials}
   </div>;
 
+export const PBar = ({value,color=C.primary,h=6}) => {
+  const height = h || SPACE.xs + 2;
+  return (
+    <div style={{background:C.primaryBg,borderRadius:height,height,overflow:"hidden"}}>
+      <div style={{background:color,width:`${Math.min(Math.max(value,0),100)}%`,height:"100%",borderRadius:height,transition:"width 0.4s"}}/>
+    </div>
+  );
+};
+
 export function Btn({children,onClick,variant="primary",full,disabled,style={},size="md"}) {
-  const pad={sm:"8px 16px",md:"12px 20px",lg:"15px 24px"}[size];
-  const fs={sm:12,md:14,lg:15}[size];
-  const vs={primary:{bg:C.primary,color:C.white,border:"none"},secondary:{bg:C.white,color:C.textMid,border:`1px solid ${C.border}`},green:{bg:C.green,color:C.white,border:"none"},red:{bg:C.red,color:C.white,border:"none"},ghost:{bg:"transparent",color:C.primary,border:`1px solid ${C.primaryBorder}`}};
-  const v=vs[variant]||vs.primary;
-  return <button onClick={onClick} disabled={disabled} style={{padding:pad,background:v.bg,border:v.border,borderRadius:10,color:v.color,fontSize:fs,cursor:disabled?"not-allowed":"pointer",width:full?"100%":"auto",opacity:disabled?0.5:1,WebkitTapHighlightColor:"transparent",...T.control,...style}}>{children}</button>;
+  const pad = CONTROL_PAD[size] || CONTROL_PAD.md;
+  const fs = CONTROL_FONT[size] || CONTROL_FONT.md;
+  const vs = {
+    primary: { bg: C.primary, color: C.white, border: "none" },
+    secondary: { bg: C.white, color: C.textMid, border: `1px solid ${C.border}` },
+    green: { bg: C.green, color: C.white, border: "none" },
+    red: { bg: C.red, color: C.white, border: "none" },
+    ghost: { bg: "transparent", color: C.primary, border: `1px solid ${C.primaryBorder}` },
+  };
+  const v = vs[variant] || vs.primary;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: pad,
+        background: v.bg,
+        border: v.border,
+        borderRadius: RADIUS.md,
+        color: v.color,
+        fontSize: fs,
+        cursor: disabled ? "not-allowed" : "pointer",
+        width: full ? "100%" : "auto",
+        opacity: disabled ? 0.5 : 1,
+        WebkitTapHighlightColor: "transparent",
+        ...T.control,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 export function Inp({label,value,onChange,type="text",placeholder,required,icon,hint}) {
   const [f,setF]=useState(false);
+  const inputPad = icon
+    ? `${SPACE.md}px ${SPACE.base}px ${SPACE.md}px ${SPACE.xxl + SPACE.sm}px`
+    : `${SPACE.md}px ${SPACE.base}px`;
   return (
     <div>
-      {label&&<label style={{display:"block",color:C.text,marginBottom:6,...T.label}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>}
+      {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.xs + 2,...T.label}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>}
       <div style={{position:"relative"}}>
-        {icon&&<span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none"}}>{icon}</span>}
-        <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-          style={{width:"100%",padding:icon?"12px 14px 12px 42px":"12px 14px",background:C.white,border:`1.5px solid ${f?C.primary:C.border}`,borderRadius:10,color:C.text,outline:"none",boxSizing:"border-box",...T.body}}
-          onFocus={()=>setF(true)} onBlur={()=>setF(false)}/>
+        {icon&&<span style={{position:"absolute",left:SPACE.base - 2,top:"50%",transform:"translateY(-50%)",fontSize:TYPE.body.size + 1,pointerEvents:"none"}}>{icon}</span>}
+        <input
+          type={type}
+          value={value}
+          onChange={e=>onChange(e.target.value)}
+          placeholder={placeholder}
+          style={{
+            width:"100%",
+            padding: inputPad,
+            background:C.white,
+            border:`1.5px solid ${f?C.primary:C.border}`,
+            borderRadius:RADIUS.md,
+            color:C.text,
+            outline:"none",
+            boxSizing:"border-box",
+            ...T.body,
+          }}
+          onFocus={()=>setF(true)}
+          onBlur={()=>setF(false)}
+        />
       </div>
-      {hint&&<div style={{color:C.textDim,marginTop:4,...T.hint}}>{hint}</div>}
+      {hint&&<div style={{color:C.textDim,marginTop:SPACE.xs,...T.hint}}>{hint}</div>}
     </div>
   );
 }
@@ -76,11 +199,29 @@ export function Inp({label,value,onChange,type="text",placeholder,required,icon,
 export function Sel({label,value,onChange,options,hint}) {
   return (
     <div>
-      {label&&<label style={{display:"block",color:C.text,marginBottom:6,...T.label}}>{label}</label>}
-      <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1.5px solid ${C.border}`,borderRadius:10,color:C.text,outline:"none",WebkitAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238896a4' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center",...T.body}}>
+      {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.xs + 2,...T.label}}>{label}</label>}
+      <select
+        value={value}
+        onChange={e=>onChange(e.target.value)}
+        style={{
+          width:"100%",
+          padding:`${SPACE.md}px ${SPACE.base}px`,
+          background:C.white,
+          border:`1.5px solid ${C.border}`,
+          borderRadius:RADIUS.md,
+          color:C.text,
+          outline:"none",
+          WebkitAppearance:"none",
+          appearance:"none",
+          backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a8478' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")`,
+          backgroundRepeat:"no-repeat",
+          backgroundPosition:`right ${SPACE.base - 2}px center`,
+          ...T.body,
+        }}
+      >
         {options.map(o=>typeof o==="string"?<option key={o} value={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      {hint&&<div style={{color:C.textDim,marginTop:4,...T.hint}}>{hint}</div>}
+      {hint&&<div style={{color:C.textDim,marginTop:SPACE.xs,...T.hint}}>{hint}</div>}
     </div>
   );
 }
@@ -88,13 +229,13 @@ export function Sel({label,value,onChange,options,hint}) {
 export function Modal({title,onClose,children,closeOnBackdrop=true}) {
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={closeOnBackdrop?onClose:undefined}>
-      <div style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,maxHeight:"92vh",overflow:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
-        <div style={{padding:"10px 0 0",display:"flex",justifyContent:"center"}}><div style={{width:40,height:4,borderRadius:2,background:C.border}}/></div>
-        <div style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
+      <div style={{background:C.white,borderRadius:`${RADIUS.lg + 6}px ${RADIUS.lg + 6}px 0 0`,width:"100%",maxWidth:560,maxHeight:"92vh",overflow:"auto",boxShadow:SHADOW.modal}} onClick={e=>e.stopPropagation()}>
+        <div style={{padding:`${SPACE.md - 2}px 0 0`,display:"flex",justifyContent:"center"}}><div style={{width:SPACE.xxl + SPACE.sm,height:SPACE.xs,borderRadius:SPACE.xs / 2,background:C.border}}/></div>
+        <div style={{padding:`${SPACE.base - 2}px ${SPACE.lg}px`,display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
           <div style={{color:C.text,...T.title}}>{title}</div>
-          <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:"50%",color:C.textDim,width:32,height:32,cursor:"pointer",fontSize:18,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent"}}>×</button>
+          <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:"50%",color:C.textDim,width:SPACE.xxl,height:SPACE.xxl,cursor:"pointer",fontSize:TYPE.heading.size,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",fontFamily:FONT_STACK}}>×</button>
         </div>
-        <div style={{padding:20}}>{children}</div>
+        <div style={{padding:SPACE.lg}}>{children}</div>
       </div>
     </div>
   );
@@ -103,12 +244,12 @@ export function Modal({title,onClose,children,closeOnBackdrop=true}) {
 export function KpiGrid({items}) {
   const {isMobile}=useBP();
   return (
-    <div style={{display:"grid",gridTemplateColumns:`repeat(${isMobile?2:Math.min(items.length,4)},1fr)`,gap:12,marginBottom:18}}>
+    <div style={{display:"grid",gridTemplateColumns:`repeat(${isMobile?2:Math.min(items.length,4)},1fr)`,gap:SPACE.md,marginBottom:TYPE.heading.size}}>
       {items.map(({label,value,color,icon})=>(
-        <Card key={label} style={{padding:"16px 14px"}}>
-          <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
-          <div style={{fontSize:22,fontWeight:800,color:color||C.text,lineHeight:1.1,marginBottom:3,letterSpacing:0}}>{value}</div>
-          <div style={{color:C.textMid,fontWeight:700,...T.hint}}>{label}</div>
+        <Card key={label} style={{padding:`${SPACE.base}px ${SPACE.base - 2}px`}}>
+          <div style={{fontSize:TYPE.display.size - 2,marginBottom:SPACE.xs + 2,lineHeight:1}}>{icon}</div>
+          <div style={{fontSize:TYPE.display.size - 2,fontWeight:WEIGHT.bold,color:color||C.text,lineHeight:1.1,marginBottom:SPACE.xs - 1,letterSpacing:0}}>{value}</div>
+          <div style={{color:C.textMid,fontWeight:WEIGHT.bold,...T.hint}}>{label}</div>
         </Card>
       ))}
     </div>
@@ -117,9 +258,9 @@ export function KpiGrid({items}) {
 
 export function Loader() {
   return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:12,background:C.bg,fontFamily:fontStack}}>
-      <div style={{fontSize:36}}>🪨</div>
-      <div style={{color:C.textDim,...T.body}}>Loading…</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:SPACE.md,background:C.bg,fontFamily:FONT_STACK}}>
+      <div style={{...typeStyle("display"),fontWeight:WEIGHT.bold,color:C.primary}}>Epistable</div>
+      <div style={{color:C.textDim,...T.body}}>Loading...</div>
     </div>
   );
 }
