@@ -56,6 +56,73 @@ const QUOTE_FULFILLMENT = [
 ];
 const fulfillmentConf = status => QUOTE_FULFILLMENT.find(x=>x.id===status)||QUOTE_FULFILLMENT[0];
 const activeFulfillment = q => q.fulfillmentStatus||q.fulfillment_status||(q.status==="accepted"?"payment_pending":"not_started");
+const EXPORT_MARKETS = [
+  {value:"EU",label:"European Union"},
+  {value:"US",label:"United States"},
+  {value:"GB",label:"United Kingdom"},
+  {value:"AE",label:"UAE / Gulf"},
+];
+const EXPORT_PRODUCTS = [
+  {value:"any",label:"Mixed stone products"},
+  {value:"granite",label:"Granite"},
+  {value:"marble",label:"Marble"},
+  {value:"sandstone",label:"Sandstone"},
+];
+const EXPORT_CERTS = [
+  {id:"iec",label:"IEC"},
+  {id:"iso_9001",label:"ISO 9001"},
+  {id:"lab_report",label:"Lab test reports"},
+  {id:"social_audit",label:"Social / responsible sourcing audit"},
+  {id:"origin_docs",label:"Origin / shipment documents"},
+];
+const EVIDENCE_STATUS = {
+  missing: { tone:"danger", label:"Missing", score:0 },
+  pending: { tone:"warning", label:"Working on it", score:45 },
+  uploaded: { tone:"info", label:"Uploaded", score:70 },
+  submitted: { tone:"info", label:"Submitted", score:75 },
+  verified: { tone:"success", label:"Verified", score:100 },
+  expired: { tone:"danger", label:"Expired", score:20 },
+  rejected: { tone:"danger", label:"Rejected", score:10 },
+  not_applicable: { tone:"neutral", label:"Not applicable", score:100 },
+};
+const readinessStatusConf = status => EVIDENCE_STATUS[status] || EVIDENCE_STATUS.missing;
+const evidenceTypeFallback = type => {
+  const map = {
+    government_registration:"certificate_number",
+    management_system_cert:"certificate_number",
+    product_test_report:"lab_report",
+    responsible_sourcing_audit:"external_verification",
+    shipment_document:"document_upload",
+    operational_record:"checklist_confirmation",
+    training_record:"checklist_confirmation",
+    policy_document:"document_upload",
+  };
+  return map[type] || "document_upload";
+};
+const marketsForRequirement = r => {
+  const list = Array.isArray(r.destination_markets) ? r.destination_markets : [];
+  if(list.length)return list;
+  return [r.destination_market || "GLOBAL"];
+};
+const requirementApplies = (r,{sector,productType,market}) => {
+  const reqSector = r.sector || "stone";
+  const reqProduct = r.product_type || r.productCategory || r.product_category || "any";
+  const reqMarkets = marketsForRequirement(r);
+  return reqSector === sector
+    && (reqProduct === "any" || reqProduct === productType || productType === "any")
+    && (reqMarkets.includes("GLOBAL") || reqMarkets.includes("any") || reqMarkets.includes(market));
+};
+const mapRequirement = r => ({
+  ...r,
+  requirementName:r.certification_name || r.requirement_name || r.name || r.id,
+  shortName:r.certification_code || r.requirement_name || r.id,
+  timelineMin:r.timeline_min_weeks ?? r.estimated_timeline_weeks_min,
+  timelineMax:r.timeline_max_weeks ?? r.estimated_timeline_weeks_max,
+  costMin:r.estimated_cost_min_inr,
+  costMax:r.estimated_cost_max_inr,
+  evidenceType:r.evidence_type || evidenceTypeFallback(r.evidence_lifecycle_type || r.certification_evidence_type),
+  lifecycleType:r.evidence_lifecycle_type || r.certification_evidence_type || r.evidence_type,
+});
 const TEXT = {
   pageTitle: {...T.title,marginBottom:18,fontWeight:700},
   pageHeader: {...T.title,fontWeight:700},
@@ -467,6 +534,63 @@ const DB = {
   },
   async notifyBuyerRevisedQuote(id) {
     requireData(await supabase.rpc("notify_buyer_revised_quote",{quote_id:id}));
+  },
+
+  // Export readiness
+  async getExportReadinessProfile(factoryId) {
+    const data=await rows(await supabase.from("export_readiness_profiles").select().eq("factory_id",factoryId).order("updated_at",{ascending:false}).limit(1));
+    return data[0]||null;
+  },
+  async saveExportReadinessProfile(existing,d) {
+    const now=Date.now();
+    const payload={
+      factory_id:d.factoryId,
+      sector:d.sector||"stone",
+      product_type:d.productType||"any",
+      destination_markets:d.destinationMarkets||[],
+      current_certifications:d.currentCertifications||[],
+      company_size:d.companySize||"",
+      export_status:d.exportStatus||"planning",
+      readiness_stage:"profile_complete",
+      onboarding_inputs:d.onboardingInputs||{},
+      onboarding_completed_at:existing?.onboarding_completed_at||now,
+      last_reviewed_at:now,
+      updated_at:now,
+    };
+    if(existing?.id) {
+      return requireData(await supabase.from("export_readiness_profiles").update(payload).eq("id",existing.id).select().single());
+    }
+    return requireData(await supabase.from("export_readiness_profiles").insert({...payload,id:genId("ERP"),created_by:d.userId||null,created_at:now}).select().single());
+  },
+  async exportRequirements(params) {
+    let data=[];
+    try {
+      data=await rows(await supabase.from("export_requirement_catalog").select("*"));
+    } catch(e) {
+      console.warn("Export requirement catalog unavailable, falling back to base table",e);
+      data=await rows(await supabase.from("export_requirements").select("*").eq("active",true));
+    }
+    return (data||[]).map(mapRequirement).filter(r=>requirementApplies(r,params)).sort((a,b)=>(b.priority||0)-(a.priority||0));
+  },
+  async readinessEvidence(profileId) {
+    if(!profileId)return [];
+    return rows(await supabase.from("readiness_evidence").select("*").eq("profile_id",profileId));
+  },
+  async setReadinessEvidence(d) {
+    const now=Date.now();
+    const existing=await rows(await supabase.from("readiness_evidence").select("id").eq("profile_id",d.profileId).eq("requirement_id",d.requirementId).limit(1));
+    const payload={
+      factory_id:d.factoryId,
+      profile_id:d.profileId,
+      requirement_id:d.requirementId,
+      evidence_type:d.evidenceType||"document_upload",
+      status:d.status,
+      notes:d.notes||"",
+      metadata:{updatedFrom:"export_readiness_assessment"},
+      updated_at:now,
+    };
+    if(existing[0]?.id)return requireData(await supabase.from("readiness_evidence").update(payload).eq("id",existing[0].id).select().single());
+    return requireData(await supabase.from("readiness_evidence").insert({...payload,id:genId("EV"),created_by:d.userId||null,created_at:now}).select().single());
   },
 
   // Notifications
@@ -1497,14 +1621,16 @@ function FactoryApp({user,onLogout}) {
     ...(isAdmin?[{id:"team",label:"Team",icon:"users"},{id:"suppliers",label:"Suppliers",icon:"factory"},{id:"buyers",label:"Buyers",icon:"location"},{id:"inquiries",label:"Inquiries",icon:"mail"},{id:"disputes",label:"Disputes",icon:"alert"}]:[]),
     {id:"notifs",label:"Alerts",icon:"bell",badge:unread||undefined},
   ];
-  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"currency"});
-  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(5,0,{id:"quotes",label:"Quotes",icon:"message"});
+  if(isAdmin&&!nav.some(n=>n.id==="export"))nav.splice(4,0,{id:"export",label:"Export",icon:"verified"});
+  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(5,0,{id:"sales",label:"Sales",icon:"currency"});
+  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(6,0,{id:"quotes",label:"Quotes",icon:"message"});
 
   const pages={
     home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
+    ...(isAdmin?{export:<FacExportReadiness fac={fac} user={user}/>}:{}),
     ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage} onChange={load}/>}:{ }),
     ...(isAdmin?{quotes:<FacQuotesPage quotes={quotes} insps={salesInsps} onChange={load}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
@@ -1761,6 +1887,231 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
           </div>
         );})}
       </Card>}
+    </div>
+  );
+}
+
+function FacExportReadiness({fac,user}) {
+  const [profile,setProfile]=useState(null);
+  const [requirements,setRequirements]=useState([]);
+  const [evidence,setEvidence]=useState([]);
+  const [form,setForm]=useState({
+    sector:"stone",
+    productType:"any",
+    market:"EU",
+    exportStatus:"planning",
+    companySize:"",
+    currentCertifications:[],
+  });
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [err,setErr]=useState("");
+
+  const evidenceByReq=useMemo(()=>{
+    const map={};
+    evidence.forEach(e=>{map[e.requirement_id]=e;});
+    return map;
+  },[evidence]);
+  const scored=requirements.map(r=>{
+    const status=evidenceByReq[r.id]?.status || "missing";
+    const conf=readinessStatusConf(status);
+    return {...r,status,score:conf.score};
+  });
+  const missing=scored.filter(r=>["missing","rejected","expired"].includes(r.status));
+  const working=scored.filter(r=>["pending","uploaded","submitted"].includes(r.status));
+  const complete=scored.filter(r=>["verified","not_applicable"].includes(r.status));
+  const readinessScore=scored.length?Math.round(scored.reduce((s,r)=>s+r.score,0)/scored.length):0;
+
+  async function load(nextForm=form) {
+    if(!fac?.id)return;
+    setLoading(true);setErr("");
+    try {
+      const p=await DB.getExportReadinessProfile(fac.id);
+      const merged=p?{
+        sector:p.sector||"stone",
+        productType:p.product_type||"any",
+        market:(p.destination_markets||[])[0]||nextForm.market||"EU",
+        exportStatus:p.export_status||"planning",
+        companySize:p.company_size||"",
+        currentCertifications:p.current_certifications||[],
+      }:nextForm;
+      setProfile(p);setForm(merged);
+      const reqs=await DB.exportRequirements({sector:merged.sector,productType:merged.productType,market:merged.market});
+      setRequirements(reqs);
+      setEvidence(p?.id?await DB.readinessEvidence(p.id):[]);
+    } catch(e) {
+      console.error("Export readiness load failed",e);
+      setErr(e.message||"Could not load export readiness data.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(()=>{load();},[fac?.id]);
+
+  async function saveProfile(next=form) {
+    if(!fac?.id||saving)return null;
+    setSaving(true);setErr("");
+    try {
+      const saved=await DB.saveExportReadinessProfile(profile,{
+        factoryId:fac.id,
+        userId:user.id,
+        sector:next.sector,
+        productType:next.productType,
+        destinationMarkets:[next.market],
+        currentCertifications:next.currentCertifications,
+        companySize:next.companySize,
+        exportStatus:next.exportStatus,
+        onboardingInputs:{market:next.market,productType:next.productType,exportStatus:next.exportStatus,companySize:next.companySize},
+      });
+      setProfile(saved);
+      const reqs=await DB.exportRequirements({sector:next.sector,productType:next.productType,market:next.market});
+      setRequirements(reqs);
+      setEvidence(await DB.readinessEvidence(saved.id));
+      return saved;
+    } catch(e) {
+      console.error("Export readiness save failed",e);
+      setErr(e.message||"Could not save readiness profile.");
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateForm(patch) {
+    setForm(prev=>({...prev,...patch}));
+  }
+  function toggleCert(id) {
+    const set=new Set(form.currentCertifications);
+    if(set.has(id))set.delete(id);else set.add(id);
+    updateForm({currentCertifications:Array.from(set)});
+  }
+  async function markRequirement(req,status) {
+    let activeProfile=profile;
+    if(!activeProfile?.id)activeProfile=await saveProfile(form);
+    if(!activeProfile?.id)return;
+    setSaving(true);setErr("");
+    try {
+      await DB.setReadinessEvidence({
+        factoryId:fac.id,
+        profileId:activeProfile.id,
+        requirementId:req.id,
+        evidenceType:req.evidenceType,
+        status,
+        userId:user.id,
+        notes:status==="not_applicable"?"Marked not applicable during readiness assessment.":"",
+      });
+      setEvidence(await DB.readinessEvidence(activeProfile.id));
+    } catch(e) {
+      console.error("Readiness evidence update failed",e);
+      setErr(e.message||"Could not update requirement status.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const scoreTone=readinessScore>=75?"success":readinessScore>=45?"warning":"danger";
+  if(loading)return <Loader/>;
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:18,flexWrap:"wrap"}}>
+        <div>
+          <div style={TEXT.pageHeader}>Export Readiness</div>
+          <div style={{...TEXT.tinyMeta,marginTop:4,maxWidth:620}}>Turn your factory profile into a buyer-audit-ready export roadmap. This is a readiness guide, not a third-party certification.</div>
+        </div>
+        <Pill tone={scoreTone} style={{fontSize:13,padding:"6px 12px"}}>{readinessScore}% ready</Pill>
+      </div>
+      {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.red,marginBottom:16}}>{err}</div>}
+      <KpiGrid items={[
+        {label:"Requirements",value:requirements.length,icon:"Trace",color:C.primary},
+        {label:"Complete",value:complete.length,icon:"Won",color:C.green},
+        {label:"In Progress",value:working.length,icon:"Now",color:C.amber},
+        {label:"Missing",value:missing.length,icon:"Risk",color:C.red},
+      ]}/>
+      <Card style={{padding:20,marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
+          <div>
+            <div style={TEXT.panelTitle}>Readiness profile</div>
+            <div style={TEXT.tinyMeta}>Start with one target market. More markets can be added later.</div>
+          </div>
+          <Btn size="sm" onClick={()=>saveProfile(form)} disabled={saving}>{profile?"Save":"Create profile"}</Btn>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:16}}>
+          <Sel label="Product" value={form.productType} onChange={v=>updateForm({productType:v})} options={EXPORT_PRODUCTS}/>
+          <Sel label="Target Market" value={form.market} onChange={v=>updateForm({market:v})} options={EXPORT_MARKETS}/>
+          <Sel label="Current Status" value={form.exportStatus} onChange={v=>updateForm({exportStatus:v})} options={[
+            {value:"planning",label:"Planning first export"},
+            {value:"first_export",label:"Preparing first shipment"},
+            {value:"active_exporter",label:"Already exporting"},
+            {value:"expanding_markets",label:"Expanding markets"},
+          ]}/>
+          <Sel label="Company Size" value={form.companySize} onChange={v=>updateForm({companySize:v})} options={[
+            {value:"",label:"Select size"},
+            {value:"small",label:"Small factory"},
+            {value:"mid",label:"Mid-size exporter"},
+            {value:"large",label:"Large exporter"},
+          ]}/>
+        </div>
+        <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:8}}>What do you already have?</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {EXPORT_CERTS.map(cert=>{
+            const active=form.currentCertifications.includes(cert.id);
+            return <button key={cert.id} onClick={()=>toggleCert(cert.id)} style={{border:`1px solid ${active?C.greenBorder:C.border}`,background:active?C.greenBg:C.white,color:active?C.green:C.textMid,borderRadius:999,padding:"7px 11px",fontFamily:FONT_STACK,fontSize:12,fontWeight:600,cursor:"pointer"}}>{active?"✓ ":""}{cert.label}</button>;
+          })}
+        </div>
+      </Card>
+      <Card style={{padding:20,marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
+          <div>
+            <div style={TEXT.panelTitle}>Roadmap for {EXPORT_MARKETS.find(m=>m.value===form.market)?.label||form.market}</div>
+            <div style={TEXT.tinyMeta}>Sorted by priority. Mark what you have so the score becomes useful.</div>
+          </div>
+          {!profile&&<Pill tone="warning">Save profile first</Pill>}
+        </div>
+        {requirements.length===0?<div style={{padding:"30px 12px",textAlign:"center",color:C.textDim,fontSize:13}}>No configured requirements found for this selection yet.</div>:
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {scored.map(req=>{
+            const conf=readinessStatusConf(req.status);
+            const timeline=req.timelineMin||req.timelineMax?`${req.timelineMin||0}-${req.timelineMax||req.timelineMin} weeks`:"Timeline varies";
+            const cost=req.costMin||req.costMax?`${fmtMoney(req.costMin||0)}-${fmtMoney(req.costMax||req.costMin||0)}`:"Cost varies";
+            return (
+              <div key={req.id} style={{border:`1px solid ${C.border}`,borderRadius:12,padding:14,background:C.white}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:8}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                      <div style={{fontSize:14,fontWeight:700,color:C.text}}>{req.requirementName}</div>
+                      <Pill tone={req.is_mandatory===false?"neutral":"primary"} size="sm">{req.is_mandatory===false?"Recommended":"Required"}</Pill>
+                    </div>
+                    <div style={{fontSize:12,lineHeight:1.6,color:C.textMid}}>{req.description}</div>
+                  </div>
+                  <Pill tone={conf.tone}>{conf.label}</Pill>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,margin:"10px 0"}}>
+                  <div style={{fontSize:12,color:C.textDim}}>Evidence: <strong style={{color:C.text}}>{(req.evidence_instructions||req.evidenceType||"Document").slice(0,70)}</strong></div>
+                  <div style={{fontSize:12,color:C.textDim}}>Timeline: <strong style={{color:C.text}}>{timeline}</strong></div>
+                  <div style={{fontSize:12,color:C.textDim}}>Cost: <strong style={{color:C.text}}>{cost}</strong></div>
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${C.border}`}}>
+                  <Btn size="sm" variant={req.status==="verified"?"green":"secondary"} disabled={saving} onClick={()=>markRequirement(req,"verified")}>Have it</Btn>
+                  <Btn size="sm" variant={req.status==="pending"?"ghost":"secondary"} disabled={saving} onClick={()=>markRequirement(req,"pending")}>Working on it</Btn>
+                  <Btn size="sm" variant={req.status==="missing"?"red":"secondary"} disabled={saving} onClick={()=>markRequirement(req,"missing")}>Missing</Btn>
+                  <Btn size="sm" variant="secondary" disabled={saving} onClick={()=>markRequirement(req,"not_applicable")}>Not applicable</Btn>
+                </div>
+              </div>
+            );
+          })}
+        </div>}
+      </Card>
+      <Card style={{padding:20,borderColor:C.primaryBorder,background:C.primaryBg}}>
+        <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+          <Icon name="verified" size={22} color={C.primary}/>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:C.primary,marginBottom:4}}>Next best action</div>
+            <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>
+              {missing[0]?`Start with ${missing[0].requirementName}. It is the highest-priority missing item for this market.`:"Keep the evidence fresh and prepare a buyer-ready packet before sending profiles to international buyers."}
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
