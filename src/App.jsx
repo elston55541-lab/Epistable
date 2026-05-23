@@ -1493,7 +1493,7 @@ function FactoryApp({user,onLogout}) {
     {id:"home",label:"Home",icon:"building"},
     {id:"scan",label:"Scan",icon:"search"},
     {id:"history",label:"History",icon:"list"},
-    {id:"analytics",label:"Analytics",icon:"chart"},
+    ...(isAdmin?[{id:"analytics",label:"Analytics",icon:"chart"}]:[]),
     ...(isAdmin?[{id:"team",label:"Team",icon:"users"},{id:"suppliers",label:"Suppliers",icon:"factory"},{id:"buyers",label:"Buyers",icon:"location"},{id:"inquiries",label:"Inquiries",icon:"mail"},{id:"disputes",label:"Disputes",icon:"alert"}]:[]),
     {id:"notifs",label:"Alerts",icon:"bell",badge:unread||undefined},
   ];
@@ -1610,8 +1610,30 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   ]:[];
   const pilotDone=pilotItems.filter(i=>i.done).length;
   const pilotPct=pilotItems.length?Math.round(pilotDone/pilotItems.length*100):0;
+  const firstSlabSteps=[
+    {label:"Open Scan",detail:"Choose the stone type and supplier source.",done:false,page:"scan"},
+    {label:"Capture Evidence",detail:"Add front, surface, and edge photos so buyers can trust the certificate.",done:false,page:"scan"},
+    {label:"Show QR",detail:"After saving, share the certificate link or QR with a buyer.",done:insps.length>0,page:"history"},
+  ];
   return (
     <div>
+      {insps.length===0&&<Card style={{padding:20,marginBottom:18,borderColor:C.primaryBorder,background:C.primaryBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16,flexWrap:"wrap"}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:16,fontWeight:700,color:C.primary,marginBottom:4}}>Create your first buyer-ready slab</div>
+            <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>Start with one habit: scan a slab, add photos, save it, then share the QR certificate. Everything else can wait.</div>
+          </div>
+          <Btn onClick={()=>setPage("scan")} disabled={paused}>Start First Scan</Btn>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
+          {firstSlabSteps.map((step,i)=>(
+            <button key={step.label} onClick={()=>setPage(step.page)} style={{display:"flex",alignItems:"flex-start",gap:12,background:C.white,border:`1px solid ${step.done?C.greenBorder:C.primaryBorder}`,borderRadius:10,padding:"14px 16px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+              <span style={{width:24,height:24,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:step.done?C.green:C.primaryBg,color:step.done?C.white:C.primary,fontSize:12,fontWeight:700,flexShrink:0}}>{step.done?"✓":i+1}</span>
+              <span style={{minWidth:0}}><span style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:3}}>{step.label}</span><span style={{display:"block",fontSize:12,lineHeight:1.55,color:C.textDim}}>{step.detail}</span></span>
+            </button>
+          ))}
+        </div>
+      </Card>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
         <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>👋 {user.role}</div>
         <div style={{...TEXT.heroTitle,marginBottom:4}}>{user.name}</div>
@@ -1781,6 +1803,7 @@ function FacScan({user,fac,paused,onSaved}) {
   const [step,setStep]=useState(0);
   const [form,setForm]=useState({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});
   const [grade,setGrade]=useState(null);const [loading,setLoading]=useState(false);const [saved,setSaved]=useState(false);
+  const [savedInsp,setSavedInsp]=useState(null);const [qrSlab,setQrSlab]=useState(null);const [linkCopied,setLinkCopied]=useState(false);
   const [aiGrade,setAiGrade]=useState("");const [overrideReason,setOverrideReason]=useState("");
   const [saving,setSaving]=useState(false);const [saveError,setSaveError]=useState("");
   const [photos,setPhotos]=useState({});
@@ -1884,6 +1907,7 @@ function FacScan({user,fac,paused,onSaved}) {
       const measurementsWithReview={...form.measurements,aiReview:{suggestedGrade:aiGrade||grade.grade,finalGrade:grade.grade,overrideReason:overrideReason.trim(),reviewedAt:Date.now()}};
       const insp={id:genId("SLB"),userId:user.id,factoryId:user.factory_id,factoryName:user.factory_name||fac?.name,inspector:user.name,stone:STONES.find(s=>s.id===form.stone)?.label||form.stone,supplier:capturedSupplier,supplierId:supplierMode==="registered"?form.supplierId||null:null,grade:grade.grade,reason:grade.reason,pricePerSqFt:grade.pricePerSqFt,exportReady:grade.exportReady||form.exportReady,measurements:measurementsWithReview,defects:form.defects,notes:form.notes,photo:photoEvidence[0]?.src||null,photos:photoEvidence,ts:Date.now(),date:fmtD(Date.now()),time:fmtT(Date.now())};
       await DB.saveInsp(insp);
+      setSavedInsp(insp);
       setSaved(true);
     } catch(e) {
       setSaveError(e.message||"Could not save this slab. Your entries are still on screen, so you can retry.");
@@ -1892,18 +1916,56 @@ function FacScan({user,fac,paused,onSaved}) {
     }
   }
 
-  if(saved)return(
-    <div style={{textAlign:"center",padding:"48px 24px"}}>
-      <div style={{fontSize:64,marginBottom:16}}>{gradeConf(grade?.grade||"Standard").emoji}</div>
-      <div style={{fontSize:24,fontWeight:700,marginBottom:4}}>{grade?.grade}</div>
-      <div style={{fontSize:32,fontWeight:700,color:C.green,marginBottom:8}}>{fmtMoney(grade?.pricePerSqFt)}/sqft</div>
-      <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.7}}>{grade?.reason}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-        <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setAiGrade("");setOverrideReason("");setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
-        <Btn onClick={onSaved}>View History</Btn>
+  if(saved){
+    const certificateUrl=savedInsp?`${window.location.origin}/slab/${encodeURIComponent(savedInsp.id)}`:"";
+    async function copyCertificateLink(){
+      if(!certificateUrl)return;
+      try{
+        await navigator.clipboard.writeText(certificateUrl);
+        setLinkCopied(true);
+        setTimeout(()=>setLinkCopied(false),1400);
+      }catch(e){
+        window.prompt("Copy certificate link",certificateUrl);
+      }
+    }
+    function resetScan(){
+      setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setAiGrade("");setOverrideReason("");setSaved(false);setSavedInsp(null);setPhotos({});setPhotoSlot("front");setSaveError("");setLinkCopied(false);
+    }
+    return(
+      <div style={{padding:"24px 0"}}>
+        {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
+        <Card style={{padding:24,textAlign:"center",borderColor:C.greenBorder,background:C.greenBg,marginBottom:18}}>
+          <div style={{width:58,height:58,borderRadius:"50%",background:C.green,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icon name="check" size={30} color={C.white}/></div>
+          <div style={{fontSize:22,fontWeight:700,color:C.green,marginBottom:6}}>Buyer-ready certificate created</div>
+          <div style={{fontSize:13,lineHeight:1.65,color:C.textMid,maxWidth:460,margin:"0 auto 16px"}}>This scan is now a QR-backed slab record with grade, photos, measurements, traceability, and audit evidence.</div>
+          <div style={{display:"inline-flex",alignItems:"center",gap:10,background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"10px 14px",marginBottom:16}}>
+            <span style={{fontSize:12,fontFamily:"monospace",color:C.textDim}}>{savedInsp?.id}</span>
+            <Pill tone="success">{grade?.grade}</Pill>
+          </div>
+          <div style={{fontSize:30,fontWeight:700,color:C.green,marginBottom:4}}>{fmtMoney(grade?.pricePerSqFt)}<span style={{fontSize:14,fontWeight:500,color:C.textDim}}> / sq ft</span></div>
+          <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>{grade?.reason}</div>
+        </Card>
+        <Card style={{padding:20,marginBottom:18}}>
+          <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Share this proof now</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14}}>
+            <Btn onClick={()=>savedInsp&&setQrSlab(savedInsp)}><Icon name="qr" size={15}/> Show QR</Btn>
+            <Btn variant="secondary" onClick={copyCertificateLink}>{linkCopied?"Copied":"Copy Link"}</Btn>
+            <Btn variant="secondary" onClick={()=>certificateUrl&&window.open(certificateUrl,"_blank","noopener,noreferrer")}>Open Certificate</Btn>
+            <Btn variant="ghost" onClick={onSaved}>View History</Btn>
+          </div>
+        </Card>
+        <SetupChecklist title="What to do next" subtitle="Keep training simple: repeat this workflow for a few slabs before exploring reports." items={[
+          {label:"Share the QR with a buyer",detail:"Use Show QR or Copy Link while the slab is fresh.",done:false,onClick:()=>savedInsp&&setQrSlab(savedInsp)},
+          {label:"Scan four more slabs",detail:"Five records are enough to show trends and a stronger demo.",done:false,onClick:resetScan},
+          {label:"Review certificate quality",detail:"Open History to compare evidence completeness across slabs.",done:false,onClick:onSaved},
+        ]}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:18}}>
+          <Btn variant="secondary" onClick={resetScan}>Scan Another</Btn>
+          <Btn onClick={onSaved}>Done</Btn>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   const steps=["Stone","Measurements","Defects","Grade"];
   return (
