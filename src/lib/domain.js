@@ -1,16 +1,13 @@
+import { COLOR, SHADOW } from "./tokens";
+
 export const C = {
-  bg:"#f0f2f5", white:"#ffffff", surface:"#f8f9fb",
-  primary:"#0057a8", primaryD:"#003f7a",
-  primaryBg:"#e8f0fa", primaryBorder:"#b8d0f0",
-  teal:"#0097a7",
-  text:"#1a2533", textMid:"#4a5568", textDim:"#8896a4",
-  border:"#e2e8f0",
-  green:"#2e7d32", greenBg:"#e8f5e9", greenBorder:"#a5d6a7",
-  red:"#c62828", redBg:"#ffebee", redBorder:"#ef9a9a",
-  amber:"#b45309", amberBg:"#fffbeb", amberBorder:"#fcd34d",
-  blue2:"#1565c0", blue2Bg:"#e3f2fd", blue2Border:"#90caf9",
-  purple:"#6b21a8", purpleBg:"#f5f0ff", purpleBorder:"#d8b4fe",
-  shadow:"0 1px 4px rgba(0,0,0,0.08)",
+  ...COLOR,
+  primaryD: COLOR.primary,
+  teal: COLOR.accent,
+  blue2: COLOR.blue,
+  blue2Bg: COLOR.blueBg,
+  blue2Border: COLOR.blueBorder,
+  shadow: SHADOW.card,
 };
 
 export const STONES = [
@@ -44,6 +41,11 @@ export const genId = p => p+"-"+Date.now().toString(36).toUpperCase()+Math.rando
 export const fmtT = ts => new Date(ts).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
 export const fmtD = ts => new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
 export const curMon = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
+export const fmtMoney = (n, { compact = false } = {}) => {
+  const v = Number(n) || 0;
+  if (compact && v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+  return `₹${v.toLocaleString("en-IN")}`;
+};
 export const calcBill = (plan,scans) => {
   const p=PLANS[plan]||PLANS.Starter;
   const ov=Math.max(0,scans-p.scansIncluded);
