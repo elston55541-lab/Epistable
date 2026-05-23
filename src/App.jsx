@@ -57,14 +57,14 @@ const QUOTE_FULFILLMENT = [
 const fulfillmentConf = status => QUOTE_FULFILLMENT.find(x=>x.id===status)||QUOTE_FULFILLMENT[0];
 const activeFulfillment = q => q.fulfillmentStatus||q.fulfillment_status||(q.status==="accepted"?"payment_pending":"not_started");
 const TEXT = {
-  pageTitle: {...T.title,marginBottom:14},
-  pageHeader: {...T.title},
-  heroTitle: {fontSize:20,lineHeight:1.2,fontWeight:800,letterSpacing:0},
-  panelTitle: {fontSize:14,lineHeight:1.35,fontWeight:800,letterSpacing:0},
-  itemTitle: {fontSize:13,lineHeight:1.35,fontWeight:800,letterSpacing:0},
+  pageTitle: {...T.title,marginBottom:14,fontWeight:700},
+  pageHeader: {...T.title,fontWeight:700},
+  heroTitle: {fontSize:20,lineHeight:1.2,fontWeight:700,letterSpacing:0},
+  panelTitle: {fontSize:14,lineHeight:1.35,fontWeight:700,letterSpacing:0},
+  itemTitle: {fontSize:13,lineHeight:1.35,fontWeight:700,letterSpacing:0},
   meta: {...T.hint,color:C.textDim},
   tinyMeta: {fontSize:11,lineHeight:1.35,color:C.textDim,letterSpacing:0},
-  emptyTitle: {fontSize:15,lineHeight:1.35,fontWeight:800,letterSpacing:0},
+  emptyTitle: {fontSize:15,lineHeight:1.35,fontWeight:700,letterSpacing:0},
 };
 
 function AdvancedDisclosure({children}) {
@@ -126,7 +126,7 @@ function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
     <Card style={{padding:14,...style}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
         <div>
-          <div style={{fontSize:14,fontWeight:900,color:C.text,marginBottom:3}}>{title}</div>
+          <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:3}}>{title}</div>
           {subtitle&&<div style={TEXT.tinyMeta}>{subtitle}</div>}
         </div>
         {actionLabel&&<Btn size="sm" variant="ghost" onClick={onAction}>{actionLabel}</Btn>}
@@ -134,7 +134,7 @@ function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
         {items.map((item,i)=>(
           <div key={`${item.label}-${i}`} style={{background:item.bg||C.surface,border:`1px solid ${item.border||C.border}`,borderRadius:10,padding:"10px 11px"}}>
-            <div style={{fontSize:11,fontWeight:900,color:item.color||C.primary,marginBottom:4}}>{item.label}</div>
+            <div style={{fontSize:11,fontWeight:700,color:item.color||C.primary,marginBottom:4}}>{item.label}</div>
             <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{item.detail}</div>
           </div>
         ))}
@@ -146,7 +146,7 @@ function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
 function EmptyState({title,body,actionLabel,onAction,secondaryLabel,onSecondary,style={}}) {
   return (
     <Card style={{padding:"34px 22px",textAlign:"center",...style}}>
-      <div style={{fontSize:18,fontWeight:900,color:C.text,marginBottom:7}}>{title}</div>
+      <div style={{fontSize:18,fontWeight:700,color:C.text,marginBottom:7}}>{title}</div>
       {body&&<div style={{fontSize:13,lineHeight:1.55,color:C.textDim,maxWidth:420,margin:"0 auto 16px"}}>{body}</div>}
       <div style={{display:"flex",gap:9,justifyContent:"center",flexWrap:"wrap"}}>
         {actionLabel&&<Btn size="sm" onClick={onAction}>{actionLabel}</Btn>}
@@ -161,7 +161,7 @@ function ErrorNotice({title="Something went wrong",message,onRetry,style={}}) {
   return (
     <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,color:C.red,marginBottom:12,...style}}>
       <div style={{minWidth:0}}>
-        <div style={{fontSize:12,fontWeight:900,marginBottom:2}}>{title}</div>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:2}}>{title}</div>
         <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{message}</div>
       </div>
       {onRetry&&<Btn size="sm" variant="secondary" onClick={onRetry} style={{flexShrink:0,borderColor:C.redBorder,color:C.red}}>Retry</Btn>}
@@ -176,20 +176,20 @@ function SetupChecklist({title,subtitle,items=[],style={}}) {
     <Card style={{padding:14,...style}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
         <div>
-          <div style={{fontSize:14,fontWeight:900,color:C.text,marginBottom:3}}>{title}</div>
+          <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:3}}>{title}</div>
           {subtitle&&<div style={TEXT.tinyMeta}>{subtitle}</div>}
         </div>
-        <span style={{background:done===items.length?C.greenBg:C.primaryBg,border:`1px solid ${done===items.length?C.greenBorder:C.primaryBorder}`,borderRadius:20,padding:"4px 9px",fontSize:11,fontWeight:900,color:done===items.length?C.green:C.primary,whiteSpace:"nowrap"}}>{done}/{items.length}</span>
+        <span style={{background:done===items.length?C.greenBg:C.primaryBg,border:`1px solid ${done===items.length?C.greenBorder:C.primaryBorder}`,borderRadius:20,padding:"4px 9px",fontSize:11,fontWeight:700,color:done===items.length?C.green:C.primary,whiteSpace:"nowrap"}}>{done}/{items.length}</span>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {items.map(item=>(
           <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:10,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"10px 11px",cursor:item.onClick?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left"}}>
-            <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:900,flexShrink:0}}>{item.done?"✓":"•"}</span>
+            <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:700,flexShrink:0}}>{item.done?"✓":"•"}</span>
             <span style={{flex:1,minWidth:0}}>
-              <span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{item.label}</span>
+              <span style={{display:"block",fontSize:12,fontWeight:700,color:C.text}}>{item.label}</span>
               <span style={{display:"block",fontSize:11,lineHeight:1.4,color:C.textDim,marginTop:2}}>{item.detail}</span>
             </span>
-            {item.onClick&&!item.done&&<span style={{fontSize:11,fontWeight:900,color:C.primary,flexShrink:0}}>Open</span>}
+            {item.onClick&&!item.done&&<span style={{fontSize:11,fontWeight:700,color:C.primary,flexShrink:0}}>Open</span>}
           </button>
         ))}
       </div>
@@ -1052,7 +1052,7 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
           {needsReadiness.slice(0,3).map(r=>(
             <button key={r.fac.id} onClick={()=>pickFac(r.fac)} style={{display:"flex",alignItems:"center",gap:10,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{fontSize:13,fontWeight:900,color:r.score<50?C.red:C.amber,width:42}}>{r.score}%</span>
-              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{r.fac.name}</span><span style={{display:"block",fontSize:11,color:C.textDim}}>Trace {r.tracePct}% - audit {r.audit}% - CAPA {r.capa}</span></span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:C.text}}>{r.fac.name}</span><span style={{display:"block",fontSize:11,color:C.textDim}}>Trace {r.tracePct}% - audit {r.audit}% - CAPA {r.capa}</span></span>
               <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Open</span>
             </button>
           ))}
@@ -1628,20 +1628,20 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
       {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
           <div>
-            <div style={{fontSize:14,fontWeight:900}}>Pilot readiness checklist</div>
+            <div style={{fontSize:14,fontWeight:700}}>Pilot readiness checklist</div>
             <div style={TEXT.tinyMeta}>Evidence, buyer demand, traceability, CAPA, and AI review signals for a serious factory pilot</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{fontSize:24,fontWeight:900,color:pilotPct>=70?C.green:C.amber,lineHeight:1}}>{pilotPct}%</div>
-            <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:3}}>{pilotDone}/{pilotItems.length} ready</div>
+            <div style={{fontSize:24,fontWeight:700,color:pilotPct>=70?C.green:C.amber,lineHeight:1}}>{pilotPct}%</div>
+            <div style={{fontSize:10,color:C.textDim,fontWeight:600,marginTop:3}}>{pilotDone}/{pilotItems.length} ready</div>
           </div>
         </div>
         <PBar value={pilotPct} color={pilotPct>=70?C.green:C.amber} h={8}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:12}}>
           {pilotItems.map(item=>(
             <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:9,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
-              <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}}>{item.done?"✓":"•"}</span>
-              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{item.label}</span><span style={{display:"block",fontSize:11,color:item.done?C.green:C.textDim,fontWeight:800,marginTop:2}}>{item.value}</span></span>
+              <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{item.done?"✓":"•"}</span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:C.text}}>{item.label}</span><span style={{display:"block",fontSize:11,color:item.done?C.green:C.textDim,fontWeight:500,marginTop:2}}>{item.value}</span></span>
             </button>
           ))}
         </div>
@@ -1673,7 +1673,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
           {readinessActions.map(action=>(
             <button key={action.label} onClick={()=>setPage(action.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{width:8,height:8,borderRadius:"50%",background:action.color,flexShrink:0}}/>
-              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{action.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,lineHeight:1.35}}>{action.detail}</span></span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:C.text}}>{action.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,lineHeight:1.35}}>{action.detail}</span></span>
               <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Fix</span>
             </button>
           ))}
@@ -1697,7 +1697,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
             {adminPriorities.map((p,i)=>(
               <button key={`${p.label}-${i}`} onClick={()=>setPage(p.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
                 <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
-                <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{p.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.detail}</span></span>
+                <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:C.text}}>{p.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.detail}</span></span>
                 <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Open</span>
               </button>
             ))}
@@ -4363,7 +4363,7 @@ function PublicQuotePage({quoteId}) {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
               {quoteTimeline.map((step,i)=>(
                 <div key={step.label} style={{display:"flex",gap:10,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:12,opacity:step.muted?0.72:1}}>
-                  <div style={{width:24,height:24,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}}>{step.done?"✓":i+1}</div>
+                  <div style={{width:24,height:24,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{step.done?"✓":i+1}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:900,color:step.done?C.green:step.current?C.primary:C.text}}>{step.label}</div>
                     <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginTop:3}}>{step.detail}</div>
