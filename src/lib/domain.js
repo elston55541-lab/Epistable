@@ -2,7 +2,7 @@ import { COLOR, SHADOW } from "./tokens";
 
 export const C = {
   ...COLOR,
-  primaryD: COLOR.primary,
+  primaryD: COLOR.primaryMid,
   teal: COLOR.accent,
   blue2: COLOR.blue,
   blue2Bg: COLOR.blueBg,
