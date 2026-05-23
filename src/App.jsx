@@ -939,13 +939,13 @@ function Owner({onLogout}) {
   const overdue=facs.filter(f=>f.billing_status==="overdue").length;
 
   const nav=[
-    {id:"overview",label:"Overview",icon:"⊞"},
+    {id:"overview",label:"Overview",icon:"chart"},
     {id:"billing",label:"Billing",icon:"billing",badge:overdue||undefined},
     {id:"factories",label:"Factories",icon:"factory"},
     {id:"users",label:"Users",icon:"user"},
     {id:"disputes",label:"Disputes",icon:"alert"},
     {id:"inquiries",label:"Inquiries",icon:"mail"},
-    {id:"settings",label:"Settings",icon:"⚙"},
+    {id:"settings",label:"Settings",icon:"settings"},
   ];
   const pages={
     overview:<OwnerOverview facs={facs} users={users} insps={insps} activity={activity} totalBill={totalBill} overdue={overdue} setPage={setPage} pickFac={f=>{setSelFac(f);setPage("fac");}}/>,
@@ -1490,15 +1490,15 @@ function FactoryApp({user,onLogout}) {
   const paused=fac?.status==="paused";
 
   const nav=[
-    {id:"home",label:"Home",icon:"🏠"},
+    {id:"home",label:"Home",icon:"building"},
     {id:"scan",label:"Scan",icon:"search"},
-    {id:"history",label:"History",icon:"📋"},
-    {id:"analytics",label:"Analytics",icon:"📊"},
-    ...(isAdmin?[{id:"team",label:"Team",icon:"users"},{id:"suppliers",label:"Suppliers",icon:"factory"},{id:"buyers",label:"Buyers",icon:"🌐"},{id:"inquiries",label:"Inquiries",icon:"mail"},{id:"disputes",label:"Disputes",icon:"alert"}]:[]),
+    {id:"history",label:"History",icon:"list"},
+    {id:"analytics",label:"Analytics",icon:"chart"},
+    ...(isAdmin?[{id:"team",label:"Team",icon:"users"},{id:"suppliers",label:"Suppliers",icon:"factory"},{id:"buyers",label:"Buyers",icon:"location"},{id:"inquiries",label:"Inquiries",icon:"mail"},{id:"disputes",label:"Disputes",icon:"alert"}]:[]),
     {id:"notifs",label:"Alerts",icon:"bell",badge:unread||undefined},
   ];
   if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"currency"});
-  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(5,0,{id:"quotes",label:"Quotes",icon:"Q"});
+  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(5,0,{id:"quotes",label:"Quotes",icon:"message"});
 
   const pages={
     home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
