@@ -17,17 +17,17 @@ const typeStyle = key => ({
 
 export const T = {
   body: typeStyle("body"),
-  label: { ...typeStyle("label"), fontWeight: WEIGHT.bold },
+  label: { ...typeStyle("label"), fontWeight: WEIGHT.medium },
   hint: typeStyle("caption"),
-  control: { ...typeStyle("body"), lineHeight: 1.2, fontWeight: WEIGHT.bold },
+  control: { ...typeStyle("body"), lineHeight: 1.3, fontWeight: WEIGHT.medium },
   title: { ...typeStyle("heading"), fontWeight: WEIGHT.bold },
-  pill: { ...typeStyle("caption"), lineHeight: 1.25, fontWeight: WEIGHT.bold },
+  pill: { ...typeStyle("caption"), lineHeight: 1.3, fontWeight: WEIGHT.medium },
 };
 
 const CONTROL_PAD = {
-  sm: `${SPACE.sm}px ${SPACE.base}px`,
-  md: `${SPACE.md}px ${SPACE.lg}px`,
-  lg: `${SPACE.base - 1}px ${SPACE.xl}px`,
+  sm: `${SPACE.sm + 1}px ${SPACE.base}px`,
+  md: `${SPACE.md + 1}px ${SPACE.lg}px`,
+  lg: `${SPACE.base}px ${SPACE.xl}px`,
 };
 
 const CONTROL_FONT = {
@@ -44,7 +44,7 @@ export const Card = ({children,style={},onClick,className,...props}) =>
     style={{
       background: C.white,
       border: `1px solid ${C.border}`,
-      borderRadius: RADIUS.lg - 2,
+      borderRadius: RADIUS.lg,
       boxShadow: C.shadow,
       ...style,
     }}
@@ -219,11 +219,11 @@ export function Btn({children,onClick,variant="primary",full,disabled,style={},s
 export function Inp({label,value,onChange,type="text",placeholder,required,icon,hint}) {
   const [f,setF]=useState(false);
   const inputPad = icon
-    ? `${SPACE.md}px ${SPACE.base}px ${SPACE.md}px ${SPACE.xxl + SPACE.sm}px`
-    : `${SPACE.md}px ${SPACE.base}px`;
+    ? `${SPACE.md + 2}px ${SPACE.base}px ${SPACE.md + 2}px ${SPACE.xxl + SPACE.sm}px`
+    : `${SPACE.md + 2}px ${SPACE.base}px`;
   return (
     <div>
-      {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.xs + 2,...T.label}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>}
+      {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.sm,...T.label}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>}
       <div style={{position:"relative"}}>
         {icon&&<span style={{position:"absolute",left:SPACE.base - 2,top:"50%",transform:"translateY(-50%)",fontSize:TYPE.body.size + 1,pointerEvents:"none",display:"flex",alignItems:"center"}}><InputIcon icon={icon}/></span>}
         <input
@@ -246,7 +246,7 @@ export function Inp({label,value,onChange,type="text",placeholder,required,icon,
           onBlur={()=>setF(false)}
         />
       </div>
-      {hint&&<div style={{color:C.textDim,marginTop:SPACE.xs,...T.hint}}>{hint}</div>}
+      {hint&&<div style={{color:C.textDim,marginTop:SPACE.sm,...T.hint}}>{hint}</div>}
     </div>
   );
 }
@@ -254,13 +254,13 @@ export function Inp({label,value,onChange,type="text",placeholder,required,icon,
 export function Sel({label,value,onChange,options,hint}) {
   return (
     <div>
-      {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.xs + 2,...T.label}}>{label}</label>}
+      {label&&<label style={{display:"block",color:C.text,marginBottom:SPACE.sm,...T.label}}>{label}</label>}
       <select
         value={value}
         onChange={e=>onChange(e.target.value)}
         style={{
           width:"100%",
-          padding:`${SPACE.md}px ${SPACE.base}px`,
+          padding:`${SPACE.md + 2}px ${SPACE.base}px`,
           background:C.white,
           border:`1.5px solid ${C.border}`,
           borderRadius:RADIUS.md,
@@ -276,7 +276,7 @@ export function Sel({label,value,onChange,options,hint}) {
       >
         {options.map(o=>typeof o==="string"?<option key={o} value={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      {hint&&<div style={{color:C.textDim,marginTop:SPACE.xs,...T.hint}}>{hint}</div>}
+      {hint&&<div style={{color:C.textDim,marginTop:SPACE.sm,...T.hint}}>{hint}</div>}
     </div>
   );
 }
@@ -286,11 +286,11 @@ export function Modal({title,onClose,children,closeOnBackdrop=true}) {
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={closeOnBackdrop?onClose:undefined}>
       <div style={{background:C.white,borderRadius:`${RADIUS.lg + 6}px ${RADIUS.lg + 6}px 0 0`,width:"100%",maxWidth:560,maxHeight:"92vh",overflow:"auto",boxShadow:SHADOW.modal}} onClick={e=>e.stopPropagation()}>
         <div style={{padding:`${SPACE.md - 2}px 0 0`,display:"flex",justifyContent:"center"}}><div style={{width:SPACE.xxl + SPACE.sm,height:SPACE.xs,borderRadius:SPACE.xs / 2,background:C.border}}/></div>
-        <div style={{padding:`${SPACE.base - 2}px ${SPACE.lg}px`,display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{padding:`${SPACE.base}px ${SPACE.xl}px`,display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
           <div style={{color:C.text,...T.title}}>{title}</div>
           <button onClick={onClose} style={{background:C.surface,border:"none",borderRadius:"50%",color:C.textDim,width:SPACE.xxl,height:SPACE.xxl,cursor:"pointer",fontSize:TYPE.heading.size,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",fontFamily:FONT_STACK}}>×</button>
         </div>
-        <div style={{padding:SPACE.lg}}>{children}</div>
+        <div style={{padding:SPACE.xl}}>{children}</div>
       </div>
     </div>
   );
@@ -299,12 +299,12 @@ export function Modal({title,onClose,children,closeOnBackdrop=true}) {
 export function KpiGrid({items}) {
   const {isMobile}=useBP();
   return (
-    <div style={{display:"grid",gridTemplateColumns:`repeat(${isMobile?2:Math.min(items.length,4)},1fr)`,gap:SPACE.md,marginBottom:TYPE.heading.size}}>
+    <div style={{display:"grid",gridTemplateColumns:`repeat(${isMobile?2:Math.min(items.length,4)},1fr)`,gap:SPACE.base,marginBottom:SPACE.xl}}>
       {items.map(({label,value,color,icon})=>(
-        <Card key={label} style={{padding:`${SPACE.base}px ${SPACE.base - 2}px`}}>
-          <div style={{fontSize:TYPE.display.size - 2,marginBottom:SPACE.xs + 2,lineHeight:1}}><KpiIcon icon={icon} color={color}/></div>
-          <div style={{fontSize:TYPE.display.size - 2,fontWeight:WEIGHT.bold,color:color||C.text,lineHeight:1.1,marginBottom:SPACE.xs - 1,letterSpacing:0}}>{value}</div>
-          <div style={{color:C.textMid,fontWeight:WEIGHT.bold,...T.hint}}>{label}</div>
+        <Card key={label} style={{padding:`${SPACE.lg}px ${SPACE.base}px`}}>
+          <div style={{fontSize:TYPE.display.size - 2,marginBottom:SPACE.sm,lineHeight:1}}><KpiIcon icon={icon} color={color}/></div>
+          <div style={{fontSize:TYPE.display.size - 2,fontWeight:WEIGHT.bold,color:color||C.text,lineHeight:1.2,marginBottom:SPACE.xs,letterSpacing:0}}>{value}</div>
+          <div style={{color:C.textMid,fontWeight:WEIGHT.medium,...T.hint}}>{label}</div>
         </Card>
       ))}
     </div>

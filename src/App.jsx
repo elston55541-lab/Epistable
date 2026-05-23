@@ -57,14 +57,14 @@ const QUOTE_FULFILLMENT = [
 const fulfillmentConf = status => QUOTE_FULFILLMENT.find(x=>x.id===status)||QUOTE_FULFILLMENT[0];
 const activeFulfillment = q => q.fulfillmentStatus||q.fulfillment_status||(q.status==="accepted"?"payment_pending":"not_started");
 const TEXT = {
-  pageTitle: {...T.title,marginBottom:14,fontWeight:700},
+  pageTitle: {...T.title,marginBottom:18,fontWeight:700},
   pageHeader: {...T.title,fontWeight:700},
   heroTitle: {fontSize:20,lineHeight:1.2,fontWeight:700,letterSpacing:0},
-  panelTitle: {fontSize:14,lineHeight:1.35,fontWeight:700,letterSpacing:0},
-  itemTitle: {fontSize:13,lineHeight:1.35,fontWeight:600,letterSpacing:0},
+  panelTitle: {fontSize:14,lineHeight:1.55,fontWeight:700,letterSpacing:0},
+  itemTitle: {fontSize:13,lineHeight:1.55,fontWeight:600,letterSpacing:0},
   meta: {...T.hint,color:C.textDim},
-  tinyMeta: {fontSize:12,lineHeight:1.35,color:C.textDim,letterSpacing:0},
-  emptyTitle: {fontSize:15,lineHeight:1.35,fontWeight:700,letterSpacing:0},
+  tinyMeta: {fontSize:12,lineHeight:1.55,color:C.textDim,letterSpacing:0},
+  emptyTitle: {fontSize:15,lineHeight:1.55,fontWeight:700,letterSpacing:0},
 };
 
 function AdvancedDisclosure({children}) {
@@ -123,19 +123,19 @@ function ChromeIcon({icon,size=18,color="currentColor",style}) {
 
 function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
   return (
-    <Card style={{padding:14,...style}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+    <Card style={{padding:20,...style}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
         <div>
           <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:3}}>{title}</div>
           {subtitle&&<div style={TEXT.tinyMeta}>{subtitle}</div>}
         </div>
         {actionLabel&&<Btn size="sm" variant="ghost" onClick={onAction}>{actionLabel}</Btn>}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14}}>
         {items.map((item,i)=>(
-          <div key={`${item.label}-${i}`} style={{background:item.bg||C.surface,border:`1px solid ${item.border||C.border}`,borderRadius:10,padding:"10px 11px"}}>
+          <div key={`${item.label}-${i}`} style={{background:item.bg||C.surface,border:`1px solid ${item.border||C.border}`,borderRadius:10,padding:"14px 16px"}}>
             <div style={{fontSize:12,fontWeight:600,color:item.color||C.primary,marginBottom:4}}>{item.label}</div>
-            <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{item.detail}</div>
+            <div style={{fontSize:12,lineHeight:1.65,color:C.textMid}}>{item.detail}</div>
           </div>
         ))}
       </div>
@@ -147,8 +147,8 @@ function EmptyState({title,body,actionLabel,onAction,secondaryLabel,onSecondary,
   return (
     <Card style={{padding:"34px 22px",textAlign:"center",...style}}>
       <div style={{fontSize:18,fontWeight:700,color:C.text,marginBottom:7}}>{title}</div>
-      {body&&<div style={{fontSize:13,lineHeight:1.55,color:C.textDim,maxWidth:420,margin:"0 auto 16px"}}>{body}</div>}
-      <div style={{display:"flex",gap:9,justifyContent:"center",flexWrap:"wrap"}}>
+      {body&&<div style={{fontSize:13,lineHeight:1.65,color:C.textDim,maxWidth:420,margin:"0 auto 16px"}}>{body}</div>}
+      <div style={{display:"flex",gap:11,justifyContent:"center",flexWrap:"wrap"}}>
         {actionLabel&&<Btn size="sm" onClick={onAction}>{actionLabel}</Btn>}
         {secondaryLabel&&<Btn size="sm" variant="secondary" onClick={onSecondary}>{secondaryLabel}</Btn>}
       </div>
@@ -159,10 +159,10 @@ function EmptyState({title,body,actionLabel,onAction,secondaryLabel,onSecondary,
 function ErrorNotice({title="Something went wrong",message,onRetry,style={}}) {
   if(!message)return null;
   return (
-    <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,color:C.red,marginBottom:12,...style}}>
+    <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,color:C.red,marginBottom:16,...style}}>
       <div style={{minWidth:0}}>
         <div style={{fontSize:12,fontWeight:600,marginBottom:2}}>{title}</div>
-        <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{message}</div>
+        <div style={{fontSize:12,lineHeight:1.65,color:C.textMid}}>{message}</div>
       </div>
       {onRetry&&<Btn size="sm" variant="secondary" onClick={onRetry} style={{flexShrink:0,borderColor:C.redBorder,color:C.red}}>Retry</Btn>}
     </div>
@@ -173,21 +173,21 @@ function SetupChecklist({title,subtitle,items=[],style={}}) {
   const done=items.filter(i=>i.done).length;
   if(!items.length)return null;
   return (
-    <Card style={{padding:14,...style}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+    <Card style={{padding:20,...style}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
         <div>
           <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:3}}>{title}</div>
           {subtitle&&<div style={TEXT.tinyMeta}>{subtitle}</div>}
         </div>
         <span style={{background:done===items.length?C.greenBg:C.primaryBg,border:`1px solid ${done===items.length?C.greenBorder:C.primaryBorder}`,borderRadius:20,padding:"4px 9px",fontSize:12,fontWeight:600,color:done===items.length?C.green:C.primary,whiteSpace:"nowrap"}}>{done}/{items.length}</span>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {items.map(item=>(
-          <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:10,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"10px 11px",cursor:item.onClick?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left"}}>
+          <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:14,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"14px 16px",cursor:item.onClick?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left"}}>
             <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:600,flexShrink:0}}>{item.done?"✓":"•"}</span>
             <span style={{flex:1,minWidth:0}}>
               <span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{item.label}</span>
-              <span style={{display:"block",fontSize:12,lineHeight:1.4,color:C.textDim,marginTop:2}}>{item.detail}</span>
+              <span style={{display:"block",fontSize:12,lineHeight:1.65,color:C.textDim,marginTop:2}}>{item.detail}</span>
             </span>
             {item.onClick&&!item.done&&<span style={{fontSize:12,fontWeight:600,color:C.primary,flexShrink:0}}>Open</span>}
           </button>
@@ -539,16 +539,16 @@ function SlabQRModal({slab,onClose}) {
   return (
     <Modal title="Slab QR Code" onClose={onClose}>
       <div style={{textAlign:"center",paddingBottom:8}}>
-        <div style={{background:C.surface,borderRadius:14,padding:20,display:"inline-block",marginBottom:14,border:`1px solid ${C.border}`}}>
+        <div style={{background:C.surface,borderRadius:14,padding:20,display:"inline-block",marginBottom:18,border:`1px solid ${C.border}`}}>
           <img src={slabQrUrl(slab.id)} alt="QR" style={{width:180,height:180,display:"block"}}/>
         </div>
-        <div style={{fontSize:12,fontFamily:"monospace",color:C.textDim,marginBottom:12,letterSpacing:"1px"}}>{slab.id}</div>
-        <div style={{background:g.bg,border:`1px solid ${g.border}`,borderRadius:10,padding:"10px 16px",display:"inline-flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <div style={{fontSize:12,fontFamily:"monospace",color:C.textDim,marginBottom:16,letterSpacing:"1px"}}>{slab.id}</div>
+        <div style={{background:g.bg,border:`1px solid ${g.border}`,borderRadius:10,padding:"10px 16px",display:"inline-flex",alignItems:"center",gap:14,marginBottom:16}}>
           <span style={{fontSize:18}}>{g.emoji}</span>
           <span style={{fontSize:14,fontWeight:700,color:g.color}}>{slab.grade} · {slab.stone}</span>
         </div>
-        <div style={{fontSize:12,color:C.textMid,lineHeight:1.6,marginBottom:16}}>Buyers can scan this code to instantly view the full verified inspection record for this slab.</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{fontSize:12,color:C.textMid,lineHeight:1.7,marginBottom:16}}>Buyers can scan this code to instantly view the full verified inspection record for this slab.</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={onClose}>Close</Btn>
           <Btn onClick={()=>{const a=document.createElement("a");a.href=slabQrUrl(slab.id)+"&download=1";a.download=`QR_${slab.id}.png`;a.click();}}>⬇ Download</Btn>
         </div>
@@ -589,13 +589,13 @@ function ActivityList({items=[],compact=false}) {
   }
   return (
     <Card style={{marginTop:compact?12:14}}>
-      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
         <div style={{fontSize:14,fontWeight:700}}>Recent Activity</div>
         {items.length>0&&<Btn size="sm" variant="secondary" onClick={copyActivitySummary}>{copied?"Copied":"Copy"}</Btn>}
       </div>
       {items.length===0?<div style={{padding:"24px 16px",textAlign:"center",fontSize:13,color:C.textDim}}>No activity yet</div>:
       items.slice(0,compact?5:8).map((a,i)=>(
-        <div key={a.id} style={{display:"flex",gap:10,padding:"12px 16px",borderBottom:i<Math.min(items.length,compact?5:8)-1?`1px solid ${C.border}`:"none"}}>
+        <div key={a.id} style={{display:"flex",gap:14,padding:"14px 16px",borderBottom:i<Math.min(items.length,compact?5:8)-1?`1px solid ${C.border}`:"none"}}>
           <div style={{width:32,height:32,borderRadius:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}><Icon name={activityIcon[a.action]||"refresh"} size={15} color={C.primary}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:600,color:C.text}}>{a.actor_name||"Someone"} {labels[a.action]||a.action} for {a.target_name}</div>
@@ -623,8 +623,8 @@ function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}
   const [drawer,setDrawer]=useState(false);
   const Sidebar=(
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,padding:"20px 16px"}}>
-        <div style={{marginBottom:10}}>
+      <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,padding:"22px 18px"}}>
+        <div style={{marginBottom:14}}>
           <div style={{fontSize:17,fontWeight:700,color:C.white}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.6)"}}>Quality, quantified</div>
         </div>
@@ -633,14 +633,14 @@ function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}
       <nav style={{padding:"10px 8px",flex:1,overflowY:"auto"}}>
         {navItems.map(n=>{
           const active=page===n.id;
-          return <button key={n.id} onClick={()=>{onNav(n.id);setDrawer(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px",background:active?C.primaryBg:"transparent",border:`1px solid ${active?C.primaryBorder:"transparent"}`,borderRadius:8,color:active?C.primary:C.textMid,fontSize:14,cursor:"pointer",marginBottom:2,textAlign:"left",fontWeight:active?700:400,fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent"}}>
+          return <button key={n.id} onClick={()=>{onNav(n.id);setDrawer(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px",background:active?C.primaryBg:"transparent",border:`1px solid ${active?C.primaryBorder:"transparent"}`,borderRadius:8,color:active?C.primary:C.textMid,fontSize:14,cursor:"pointer",marginBottom:2,textAlign:"left",fontWeight:active?700:400,fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent"}}>
             <span style={{display:"flex",alignItems:"center",flexShrink:0,opacity:active?1:0.55}}><ChromeIcon icon={n.icon} size={18}/></span>{n.label}
             {n.badge&&<Pill tone="danger" size="sm" style={{marginLeft:"auto"}}>{n.badge}</Pill>}
           </button>;
         })}
       </nav>
       <div style={{borderTop:`1px solid ${C.border}`,padding:"14px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
           <Avi initials={(userName||"?").slice(0,2).toUpperCase()} size={36}/>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{userName}</div><div style={{fontSize:12,color:C.textDim,textTransform:"capitalize"}}>{userSub}</div></div>
         </div>
@@ -731,24 +731,24 @@ function ChatBot({role,ctxData}) {
       {open&&(
         <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:isMobile?"center":"flex-end",padding:isMobile?0:"0 20px 20px",background:isMobile?"rgba(0,0,0,0.4)":"transparent"}} onClick={isMobile?()=>setOpen(false):undefined}>
           <div style={{width:isMobile?"100%":380,height:isMobile?"85vh":520,background:C.white,borderRadius:isMobile?"20px 20px 0 0":"16px",boxShadow:"0 8px 40px rgba(0,0,0,0.2)",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
-            <div style={{background:`linear-gradient(135deg,${C.primary},${C.teal})`,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{background:`linear-gradient(135deg,${C.primary},${C.teal})`,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
                 <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}><Icon name="bot" size={18} color={C.white}/></div>
                 <div><div style={{fontSize:15,fontWeight:700,color:C.white}}>Epistable Assistant</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>Ask anything</div></div>
               </div>
               <button onClick={()=>setOpen(false)} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:"50%",color:C.white,width:30,height:30,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent"}}>×</button>
             </div>
-            <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12}}>
+            <div style={{flex:1,overflowY:"auto",padding:20,display:"flex",flexDirection:"column",gap:14}}>
               {msgs.map((m,i)=>(
                 <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                  <div style={{maxWidth:"82%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?C.primary:C.surface,color:m.role==="user"?C.white:C.text,fontSize:13,lineHeight:1.5,border:m.role==="user"?"none":`1px solid ${C.border}`}}>{m.content}</div>
+                  <div style={{maxWidth:"82%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?C.primary:C.surface,color:m.role==="user"?C.white:C.text,fontSize:13,lineHeight:1.55,border:m.role==="user"?"none":`1px solid ${C.border}`}}>{m.content}</div>
                 </div>
               ))}
               {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 16px",borderRadius:"14px 14px 14px 4px",background:C.surface,border:`1px solid ${C.border}`,display:"flex",gap:4,alignItems:"center"}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.textDim,animation:`pulse 1s ease-in-out ${i*0.2}s infinite`}}/>)}</div></div>}
               <div ref={bottomRef}/>
             </div>
             {msgs.length<=1&&<div style={{padding:"0 16px 10px",display:"flex",gap:6,overflowX:"auto",flexShrink:0}}>{sugg.map(s=><button key={s} onClick={()=>setInput(s)} style={{padding:"6px 12px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:20,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent",flexShrink:0}}>{s}</button>)}</div>}
-            <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:10,flexShrink:0}}>
+            <div style={{padding:"14px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:14,flexShrink:0}}>
               <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask anything…" style={{flex:1,padding:"10px 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:24,color:C.text,fontSize:14,outline:"none",fontFamily:FONT_STACK}}/>
               <button onClick={send} disabled={!input.trim()||loading} style={{width:42,height:42,borderRadius:"50%",background:input.trim()&&!loading?C.primary:C.border,border:"none",cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,WebkitTapHighlightColor:"transparent"}}>➤</button>
             </div>
@@ -812,9 +812,9 @@ function Login({onOwner,onFactory,onBuyer}) {
     <div style={{minHeight:"100vh",background:C.bg,display:"grid",gridTemplateColumns:"minmax(360px,40%) minmax(0,1fr)",fontFamily:FONT_STACK}}>
       <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 56px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",minHeight:"100vh",boxSizing:"border-box",textAlign:"center"}}>
         <div style={{marginBottom:58,width:"100%",maxWidth:360}}>
-          <div style={{fontSize:34,fontWeight:700,color:C.white,lineHeight:1.1,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
+          <div style={{fontSize:34,fontWeight:700,color:C.white,lineHeight:1.1,marginBottom:14}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:18,fontWeight:500,color:"rgba(255,255,255,0.95)",letterSpacing:"1px",fontFamily:FONT_STACK,marginBottom:18}}>Quality, quantified</div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14}}>
             <div style={{height:1,width:30,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
             <div style={{fontSize:13,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
           </div>
@@ -840,11 +840,11 @@ function Login({onOwner,onFactory,onBuyer}) {
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text,display:"flex",flexDirection:"column",boxSizing:"border-box"}}>
       <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 62%,#001f3d)`,padding:"58px 24px 40px",color:C.white}}>
         <div style={{maxWidth:390,margin:"0 auto",textAlign:"center"}}>
-          <div style={{fontSize:26,fontWeight:700,lineHeight:1.15,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
+          <div style={{fontSize:26,fontWeight:700,lineHeight:1.15,marginBottom:14}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
           <div style={{fontSize:15,fontWeight:500,color:"rgba(255,255,255,0.95)",letterSpacing:"1px",fontFamily:FONT_STACK,marginBottom:16}}>Quality, quantified</div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14}}>
             <div style={{height:1,width:24,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
-            <div style={{fontSize:12,lineHeight:1.4,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
+            <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
           </div>
         </div>
       </div>
@@ -855,12 +855,12 @@ function Login({onOwner,onFactory,onBuyer}) {
           <div style={{fontSize:14,color:C.textDim}}>Sign in with your assigned credentials</div>
         </div>
         <div style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 8px 24px rgba(26,37,51,0.08)",padding:22,boxSizing:"border-box"}}>
-          {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"11px 12px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
+          {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"13px 14px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
           {loginFields}
         </div>
 
         <div style={{width:"100%",marginTop:18,textAlign:"center"}}>
-          <div style={{fontSize:12,color:C.textDim,marginBottom:14}}>Need access? Contact your factory administrator.</div>
+          <div style={{fontSize:12,color:C.textDim,marginBottom:18}}>Need access? Contact your factory administrator.</div>
           <div style={{fontSize:TYPE.caption.size,lineHeight:TYPE.caption.lineHeight,letterSpacing:TYPE.caption.letterSpacing,color:C.textDim}}>Trusted by stone factories across India</div>
         </div>
       </div>
@@ -892,14 +892,14 @@ function InviteAccept({onAccepted}) {
   return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT_STACK,padding:24}}>
       <Card style={{width:"100%",maxWidth:430,padding:SPACE.xl}}>
-        <div style={{display:"flex",justifyContent:"center",marginBottom:14}}><Icon name="verified" size={48} color={C.green}/></div>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><Icon name="verified" size={48} color={C.green}/></div>
         <div style={{fontSize:TYPE.display.size,lineHeight:TYPE.display.lineHeight,fontWeight:WEIGHT.bold,color:C.text,marginBottom:6,textAlign:"center"}}>Accept Epistable Invite</div>
         <div style={{fontSize:13,color:C.textDim,marginBottom:18}}>Use the same email your admin invited. If an email confirmation link fails, come back to this page and use the same email here.</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
           <Btn variant={mode==="signup"?"primary":"secondary"} size="sm" onClick={()=>{setMode("signup");setErr("");}}>Create Login</Btn>
           <Btn variant={mode==="signin"?"primary":"secondary"} size="sm" onClick={()=>{setMode("signin");setErr("");}}>I Have Login</Btn>
         </div>
-        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:600,marginBottom:12}}>{err}</div>}
+        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"14px 16px",fontSize:12,color:C.red,fontWeight:600,marginBottom:16}}>{err}</div>}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <Inp label="Invited Email" value={email} onChange={v=>{setEmail(v);if(err)setErr("");}} type="email" required/>
           <Inp label="Password" value={pass} onChange={v=>{setPass(v);if(err)setErr("");}} type="password" required hint={mode==="signup"?"Choose at least 6 characters.":"Enter your existing password."}/>
@@ -1014,43 +1014,43 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,borderRadius:14,padding:"20px",marginBottom:18,color:C.white}}>
         <div style={{...TEXT.heroTitle,marginBottom:4}}>Owner Console</div>
-        <div style={{fontSize:13,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:14}}>Full platform visibility</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+        <div style={{fontSize:13,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:18}}>Full platform visibility</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
           {[[fmtMoney(totalBill),"Billed This Month"],[totalScans,"Total Scans"],[facs.filter(f=>f.status==="active").length,"Active Factories"],[overdue,"Overdue"]].map(([v,l])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"12px"}}><div style={{fontSize:20,fontWeight:700}}>{v}</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{l}</div></div>
           ))}
         </div>
       </div>
       <KpiGrid items={[{label:"Billed This Month",value:fmtMoney(totalBill),icon:"billing",color:C.green},{label:"Scans This Month",value:ms,icon:"search",color:C.primary},{label:"Factories",value:facs.length,icon:"factory",color:C.teal},{label:"Users",value:users.length,icon:"user",color:C.text}]}/>
-      <Card style={{padding:14,marginBottom:14}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+      <Card style={{padding:20,marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
           <div>
             <div style={{fontSize:14,fontWeight:700}}>Platform readiness</div>
             <div style={TEXT.tinyMeta}>Traceability, audit checklist, and CAPA health across factories</div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
             <Btn size="sm" variant="secondary" onClick={copyReadinessSummary}>{readinessCopied?"Copied":"Copy"}</Btn>
             <div style={{fontSize:26,fontWeight:700,color:avgReadiness>=70?C.green:C.amber,lineHeight:1}}>{avgReadiness}%</div>
           </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:14,marginBottom:16}}>
           {[["Needs Work",needsReadiness.length,needsReadiness.length?C.amber:C.green],["Tracked Factories",trackedReadiness.length,C.primary],["Open CAPA",openCapa,openCapa?C.red:C.green],["AI Reviews",aiReviewedTotal,C.primary],["AI Overrides",aiOverridesTotal,aiOverridesTotal?C.amber:C.green]].map(([label,value,color])=>(
-            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",textAlign:"center"}}>
+            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"13px 14px",textAlign:"center"}}>
               <div style={{fontSize:18,fontWeight:700,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginTop:5}}>{label}</div>
             </div>
           ))}
         </div>
-        <div style={{background:releaseReady?C.greenBg:C.amberBg,border:`1px solid ${releaseReady?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:needsReadiness.length>0?12:0,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+        <div style={{background:releaseReady?C.greenBg:C.amberBg,border:`1px solid ${releaseReady?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"14px 16px",marginBottom:needsReadiness.length>0?12:0,display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
           <div>
             <div style={{fontSize:12,fontWeight:600,color:releaseReady?C.green:C.amber}}>Demo readiness: {releaseReady?"Ready":"Needs review"}</div>
-            <div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:2}}>{releaseReady?"Tracked factories have clean readiness signals for a sales demo.":"Review low-readiness factories, CAPA gaps, or overdue accounts before a serious pilot demo."}</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:2}}>{releaseReady?"Tracked factories have clean readiness signals for a sales demo.":"Review low-readiness factories, CAPA gaps, or overdue accounts before a serious pilot demo."}</div>
           </div>
           <Btn size="sm" variant="secondary" onClick={()=>setPage(overdue?"billing":"factories")}>{overdue?"Billing":"Factories"}</Btn>
         </div>
-        {needsReadiness.length>0&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {needsReadiness.length>0&&<div style={{display:"flex",flexDirection:"column",gap:14}}>
           {needsReadiness.slice(0,3).map(r=>(
-            <button key={r.fac.id} onClick={()=>pickFac(r.fac)} style={{display:"flex",alignItems:"center",gap:10,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+            <button key={r.fac.id} onClick={()=>pickFac(r.fac)} style={{display:"flex",alignItems:"center",gap:14,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"13px 14px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{fontSize:13,fontWeight:600,color:r.score<50?C.red:C.amber,width:42}}>{r.score}%</span>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{r.fac.name}</span><span style={{display:"block",fontSize:12,color:C.textDim}}>Trace {r.tracePct}% - audit {r.audit}% - CAPA {r.capa}</span></span>
               <span style={{fontSize:12,color:C.primary,fontWeight:600}}>Open</span>
@@ -1065,7 +1065,7 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
         </div>
         {facs.length===0?<div style={{padding:32,textAlign:"center",color:C.textDim}}>No factories yet</div>:facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);
-          return <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}} onClick={()=>pickFac(f)}>
+          return <div key={f.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}} onClick={()=>pickFac(f)}>
             <div style={{width:38,height:38,borderRadius:10,background:C.primaryBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}><Icon name="factory" size={18} color={C.primary}/></div>
             <div style={{flex:1,minWidth:0}}><div style={{...TEXT.itemTitle,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={TEXT.tinyMeta}>{sc} scans · {fmtMoney(b.total)} due</div></div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
@@ -1092,13 +1092,13 @@ function OwnerBilling({facs,onRefresh}) {
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Invoices — {mon}</div>
         {facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const paused=f.status==="paused";
-          return <div key={f.id} style={{padding:16,borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",background:paused?C.redBg:C.white}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+          return <div key={f.id} style={{padding:20,borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",background:paused?C.redBg:C.white}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
               <div><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.plan||"Starter"}{paused&&<span style={{color:C.red,fontWeight:700}}> · 🚫 PAUSED</span>}</div></div>
               <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:700,color:C.green}}>{fmtMoney(b.total)}</div><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <PBar value={sc/b.includedScans*100} color={sc>b.includedScans?C.red:C.primary}/>
-            <div style={{display:"flex",gap:8,marginTop:12}}>
+            <div style={{display:"flex",gap:14,marginTop:16}}>
               <Btn variant="ghost" size="sm" style={{flex:1}} onClick={()=>markPaid(f)}>✓ Mark Paid</Btn>
               {!paused?<Btn variant="secondary" size="sm" style={{flex:1,color:C.red,borderColor:C.redBorder}} onClick={()=>pauseF(f)}><Icon name="pause" size={14}/> Pause</Btn>
               :<Btn variant="secondary" size="sm" style={{flex:1,color:C.green,borderColor:C.greenBorder}} onClick={()=>resumeF(f)}><Icon name="play" size={14}/> Resume</Btn>}
@@ -1125,27 +1125,27 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
       {show&&<Modal title="Create Factory" onClose={()=>setShow(false)}>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <Inp label="Factory Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Kishangarh Marble Works"/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Inp label="Location" value={form.location} onChange={v=>setForm(p=>({...p,location:v}))} placeholder="Rajasthan"/>
             <Sel label="Plan" value={form.plan} onChange={v=>setForm(p=>({...p,plan:v}))} options={Object.keys(PLANS)} hint={`${fmtMoney(PLANS[form.plan].monthlyFee)}/mo`}/>
           </div>
           <Inp label="Contact Email" value={form.contact_email} onChange={v=>setForm(p=>({...p,contact_email:v}))} required type="email"/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setShow(false)}>Cancel</Btn><Btn onClick={create} disabled={!form.name||!form.contact_email}>Create</Btn></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setShow(false)}>Cancel</Btn><Btn onClick={create} disabled={!form.name||!form.contact_email}>Create</Btn></div>
         </div>
       </Modal>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div><div style={TEXT.pageHeader}>Factories</div><div style={TEXT.meta}>{facs.length} registered</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
-      {facs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="factory" size={48} color={C.primary}/></div><Btn onClick={()=>setShow(true)}>+ Create First Factory</Btn></Card>:
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {facs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="factory" size={48} color={C.primary}/></div><Btn onClick={()=>setShow(true)}>+ Create First Factory</Btn></Card>:
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {facs.map(f=>{const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const uCount=users.filter(u=>u.factory_id===f.id).length;return(
           <Card key={f.id}><div style={{padding:"14px 16px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
               <div style={{flex:1,minWidth:0,paddingRight:10}}><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.location} · {f.plan||"Starter"}</div></div>
               <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}><StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/></div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
               {[["Scans",sc,C.primary],["Users",uCount,C.text],["Bill",fmtMoney(b.total),C.green]].map(([l,v,col])=>(
                 <div key={l} style={{background:C.surface,borderRadius:8,padding:"8px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:700,color:col}}>{v}</div><div style={{fontSize:12,color:C.textDim}}>{l}</div></div>
               ))}
@@ -1199,8 +1199,8 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
       {showBuyer&&<UserFormModal title={"Add Buyer — "+fac.name} isBuyer onClose={()=>setShowBuyer(false)} onSubmit={createBuyer}/>}
       <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:FONT_STACK}}>← Back</button>
       {manage&&<UserAccessModal user={manage} facs={[fac]} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
-      <Card style={{marginBottom:14,padding:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+      <Card style={{marginBottom:18,padding:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
           <div><div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0}}>{fac.name}</div><div style={TEXT.meta}>{fac.location}</div></div>
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}><StatPill status={fac.status}/><BillPill status={fac.billing_status||"pending"}/></div>
         </div>
@@ -1210,10 +1210,10 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={TEXT.panelTitle}>Users ({users.length})</div>
-          <div style={{display:"flex",gap:8}}><Btn size="sm" variant="secondary" onClick={()=>setShowBuyer(true)}>+ Buyer</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ User</Btn></div>
+          <div style={{display:"flex",gap:14}}><Btn size="sm" variant="secondary" onClick={()=>setShowBuyer(true)}>+ Buyer</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ User</Btn></div>
         </div>
         {users.length===0?<div style={{padding:"32px",textAlign:"center",color:C.textDim}}>No users yet.</div>:users.map((u,i)=>(
-          <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<users.length-1?`1px solid ${C.border}`:"none"}}>
+          <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<users.length-1?`1px solid ${C.border}`:"none"}}>
             <Avi initials={u.avatar||"??"} size={36}/>
             <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={TEXT.tinyMeta}>{u.email}</div></div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -1252,14 +1252,14 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
   return (
     <Modal title={title} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
       {done?<div>
-        <div style={{textAlign:"center",marginBottom:14}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={TEXT.pageHeader}>Created!</div></div>
-        <div style={{background:C.primaryBg,border:`2px solid ${C.primaryBorder}`,borderRadius:12,padding:16,marginBottom:12}}>
+        <div style={{textAlign:"center",marginBottom:18}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={TEXT.pageHeader}>Created!</div></div>
+        <div style={{background:C.primaryBg,border:`2px solid ${C.primaryBorder}`,borderRadius:12,padding:20,marginBottom:16}}>
           {[["Name",done.name],["Email",done.email],["Role",isBuyer?"Buyer":done.role],["Auth ID",done.auth_user_id||"Link in Supabase Auth"]].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:l==="Auth ID"?"monospace":"inherit",textAlign:"right"}}>{v}</span></div>
           ))}
         </div>
-        <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:14}}>Send them this link to accept access: {window.location.origin}/invite</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.amber,marginBottom:18}}>Send them this link to accept access: {window.location.origin}/invite</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={()=>sendInviteEmail(done)}>Send Invite Email</Btn>
           <Btn onClick={finish}>Done</Btn>
         </div>
@@ -1269,8 +1269,8 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
         <AdvancedDisclosure><Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional" hint="Leave blank for invite flow. The user links this by accepting /invite."/></AdvancedDisclosure>
         {!isBuyer&&<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={[{value:"inspector",label:"Inspector"},{value:"manager",label:"Manager"},{value:"admin",label:"Admin"}]}/>}
-        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:600}}>{err}</div>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"14px 16px",fontSize:12,color:C.red,fontWeight:600}}>{err}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={onClose} disabled={busy}>Cancel</Btn>
           <Btn onClick={submit} disabled={busy||!form.name||!form.email}>{busy?"Creating…":"Create Profile"}</Btn>
         </div>
@@ -1321,7 +1321,7 @@ function UserAccessModal({user,facs,onClose,onSave,ownerMode=false,fixedRole=nul
   return (
     <Modal title={"Manage Access"} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:14,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
           <Avi initials={(user.avatar||user.name||"??").slice(0,2).toUpperCase()} size={38}/>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:C.text}}>{user.name}</div><div style={{fontSize:12,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div></div>
           <StatPill status={form.status}/>
@@ -1329,14 +1329,14 @@ function UserAccessModal({user,facs,onClose,onSave,ownerMode=false,fixedRole=nul
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required/>
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
         <AdvancedDisclosure><Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} hint="This links the profile to Supabase Auth login."/></AdvancedDisclosure>
-        <div style={{display:"grid",gridTemplateColumns:ownerMode?"1fr 1fr":"1fr",gap:12}}>
-          {fixedRole?<div><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Role</label><div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"12px 14px",fontSize:13,fontWeight:600,color:C.primary,textTransform:"capitalize"}}>{fixedRole}</div></div>:<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={roleOptions}/>}
+        <div style={{display:"grid",gridTemplateColumns:ownerMode?"1fr 1fr":"1fr",gap:14}}>
+          {fixedRole?<div><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Role</label><div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"14px 16px",fontSize:13,fontWeight:600,color:C.primary,textTransform:"capitalize"}}>{fixedRole}</div></div>:<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={roleOptions}/>}
           {ownerMode&&<Sel label="Factory" value={form.factoryId} onChange={v=>setForm(p=>({...p,factoryId:v}))} options={facOptions}/>}
         </div>
         {(fixedRole||form.role)==="buyer"&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))}/>}
         <Sel label="Access Status" value={form.status} onChange={v=>setForm(p=>({...p,status:v}))} options={[{value:"active",label:"Active"},{value:"suspended",label:"Suspended"},{value:"inactive",label:"Inactive"}]}/>
-        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:600}}>{err}</div>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"14px 16px",fontSize:12,color:C.red,fontWeight:600}}>{err}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={onClose} disabled={busy}>Cancel</Btn>
           <Btn onClick={()=>submit()} disabled={busy||!form.name||!form.email}>{busy?"Saving...":"Save Changes"}</Btn>
         </div>
@@ -1367,14 +1367,14 @@ function OwnerUsers({users,facs,onRefresh}) {
     <div>
       {show&&<UserFormModal title="Create User" facs={facs} onClose={()=>setShow(false)} onDone={()=>{setShow(false);onRefresh();}} onSubmit={createUser}/>}
       {manage&&<UserAccessModal user={manage} facs={facs} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>All Users</div><div style={TEXT.meta}>{users.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
-      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factory…" icon="search"/></div>
-      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="user" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No users yet</div></Card>:
+      <div style={{marginBottom:16}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factory…" icon="search"/></div>
+      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="user" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No users yet</div></Card>:
       <Card>{filtered.map((u,i)=>(
-        <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
+        <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||"??"} size={36}/>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.factory_name} · {u.email}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -1397,9 +1397,9 @@ function OwnerDisputes() {
   return (
     <div>
       <div style={TEXT.pageTitle}>All Disputes</div>
-      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="users" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No disputes yet</div></Card>:
+      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="users" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No disputes yet</div></Card>:
       <Card>{disputes.map((d,i)=>(
-        <div key={d.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",background:d.status==="open"?C.redBg:C.white}}>
+        <div key={d.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",background:d.status==="open"?C.redBg:C.white}}>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone} <span style={TEXT.tinyMeta}>#{d.slab_id}</span></div><div style={TEXT.tinyMeta}>{d.factory_name} · {d.buyer_name} · {catLabel[d.category]||d.category}</div></div>
           <DisputeStatusPill status={d.status}/>
         </div>
@@ -1417,9 +1417,9 @@ function OwnerInquiries() {
   return (
     <div>
       <div style={TEXT.pageTitle}>All Buyer Inquiries</div>
-      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="mail" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
+      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="mail" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
-        <div key={q.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",background:q.status==="new"?C.primaryBg:C.white}}>
+        <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",background:q.status==="new"?C.primaryBg:C.white}}>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyer_name}{q.buyer_company?" · "+q.buyer_company:""}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.factory_name} · {fmtD(q.created_at)}</div></div>
           <InqPill status={q.status}/>
         </div>
@@ -1432,8 +1432,8 @@ function OwnerSettings() {
   return (
     <div>
       <div style={{...TEXT.pageHeader,marginBottom:16}}>Settings</div>
-      <Card style={{padding:16,marginBottom:14}}><Inp label="Platform Name" value="Epistable AI" onChange={()=>{}}/></Card>
-      <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:14,fontSize:13,color:C.primary}}>✅ Using Supabase — data syncs across all devices in real time.</div>
+      <Card style={{padding:20,marginBottom:18}}><Inp label="Platform Name" value="Epistable AI" onChange={()=>{}}/></Card>
+      <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:20,fontSize:13,color:C.primary}}>✅ Using Supabase — data syncs across all devices in real time.</div>
     </div>
   );
 }
@@ -1515,9 +1515,9 @@ function FactoryApp({user,onLogout}) {
     <>
       <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:paused?"#f87171":"#4ade80"}}>●</span>{paused?"Paused":fac?.name||"Factory"}</div>}
         navItems={nav} page={page} onNav={p=>{setPage(p);if(p==="notifs"){DB.readAll(user.id);load();}}} onLogout={onLogout} userName={user.name} userSub={user.role}>
-        {paused&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚫</span><div style={{fontSize:13,fontWeight:600,color:C.red}}>Account Paused — Contact Epistable support to resume.</div></div>}
+        {paused&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:18}}>🚫</span><div style={{fontSize:13,fontWeight:600,color:C.red}}>Account Paused — Contact Epistable support to resume.</div></div>}
         <ErrorNotice message={refreshError} onRetry={()=>load({blockAdmin:false})}/>
-        {(shellLoading||adminDataLoading)&&isAdmin&&<div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 12px",fontSize:12,fontWeight:600,color:C.primary,marginBottom:12}}>Refreshing dashboard data...</div>}
+        {(shellLoading||adminDataLoading)&&isAdmin&&<div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 12px",fontSize:12,fontWeight:600,color:C.primary,marginBottom:16}}>Refreshing dashboard data...</div>}
         {pages[page]||pages.home}
       </Shell>
       <ChatBot role="factory" ctxData={{fac,insps,user}}/>
@@ -1613,20 +1613,20 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   return (
     <div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
-        <div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>👋 {user.role}</div>
+        <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>👋 {user.role}</div>
         <div style={{...TEXT.heroTitle,marginBottom:4}}>{user.name}</div>
-        <div style={{fontSize:13,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{fac?.name||"Factory"}</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+        <div style={{fontSize:13,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:18}}>{fac?.name||"Factory"}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
           {[["Today",today.length,"search"],["Total",insps.length,"package"],["Premium%",pp+"%","verified"]].map(([l,v,icon])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:12}}>{icon}</div><div style={{fontSize:18,fontWeight:700,lineHeight:1.1,letterSpacing:0,marginTop:4}}>{v}</div><div style={{fontSize:12,lineHeight:1.3,color:"rgba(255,255,255,0.65)",marginTop:2}}>{l}</div></div>
           ))}
         </div>
       </div>
       <KpiGrid items={homeKpisNext}/>
-      <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:14}}/>
-      <SetupChecklist title={isAdmin?"Factory setup checklist":"Inspector checklist"} subtitle={isAdmin?"The shortest path from first slab to buyer trust":"Small habits that make certificates stronger"} items={setupItems} style={{marginBottom:14}}/>
-      {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+      <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:18}}/>
+      <SetupChecklist title={isAdmin?"Factory setup checklist":"Inspector checklist"} subtitle={isAdmin?"The shortest path from first slab to buyer trust":"Small habits that make certificates stronger"} items={setupItems} style={{marginBottom:18}}/>
+      {isAdmin&&<Card style={{padding:20,marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
           <div>
             <div style={{fontSize:14,fontWeight:700}}>Pilot readiness checklist</div>
             <div style={TEXT.tinyMeta}>Evidence, buyer demand, traceability, CAPA, and AI review signals for a serious factory pilot</div>
@@ -1637,27 +1637,27 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
           </div>
         </div>
         <PBar value={pilotPct} color={pilotPct>=70?C.green:C.amber} h={8}/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginTop:16}}>
           {pilotItems.map(item=>(
-            <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:9,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+            <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:11,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"13px 14px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{item.done?"✓":"•"}</span>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{item.label}</span><span style={{display:"block",fontSize:12,color:item.done?C.green:C.textDim,fontWeight:500,marginTop:2}}>{item.value}</span></span>
             </button>
           ))}
         </div>
       </Card>}
-      {isAdmin&&<Card style={{padding:14,marginBottom:14,borderColor:readinessScore>=70?C.greenBorder:C.amberBorder,background:readinessScore>=70?C.greenBg:C.amberBg}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+      {isAdmin&&<Card style={{padding:20,marginBottom:18,borderColor:readinessScore>=70?C.greenBorder:C.amberBorder,background:readinessScore>=70?C.greenBg:C.amberBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:readinessScore>=70?C.green:C.amber}}>Certification readiness</div>
-            <div style={{fontSize:12,color:C.textMid,lineHeight:1.5,marginTop:2}}>A quick signal for how much audit-ready proof your current scans contain.</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.55,marginTop:2}}>A quick signal for how much audit-ready proof your current scans contain.</div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
             <Btn size="sm" variant="secondary" onClick={copyFactoryReadinessSummary}>{readinessCopied?"Copied":"Copy"}</Btn>
             <div style={{fontSize:26,fontWeight:700,color:readinessScore>=70?C.green:C.amber,lineHeight:1}}>{readinessScore}%</div>
           </div>
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
           {[["Traceability",traceCoverage,traceCoverage>=70?C.green:C.amber],["Audit checklist",auditReadyPct,auditReadyPct>=70?C.green:C.amber],["CAPA closure",capaNeeded?Math.max(0,100-Math.min(capaNeeded*20,100)):100,capaNeeded?C.red:C.green]].map(([label,value,color])=>(
             <div key={label}>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:5}}><span>{label}</span><span style={{color}}>{value}%</span></div>
@@ -1665,28 +1665,28 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
             </div>
           ))}
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:12}}>
-          <div style={{fontSize:12,color:C.textMid,lineHeight:1.45}}>{capaNeeded?`${capaNeeded} defect record${capaNeeded===1?"":"s"} still need corrective action notes.`:"No open CAPA gaps in current scan data."}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginTop:16}}>
+          <div style={{fontSize:12,color:C.textMid,lineHeight:1.65}}>{capaNeeded?`${capaNeeded} defect record${capaNeeded===1?"":"s"} still need corrective action notes.`:"No open CAPA gaps in current scan data."}</div>
           <Btn size="sm" variant="secondary" onClick={()=>setPage("analytics")}>Analytics</Btn>
         </div>
-        {readinessActions.length>0&&<div style={{borderTop:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,marginTop:12,paddingTop:12,display:"flex",flexDirection:"column",gap:8}}>
+        {readinessActions.length>0&&<div style={{borderTop:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,marginTop:16,paddingTop:12,display:"flex",flexDirection:"column",gap:14}}>
           {readinessActions.map(action=>(
-            <button key={action.label} onClick={()=>setPage(action.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+            <button key={action.label} onClick={()=>setPage(action.page)} style={{display:"flex",alignItems:"center",gap:11,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"13px 14px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{width:8,height:8,borderRadius:"50%",background:action.color,flexShrink:0}}/>
-              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{action.label}</span><span style={{display:"block",fontSize:12,color:C.textDim,lineHeight:1.35}}>{action.detail}</span></span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{action.label}</span><span style={{display:"block",fontSize:12,color:C.textDim,lineHeight:1.55}}>{action.detail}</span></span>
               <span style={{fontSize:12,color:C.primary,fontWeight:600}}>Fix</span>
             </button>
           ))}
         </div>}
       </Card>}
-      {isAdmin&&<Card style={{padding:14,marginBottom:14}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
+      {isAdmin&&<Card style={{padding:20,marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16}}>
           <div><div style={{fontSize:14,fontWeight:700}}>Today at a glance</div><div style={TEXT.tinyMeta}>Inventory, buyer demand, and quality signals</div></div>
           <Btn size="sm" variant="ghost" onClick={()=>setPage("sales")}>Sales</Btn>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:16}}>
           {[["Reserved",reservedSlabs,C.amber],["Sold",soldSlabs,C.green],["Rejected Today",rejectedToday,rejectedToday?C.red:C.textDim]].map(([label,value,color])=>(
-            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px"}}>
+            <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"13px 14px"}}>
               <div style={{fontSize:18,fontWeight:700,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginTop:5}}>{label}</div>
             </div>
@@ -1695,7 +1695,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         {adminPriorities.length===0?<div style={{fontSize:12,color:C.textDim,background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10}}>No urgent buyer follow-ups right now.</div>:
           <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {adminPriorities.map((p,i)=>(
-              <button key={`${p.label}-${i}`} onClick={()=>setPage(p.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+              <button key={`${p.label}-${i}`} onClick={()=>setPage(p.page)} style={{display:"flex",alignItems:"center",gap:11,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"13px 14px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
                 <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
                 <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{p.label}</span><span style={{display:"block",fontSize:12,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.detail}</span></span>
                 <span style={{fontSize:12,color:C.primary,fontWeight:600}}>Open</span>
@@ -1703,8 +1703,8 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
             ))}
           </div>}
       </Card>}
-      {isAdmin&&overdueFollowups.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+      {isAdmin&&overdueFollowups.length>0&&<Card style={{padding:20,marginBottom:18,borderColor:C.redBorder,background:C.redBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:C.red}}>Follow-ups overdue</div>
             <div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdueFollowups.slice(0,2).map(q=>q.buyerName||q.buyer_name).join(", ")}{overdueFollowups.length>2?" and more":""}</div>
@@ -1713,26 +1713,26 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         </div>
       </Card>}
       <PBar value={sc/b.includedScans*100} color={sc>=b.includedScans?C.red:sc/b.includedScans>0.8?C.amber:C.primary} h={8}/>
-      <div style={{display:"flex",justifyContent:"space-between",marginTop:6,marginBottom:14}}><span style={{fontSize:12,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:12,fontWeight:600,color:C.amber}}>{fmtMoney(b.total)} due</span></div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-        <button onClick={()=>setPage("scan")} disabled={paused} style={{background:paused?"#e2e8f0":`linear-gradient(135deg,${C.primary},${C.teal})`,border:"none",borderRadius:14,padding:"20px 16px",cursor:paused?"not-allowed":"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:6,marginBottom:18}}><span style={{fontSize:12,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:12,fontWeight:600,color:C.amber}}>{fmtMoney(b.total)} due</span></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
+        <button onClick={()=>setPage("scan")} disabled={paused} style={{background:paused?"#e2e8f0":`linear-gradient(135deg,${C.primary},${C.teal})`,border:"none",borderRadius:14,padding:"22px 18px",cursor:paused?"not-allowed":"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
           <div style={{marginBottom:8,display:"flex"}}><Icon name="search" size={28} color={paused?C.textDim:C.white}/></div><div style={{fontSize:15,fontWeight:700,color:paused?C.textDim:C.white}}>New Scan</div>
         </button>
         {isAdmin?
-          <button onClick={openPortal} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 16px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
+          <button onClick={openPortal} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 18px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
             <div style={{fontSize:28,marginBottom:8}}>🌐</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Public Inventory Preview</div>
           </button>:
-          <button onClick={()=>setPage("history")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 16px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
+          <button onClick={()=>setPage("history")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 18px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
             <div style={{fontSize:28,marginBottom:8}}>📋</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Slab Certificates</div>
           </button>}
       </div>
       {today.length>0&&<Card>
-        <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={TEXT.itemTitle}>Today's Scans</div>
           <button onClick={()=>setPage("history")} style={{background:"none",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer"}}>All →</button>
         </div>
         {today.slice(0,5).map((r,i)=>{const g=gradeConf(r.grade);return(
-          <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",borderBottom:i<Math.min(today.length,5)-1?`1px solid ${C.border}`:"none"}}>
+          <div key={r.id} style={{display:"flex",alignItems:"center",gap:14,padding:"11px 16px",borderBottom:i<Math.min(today.length,5)-1?`1px solid ${C.border}`:"none"}}>
             <div style={{width:38,height:38,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{g.emoji}</div>
             <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{r.stone}</div><div style={TEXT.tinyMeta}>{fmtT(r.ts)}</div></div>
             <span style={{...T.pill,color:g.color,background:g.bg,border:`1px solid ${g.border}`,padding:"3px 10px",borderRadius:20,flexShrink:0}}>{r.grade}</span>
@@ -1793,7 +1793,7 @@ function FacScan({user,fac,paused,onSaved}) {
   const fileRef=useRef();const videoRef=useRef();const canvasRef=useRef();
   const [cameraOpen,setCameraOpen]=useState(false);const [cameraStream,setCameraStream]=useState(null);const [cameraError,setCameraError]=useState("");
   useEffect(()=>{if(fac)DB.facSuppliers(fac.id).then(setSuppliers);},[fac]);
-  if(paused)return <div style={{textAlign:"center",padding:40}}><div style={{fontSize:48,marginBottom:12}}>🚫</div><div style={{fontSize:16,fontWeight:700}}>Account Paused</div></div>;
+  if(paused)return <div style={{textAlign:"center",padding:40}}><div style={{fontSize:48,marginBottom:16}}>🚫</div><div style={{fontSize:16,fontWeight:700}}>Account Paused</div></div>;
 
   const requiredPhotoSlots=PHOTO_SLOTS.filter(s=>s.required||(s.id==="defect"&&form.defects.length>0));
   const completePhotoSlots=requiredPhotoSlots.filter(s=>photos[s.id]?.src).length;
@@ -1897,8 +1897,8 @@ function FacScan({user,fac,paused,onSaved}) {
       <div style={{fontSize:64,marginBottom:16}}>{gradeConf(grade?.grade||"Standard").emoji}</div>
       <div style={{fontSize:24,fontWeight:700,marginBottom:4}}>{grade?.grade}</div>
       <div style={{fontSize:32,fontWeight:700,color:C.green,marginBottom:8}}>{fmtMoney(grade?.pricePerSqFt)}/sqft</div>
-      <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.7}}>{grade?.reason}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setAiGrade("");setOverrideReason("");setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
         <Btn onClick={onSaved}>View History</Btn>
       </div>
@@ -1911,7 +1911,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <input ref={fileRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>setEvidencePhoto(photoSlot,ev.target.result);r.readAsDataURL(f);}e.target.value="";}} style={{display:"none"}}/>
       <canvas ref={canvasRef} style={{display:"none"}}/>
       {cameraOpen&&<div style={{position:"fixed",inset:0,background:"#000",zIndex:500,display:"flex",flexDirection:"column"}}>
-        <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+        <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
           <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>✕ Cancel</button>
           <div style={{color:"#fff",fontSize:13,fontWeight:600}}>{PHOTO_SLOTS.find(s=>s.id===photoSlot)?.label}</div>
         </div>
@@ -1930,44 +1930,44 @@ function FacScan({user,fac,paused,onSaved}) {
       </div>
       {step===0&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Stone Type</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           {STONES.map(s=>(
             <button key={s.id} onClick={()=>setForm(p=>({...p,stone:s.id}))} style={{padding:"12px",background:form.stone===s.id?C.primaryBg:C.white,border:`2px solid ${form.stone===s.id?C.primary:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent"}}>
               <div style={{fontSize:13,fontWeight:600,color:form.stone===s.id?C.primary:C.text}}>{s.label}</div>
             </button>
           ))}
         </div>
-        <Card style={{padding:14,borderColor:supplierReady?C.greenBorder:C.amberBorder,background:supplierReady?C.white:C.amberBg}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+        <Card style={{padding:20,borderColor:supplierReady?C.greenBorder:C.amberBorder,background:supplierReady?C.white:C.amberBg}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
             <div>
               <div style={{fontSize:14,fontWeight:700}}>Supplier Source</div>
               <div style={{fontSize:12,color:C.textDim,marginTop:2}}>This powers supplier scorecards and purchasing decisions.</div>
             </div>
             <span style={{fontSize:12,fontWeight:600,color:supplierReady?C.green:C.amber}}>{supplierReady?"Captured":"Required"}</span>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:16}}>
             {[["registered","Registered"],["manual","Typed"],["unknown","Unknown"]].map(([mode,label])=>(
               <button key={mode} onClick={()=>chooseSupplierMode(mode)} style={{padding:"9px 6px",background:supplierMode===mode?C.primary:C.white,border:`1px solid ${supplierMode===mode?C.primary:C.border}`,borderRadius:8,color:supplierMode===mode?C.white:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{label}</button>
             ))}
           </div>
           {supplierMode==="registered"&&<>
             {suppliers.length>0?<Sel label="Select Supplier" value={form.supplierId} onChange={v=>setForm(p=>({...p,supplierId:v}))} options={[{value:"",label:"Select supplier..."},...suppliers.map(s=>({value:s.id,label:s.name}))]}/>
-            :<div style={{fontSize:12,color:C.textMid,marginBottom:10}}>No registered suppliers yet. Add one below or use Typed/Unknown.</div>}
-            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:10}}>
-              <input value={quickSupplier} onChange={e=>setQuickSupplier(e.target.value)} placeholder="Quick add supplier" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK}}/>
+            :<div style={{fontSize:12,color:C.textMid,marginBottom:14}}>No registered suppliers yet. Add one below or use Typed/Unknown.</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:14,marginTop:14}}>
+              <input value={quickSupplier} onChange={e=>setQuickSupplier(e.target.value)} placeholder="Quick add supplier" style={{width:"100%",padding:"14px 16px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK}}/>
               <Btn size="sm" variant="secondary" onClick={addQuickSupplier} disabled={supplierBusy}>{supplierBusy?"Adding...":"+ Add"}</Btn>
             </div>
           </>}
           {supplierMode==="manual"&&<Inp label="Supplier Name" value={form.supplier} onChange={v=>setForm(p=>({...p,supplier:v}))} placeholder="e.g. Shree Marble Exports" hint="This will appear under unregistered suppliers until added as a supplier record."/>}
-          {supplierMode==="unknown"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.textMid,fontWeight:600}}>Use only when the slab source is genuinely unavailable.</div>}
-          {supplierErr&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.red,fontWeight:600,marginTop:10}}>{supplierErr}</div>}
+          {supplierMode==="unknown"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"14px 16px",fontSize:12,color:C.textMid,fontWeight:600}}>Use only when the slab source is genuinely unavailable.</div>}
+          {supplierErr&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.red,fontWeight:600,marginTop:14}}>{supplierErr}</div>}
         </Card>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <label style={{display:"block",fontSize:13,fontWeight:600}}>Photo Evidence</label>
             <span style={{fontSize:12,fontWeight:600,color:photoReady?C.green:C.amber}}>{completePhotoSlots}/{requiredPhotoSlots.length} required</span>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             {PHOTO_SLOTS.slice(0,3).map(slot=>(
               <div key={slot.id} style={{border:`1px solid ${photos[slot.id]?C.greenBorder:C.border}`,borderRadius:12,overflow:"hidden",background:photos[slot.id]?C.greenBg:C.white}}>
                 <div style={{aspectRatio:"4/3",background:C.surface,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1989,7 +1989,7 @@ function FacScan({user,fac,paused,onSaved}) {
       </div>}
       {step===1&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Measurements</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
           <Inp label="Thickness (mm)" value={form.measurements.thickness} onChange={v=>setMeas("thickness",v)} placeholder="20"/>
           <Inp label="Length (cm)" value={form.measurements.length} onChange={v=>setMeas("length",v)} placeholder="120"/>
           <Inp label="Width (cm)" value={form.measurements.width} onChange={v=>setMeas("width",v)} placeholder="60"/>
@@ -2001,10 +2001,10 @@ function FacScan({user,fac,paused,onSaved}) {
         <Sel label="Sound Test" value={form.measurements.soundTest} onChange={v=>setMeas("soundTest",v)} options={[{value:"clear",label:"Clear"},{value:"dull",label:"Dull"},{value:"hollow",label:"Hollow"}]}/>
         <Sel label="Edge Condition" value={form.measurements.edgeCondition} onChange={v=>setMeas("edgeCondition",v)} options={[{value:"good",label:"Good"},{value:"minor",label:"Minor chips"},{value:"damaged",label:"Damaged"}]}/>
         <Sel label="Surface Finish" value={form.measurements.surfaceFinish} onChange={v=>setMeas("surfaceFinish",v)} options={[{value:"polished",label:"Polished"},{value:"honed",label:"Honed"},{value:"brushed",label:"Brushed"},{value:"sandblasted",label:"Sandblasted"}]}/>
-        <Card style={{padding:14}}>
+        <Card style={{padding:20}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Traceability</div>
-          <div style={{fontSize:12,color:C.textDim,lineHeight:1.45,marginBottom:12}}>Optional now, but valuable for export buyers, audits, and batch-level quality history.</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{fontSize:12,color:C.textDim,lineHeight:1.65,marginBottom:16}}>Optional now, but valuable for export buyers, audits, and batch-level quality history.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Inp label="Quarry / Source" value={form.measurements.traceability?.quarrySource||""} onChange={v=>setTrace("quarrySource",v)} placeholder="Makrana Quarry A"/>
             <Inp label="Batch No." value={form.measurements.traceability?.batchNo||""} onChange={v=>setTrace("batchNo",v)} placeholder="B-204"/>
             <Inp label="Block No." value={form.measurements.traceability?.blockNo||""} onChange={v=>setTrace("blockNo",v)} placeholder="BLK-17"/>
@@ -2012,21 +2012,21 @@ function FacScan({user,fac,paused,onSaved}) {
             <Inp label="Operator" value={form.measurements.traceability?.operator||""} onChange={v=>setTrace("operator",v)} placeholder="Operator name"/>
             <Inp label="Container / Shipment" value={form.measurements.traceability?.containerNo||""} onChange={v=>setTrace("containerNo",v)} placeholder="CONT-123"/>
           </div>
-          <div style={{marginTop:10}}><Inp label="Customer / Order Ref" value={form.measurements.traceability?.customerRef||""} onChange={v=>setTrace("customerRef",v)} placeholder="PO-1009"/></div>
+          <div style={{marginTop:14}}><Inp label="Customer / Order Ref" value={form.measurements.traceability?.customerRef||""} onChange={v=>setTrace("customerRef",v)} placeholder="PO-1009"/></div>
         </Card>
-        <Card style={{padding:14}}>
+        <Card style={{padding:20}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Audit Readiness</div>
-          <div style={{fontSize:12,color:C.textDim,lineHeight:1.45,marginBottom:12}}>Capture simple proof points that reduce audit and buyer follow-up later.</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={{fontSize:12,color:C.textDim,lineHeight:1.65,marginBottom:16}}>Capture simple proof points that reduce audit and buyer follow-up later.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <button onClick={()=>setAudit("calibrationChecked",!form.measurements.audit?.calibrationChecked)} style={{padding:"10px",background:form.measurements.audit?.calibrationChecked?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.calibrationChecked?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.calibrationChecked?C.green:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{form.measurements.audit?.calibrationChecked?"Calibration checked":"Mark calibration"}</button>
             <button onClick={()=>setAudit("checklistComplete",!form.measurements.audit?.checklistComplete)} style={{padding:"10px",background:form.measurements.audit?.checklistComplete?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.checklistComplete?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.checklistComplete?C.green:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{form.measurements.audit?.checklistComplete?"Checklist complete":"Mark checklist"}</button>
           </div>
         </Card>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
       </div>}
       {step===2&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Defects Found</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           {DEFECTS.map(d=>{const sel=form.defects.includes(d.id);return(
             <button key={d.id} onClick={()=>toggleDefect(d.id)} style={{padding:"12px",background:sel?"#fff3e0":C.white,border:`2px solid ${sel?d.color:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:FONT_STACK}}>
               <div style={{fontSize:13,fontWeight:600,color:sel?d.color:C.text}}>{sel?"✓ ":""}{d.label}</div>
@@ -2035,79 +2035,79 @@ function FacScan({user,fac,paused,onSaved}) {
         </div>
         <button onClick={()=>setForm(p=>({...p,exportReady:!p.exportReady}))} style={{padding:"10px 18px",background:form.exportReady?C.greenBg:C.white,border:`2px solid ${form.exportReady?C.green:C.border}`,borderRadius:10,cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:FONT_STACK,color:form.exportReady?C.green:C.textMid,alignSelf:"flex-start"}}>{form.exportReady?"Export Ready":"Domestic Only"}</button>
         {form.defects.length>0&&<Card style={{padding:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
             <div>
               <div style={{fontSize:13,fontWeight:600}}>Defect close-up required</div>
               <div style={{fontSize:12,color:C.textDim,marginTop:2}}>Capture the most visible defect so buyers can verify the grade.</div>
             </div>
             <span style={{fontSize:12,fontWeight:600,color:photos.defect?C.green:C.red}}>{photos.defect?"Complete":"Missing"}</span>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,alignItems:"stretch"}}>
+          <div style={{display:"grid",gridTemplateColumns:"120px 1fr",gap:14,alignItems:"stretch"}}>
             <div style={{aspectRatio:"1",background:C.surface,border:`1px solid ${photos.defect?C.greenBorder:C.border}`,borderRadius:10,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {photos.defect?<img src={photos.defect.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<span style={{fontSize:12,color:C.textDim,fontWeight:600,textAlign:"center",padding:8}}>Defect photo</span>}
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:8,justifyContent:"center"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:14,justifyContent:"center"}}>
               <button onClick={()=>openCamera("defect")} style={{padding:"10px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Camera</button>
               <button onClick={()=>chooseUpload("defect")} style={{padding:"10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Upload</button>
               {photos.defect&&<button onClick={()=>removeEvidencePhoto("defect")} style={{padding:"8px",background:"transparent",border:"none",color:C.red,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Remove</button>}
             </div>
           </div>
         </Card>}
-        {form.defects.length>0&&<Card style={{padding:14,borderColor:C.amberBorder,background:C.amberBg}}>
+        {form.defects.length>0&&<Card style={{padding:20,borderColor:C.amberBorder,background:C.amberBg}}>
           <div style={{fontSize:14,fontWeight:700,color:C.amber,marginBottom:4}}>Corrective Action</div>
-          <div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginBottom:12}}>Optional CAPA notes turn this scan into audit evidence, not just a defect record.</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginBottom:16}}>Optional CAPA notes turn this scan into audit evidence, not just a defect record.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Inp label="Root Cause" value={form.measurements.audit?.rootCause||""} onChange={v=>setAudit("rootCause",v)} placeholder="Handling damage"/>
             <Inp label="Action Owner" value={form.measurements.audit?.actionOwner||""} onChange={v=>setAudit("actionOwner",v)} placeholder="QC manager"/>
           </div>
-          <div style={{marginTop:10}}><Inp label="Corrective Action" value={form.measurements.audit?.correctiveAction||""} onChange={v=>setAudit("correctiveAction",v)} placeholder="Re-polish edge and inspect next batch"/></div>
-          <div style={{marginTop:10}}><Inp label="Due Date" value={form.measurements.audit?.actionDue||""} onChange={v=>setAudit("actionDue",v)} placeholder="2026-05-30"/></div>
+          <div style={{marginTop:14}}><Inp label="Corrective Action" value={form.measurements.audit?.correctiveAction||""} onChange={v=>setAudit("correctiveAction",v)} placeholder="Re-polish edge and inspect next batch"/></div>
+          <div style={{marginTop:14}}><Inp label="Due Date" value={form.measurements.audit?.actionDue||""} onChange={v=>setAudit("actionDue",v)} placeholder="2026-05-30"/></div>
         </Card>}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}><Icon name="bot" size={15}/> Grade with AI</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}><Icon name="bot" size={15}/> Grade with AI</Btn></div>
       </div>}
       {step===3&&<div>
-        <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>AI Grade Result</div>
+        <div style={{fontSize:16,fontWeight:700,marginBottom:18}}>AI Grade Result</div>
         {loading?<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="bot" size={48} color={C.primary}/></div><div style={{fontSize:16,fontWeight:700}}>Analysing slab…</div></div>
         :grade?(()=>{const g=gradeConf(grade.grade);return(
           <div>
-            <div style={{background:g.bg,border:`2px solid ${g.border}`,borderRadius:14,padding:"24px",textAlign:"center",marginBottom:14}}>
+            <div style={{background:g.bg,border:`2px solid ${g.border}`,borderRadius:14,padding:"24px",textAlign:"center",marginBottom:18}}>
               <div style={{fontSize:52,marginBottom:8}}>{g.emoji}</div>
               <div style={{fontSize:26,fontWeight:700,color:g.color,marginBottom:4}}>{grade.grade}</div>
               <div style={{fontSize:32,fontWeight:700,color:C.green,marginBottom:8}}>{fmtMoney(grade.pricePerSqFt)}<span style={{fontSize:16,fontWeight:400,color:C.textDim}}>/sqft</span></div>
             </div>
-            <Card style={{padding:16,marginBottom:12}}>
-              <div style={{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:8}}>{grade.reason}</div>
+            <Card style={{padding:20,marginBottom:16}}>
+              <div style={{fontSize:13,color:C.text,lineHeight:1.7,marginBottom:8}}>{grade.reason}</div>
               {grade.tips&&<div style={{background:C.primaryBg,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.primary}}><Icon name="alert" size={13}/> {grade.tips}</div>}
             </Card>
-            <Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder,background:C.amberBg}}>
+            <Card style={{padding:20,marginBottom:16,borderColor:C.amberBorder,background:C.amberBg}}>
               <div style={{fontSize:13,fontWeight:600,color:C.amber,marginBottom:5}}>AI-assisted, inspector-confirmed</div>
-              <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Review the evidence photos, measurements, defects, and price before saving. If the AI grade does not match the slab, override it below so the certificate reflects the human inspection.</div>
+              <div style={{fontSize:12,lineHeight:1.65,color:C.textMid}}>Review the evidence photos, measurements, defects, and price before saving. If the AI grade does not match the slab, override it below so the certificate reflects the human inspection.</div>
               {aiGrade&&<div style={{fontSize:12,color:C.textMid,fontWeight:600,marginTop:8}}>AI suggested: {aiGrade} · Final: {grade.grade}</div>}
             </Card>
-            {aiGrade&&grade.grade!==aiGrade&&<Card style={{padding:14,marginBottom:12,borderColor:C.primaryBorder,background:C.primaryBg}}>
+            {aiGrade&&grade.grade!==aiGrade&&<Card style={{padding:20,marginBottom:16,borderColor:C.primaryBorder,background:C.primaryBg}}>
               <div style={{fontSize:13,fontWeight:600,color:C.primary,marginBottom:6}}>Override reason</div>
-              <textarea value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} rows={2} placeholder="Why did the inspector change the AI grade?" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:9,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:FONT_STACK}}/>
-              <div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:6}}>This helps build a future training dataset for AI grading confidence and human overrides.</div>
+              <textarea value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} rows={2} placeholder="Why did the inspector change the AI grade?" style={{width:"100%",padding:"14px 16px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:9,fontSize:13,lineHeight:1.55,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:FONT_STACK}}/>
+              <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:6}}>This helps build a future training dataset for AI grading confidence and human overrides.</div>
             </Card>}
-            <Card style={{padding:14,marginBottom:12,borderColor:evidenceScore>=70?C.greenBorder:C.amberBorder,background:evidenceScore>=70?C.greenBg:C.amberBg}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}>
+            <Card style={{padding:20,marginBottom:16,borderColor:evidenceScore>=70?C.greenBorder:C.amberBorder,background:evidenceScore>=70?C.greenBg:C.amberBg}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:evidenceScore>=70?C.green:C.amber}}>Evidence completeness</div>
-                  <div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:2}}>Stronger evidence improves buyer confidence and audit readiness.</div>
+                  <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:2}}>Stronger evidence improves buyer confidence and audit readiness.</div>
                 </div>
                 <div style={{fontSize:22,fontWeight:700,color:evidenceScore>=70?C.green:C.amber,lineHeight:1}}>{evidenceScore}%</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 {evidenceChecklist.map(item=>(
                   <div key={item.label} style={{background:C.white,border:`1px solid ${item.done?C.greenBorder:C.amberBorder}`,borderRadius:9,padding:"8px 9px"}}>
                     <div style={{fontSize:12,fontWeight:600,color:item.done?C.green:C.amber,marginBottom:3}}>{item.done?"Complete":"Review"} - {item.label}</div>
-                    <div style={{fontSize:12,color:C.textDim,lineHeight:1.35}}>{item.detail}</div>
+                    <div style={{fontSize:12,color:C.textDim,lineHeight:1.55}}>{item.detail}</div>
                   </div>
                 ))}
               </div>
             </Card>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:18}}>
               {GRADES.map(g=>(
                 <button key={g.id} onClick={()=>{setGrade({...grade,grade:g.id,pricePerSqFt:g.price});if(g.id===aiGrade)setOverrideReason("");}} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:FONT_STACK,textAlign:"center"}}>
                   <div style={{fontSize:14,marginBottom:3}}>{g.emoji}</div><div style={{fontSize:12,fontWeight:600,color:grade.grade===g.id?g.color:C.textDim}}>{g.id}</div>
@@ -2115,7 +2115,7 @@ function FacScan({user,fac,paused,onSaved}) {
               ))}
             </div>
             <ErrorNotice title="Could not save slab" message={saveError} onRetry={save}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setAiGrade("");setOverrideReason("");setSaveError("");}}>← Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"✓ Save Slab"}</Btn></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setAiGrade("");setOverrideReason("");setSaveError("");}}>← Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"✓ Save Slab"}</Btn></div>
           </div>
         );})():null}
       </div>}
@@ -2152,8 +2152,8 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
   return (
     <Modal title="Slab Details" onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <div style={{background:g.bg,border:`1px solid ${g.border}`,borderRadius:12,padding:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
+        <div style={{background:g.bg,border:`1px solid ${g.border}`,borderRadius:12,padding:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:14}}>
             <div style={{minWidth:0}}>
               <div style={{fontSize:12,fontFamily:"monospace",color:C.textDim,marginBottom:4}}>{slab.id}</div>
               <div style={{fontSize:18,fontWeight:700,color:C.text,marginBottom:3}}>{slab.stone}</div>
@@ -2163,21 +2163,21 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
           </div>
           <div style={{fontSize:24,fontWeight:700,color:C.green}}>{fmtMoney(slab.pricePerSqFt)}<span style={{fontSize:12,fontWeight:600,color:C.textDim}}> / sq ft</span></div>
         </div>
-        <Card style={{padding:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+        <Card style={{padding:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
             <div>
               <div style={{fontSize:14,fontWeight:700}}>Inventory Status</div>
               <div style={{fontSize:12,color:C.textDim,marginTop:2}}>Controls whether buyers should treat this slab as purchasable.</div>
             </div>
             <InventoryPill status={slab.inventoryStatus}/>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
             {Object.entries(INV_STATUS).map(([id,c])=>(
               <button key={id} disabled={statusBusy} onClick={()=>changeStatus(id)} style={{padding:"9px 6px",background:(slab.inventoryStatus||"available")===id?c.bg:C.white,border:`1px solid ${(slab.inventoryStatus||"available")===id?c.border:C.border}`,borderRadius:8,color:(slab.inventoryStatus||"available")===id?c.color:C.textMid,fontSize:12,fontWeight:600,cursor:statusBusy?"not-allowed":"pointer",fontFamily:FONT_STACK}}>{c.label}</button>
             ))}
           </div>
         </Card>
-        {(slab.photo||photos.length>0)&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+        {(slab.photo||photos.length>0)&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
           {[slab.photo?{src:slab.photo,label:"Primary"}:null,...photos].filter(Boolean).slice(0,6).map((p,idx)=>(
             <div key={idx} style={{position:"relative",borderRadius:10,overflow:"hidden",border:`1px solid ${C.border}`,aspectRatio:"1"}}>
               <img src={p.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
@@ -2185,31 +2185,31 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
             </div>
           ))}
         </div>}
-        <Card style={{padding:14}}>
+        <Card style={{padding:20}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:8}}>Inspection</div>
           {[["Supplier",slab.supplier],["Inspector",slab.inspector],["Thickness",measurements.thickness?`${measurements.thickness} mm`:""],["Size",measurements.length&&measurements.width?`${measurements.length} x ${measurements.width} cm`:""],["Sound",measurements.soundTest],["Edge",measurements.edgeCondition],["Finish",measurements.surfaceFinish],["Export Ready",slab.exportReady?"Yes":"No"]].map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:600,textAlign:"right"}}>{v||"Not recorded"}</span></div>
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:14,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:600,textAlign:"right"}}>{v||"Not recorded"}</span></div>
           ))}
         </Card>
-        {aiReview.suggestedGrade&&<Card style={{padding:14,borderColor:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder,background:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBg:C.amberBg}}>
+        {aiReview.suggestedGrade&&<Card style={{padding:20,borderColor:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder,background:aiReview.suggestedGrade===aiReview.finalGrade?C.greenBg:C.amberBg}}>
           <div style={{fontSize:14,fontWeight:700,color:aiReview.suggestedGrade===aiReview.finalGrade?C.green:C.amber,marginBottom:8}}>AI Review</div>
           {[["AI Suggested",aiReview.suggestedGrade],["Final Grade",aiReview.finalGrade],["Override Reason",aiReview.overrideReason],["Reviewed",aiReview.reviewedAt?`${fmtD(aiReview.reviewedAt)} ${fmtT(aiReview.reviewedAt)}`:"Not recorded"]].map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:600,textAlign:"right"}}>{v||"Not recorded"}</span></div>
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:14,padding:"7px 0",borderBottom:`1px solid ${aiReview.suggestedGrade===aiReview.finalGrade?C.greenBorder:C.amberBorder}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:600,textAlign:"right"}}>{v||"Not recorded"}</span></div>
           ))}
         </Card>}
-        <Card style={{padding:14}}>
+        <Card style={{padding:20}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:8}}>Traceability & Audit</div>
           {[["Quarry / Source",traceability.quarrySource],["Batch",traceability.batchNo],["Block",traceability.blockNo],["Line",traceability.productionLine],["Operator",traceability.operator],["Container",traceability.containerNo],["Customer Ref",traceability.customerRef],["Calibration",audit.calibrationChecked?"Checked":""],["Checklist",audit.checklistComplete?"Complete":""],["Root Cause",audit.rootCause],["Corrective Action",audit.correctiveAction],["Owner",audit.actionOwner],["Due",audit.actionDue]].map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:600,textAlign:"right"}}>{v||"Not recorded"}</span></div>
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:14,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</span><span style={{fontSize:12,color:C.text,fontWeight:600,textAlign:"right"}}>{v||"Not recorded"}</span></div>
           ))}
         </Card>
-        <Card style={{padding:14}}>
+        <Card style={{padding:20}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:8}}>Grade Reason</div>
-          <div style={{fontSize:13,lineHeight:1.6,color:C.textMid}}>{slab.reason||"No reason recorded."}</div>
-          {defects.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>{defects.map(d=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"4px 9px",fontSize:12,fontWeight:600,color:C.amber,textTransform:"capitalize"}}>{d}</span>)}</div>}
-          {slab.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 10px",fontSize:12,color:C.textMid,lineHeight:1.5,marginTop:10}}>{slab.notes}</div>}
+          <div style={{fontSize:13,lineHeight:1.7,color:C.textMid}}>{slab.reason||"No reason recorded."}</div>
+          {defects.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:14}}>{defects.map(d=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"4px 9px",fontSize:12,fontWeight:600,color:C.amber,textTransform:"capitalize"}}>{d}</span>)}</div>}
+          {slab.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"13px 14px",fontSize:12,color:C.textMid,lineHeight:1.55,marginTop:14}}>{slab.notes}</div>}
         </Card>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={copyLink}>{copied?"Copied":"Copy Link"}</Btn>
           <Btn variant="secondary" onClick={onQr}>Share QR</Btn>
           <Btn style={{gridColumn:"1 / -1"}} onClick={()=>window.open(certificateUrl,"_blank","noopener,noreferrer")}>View Certificate</Btn>
@@ -2258,19 +2258,19 @@ function FacHistory({insps}) {
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onStatus={updateStatus} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
       <div style={TEXT.pageTitle}>Scan History</div>
-      <div style={{marginBottom:10}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="search"/></div>
-      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
+      <div style={{marginBottom:14}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="search"/></div>
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:18}}>
         {["All",...GRADES.map(g=>g.id)].map(f=>(
           <button key={f} onClick={()=>setFilterG(f)} style={{padding:"6px 14px",background:filterG===f?C.primary:C.white,border:`1px solid ${filterG===f?C.primary:C.border}`,borderRadius:20,color:filterG===f?C.white:C.textMid,fontSize:12,fontWeight:filterG===f?700:400,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
-      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:18}}>
         {["All","Strong Evidence","Weak Evidence","Trace","Missing Trace","Audit Ready","CAPA Needed","AI Reviewed","AI Overrides"].map(f=>(
           <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
-      <Card style={{padding:12,marginBottom:14}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
+      <Card style={{padding:12,marginBottom:18}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:14}}>
           {[["Missing Trace",missingTraceCount,missingTraceCount?C.amber:C.green],["Audit Ready",auditReadyCount,C.green],["CAPA Needed",capaNeededCount,capaNeededCount?C.red:C.green],["AI Reviewed",aiReviewedCount,C.primary],["AI Overrides",aiOverrideCount,aiOverrideCount?C.amber:C.green]].map(([label,value,color])=>(
             <button key={label} onClick={()=>setEvidenceFilter(label)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 6px",textAlign:"center",cursor:"pointer",fontFamily:FONT_STACK}}>
               <div style={{fontSize:16,fontWeight:700,color,lineHeight:1}}>{value}</div>
@@ -2281,7 +2281,7 @@ function FacHistory({insps}) {
       </Card>
       {filtered.length===0?<EmptyState title={insps.length?"No matching slabs":"No inspections yet"} body={insps.length?"Clear the filters or search another slab ID, stone, grade, batch, or source.":"Start with a scan. Each saved slab becomes a QR-backed certificate for buyers and factory records."} actionLabel={insps.length?"Clear filters":undefined} onAction={()=>{setSearch("");setFilterG("All");setEvidenceFilter("All");}}/>:
       <Card>{filtered.map((r,i)=>{const g=gradeConf(r.grade);const trace=r.measurements?.traceability||{};const ai=r.measurements?.aiReview||{};const hasAiOverride=ai.suggestedGrade&&ai.finalGrade&&ai.suggestedGrade!==ai.finalGrade;const traceMeta=[trace.batchNo&&`Batch ${trace.batchNo}`,trace.quarrySource].filter(Boolean).join(" - ");const ev=evidenceScore(r);return(
-        <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
+        <div key={r.id} onClick={()=>setDetailSlab(r)} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
           {r.photo?<div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:
           <div style={{width:44,height:44,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.emoji}</div>}
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{r.stone}</div><div style={TEXT.tinyMeta}>{traceMeta||`${r.date} - ${r.time}`}</div>{traceMeta&&<div style={{...TEXT.tinyMeta,marginTop:2}}>{r.date} - {r.time}</div>}</div>
@@ -2401,11 +2401,11 @@ function FacAnalytics({insps}) {
     const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Audit Packet ${curMon()}</title><style>
       body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
       h1{margin:0 0 4px;font-size:28px} h2{margin-top:28px;font-size:18px}
-      .meta{color:#4a5568;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+      .meta{color:#4a5568;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
       .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:12px}.kpi b{display:block;font-size:22px}
       table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
       .note{border:1px solid #b8d0f0;background:#e8f0fa;border-radius:8px;padding:12px;margin-top:18px;color:#0057a8}
-      .actions{display:flex;gap:8px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+      .actions{display:flex;gap:14px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
       @media print{body{margin:16px}.grid{grid-template-columns:repeat(4,1fr)}a{color:#0057a8}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Audit Evidence Packet</h1>
@@ -2513,10 +2513,10 @@ function FacAnalytics({insps}) {
     const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Pilot Report ${curMon()}</title><style>
       body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
       h1{margin:0 0 4px;font-size:28px} h2{margin-top:26px;font-size:18px}.meta{color:#4a5568;margin-bottom:18px}
-      .score{border:1px solid #b8d0f0;background:#e8f0fa;border-radius:10px;padding:14px;margin:16px 0;color:#0057a8}.score b{font-size:30px;display:block}
+      .score{border:1px solid #b8d0f0;background:#e8f0fa;border-radius:10px;padding:20px;margin:16px 0;color:#0057a8}.score b{font-size:30px;display:block}
       table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
       .note{border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:12px;margin-top:18px;color:#b45309}
-      .actions{display:flex;gap:8px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+      .actions{display:flex;gap:14px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
       @media print{body{margin:16px}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Factory Pilot Report</h1>
@@ -2543,9 +2543,9 @@ function FacAnalytics({insps}) {
     const html=`<!doctype html><html><head><meta charset="utf-8"><title>Epistable Readiness Gap Report ${curMon()}</title><style>
       body{font-family:Segoe UI,Arial,sans-serif;color:#1a2533;margin:32px;line-height:1.45}
       h1{margin:0 0 4px;font-size:28px}.meta{color:#4a5568;margin-bottom:18px}
-      .summary{border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:14px;margin:16px 0;color:#b45309}.summary b{font-size:28px;display:block}
+      .summary{border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:20px;margin:16px 0;color:#b45309}.summary b{font-size:28px;display:block}
       table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fb}
-      .actions{display:flex;gap:8px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+      .actions{display:flex;gap:14px;margin:16px 0}.actions button{background:#0057a8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
       @media print{body{margin:16px}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Readiness Gap Report</h1>
@@ -2563,9 +2563,9 @@ function FacAnalytics({insps}) {
   }
   return (
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16}}>
         <div style={TEXT.pageHeader}>Analytics</div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+        <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           <Btn size="sm" variant="ghost" onClick={copyEvidenceBrief} disabled={!insps.length}>{briefCopied?"Copied":"Copy Brief"}</Btn>
           <Btn size="sm" variant="secondary" onClick={downloadPilotReport} disabled={!insps.length}>Export Pilot Report</Btn>
           <Btn size="sm" variant="ghost" onClick={copyGapSummary} disabled={!insps.length}>{gapCopied?"Gaps Copied":"Copy Gaps"}</Btn>
@@ -2576,15 +2576,15 @@ function FacAnalytics({insps}) {
       </div>
       <KpiGrid items={[{label:"Today",value:today,icon:"date",color:C.primary},{label:"This Week",value:week,icon:"date",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"verified",color:C.green},{label:"Total",value:total,icon:"package",color:C.text}]}/>
       <KpiGrid items={[{label:"Trace Coverage",value:traceCoverage+"%",icon:"Trace",color:traceCoverage>=70?C.green:C.amber},{label:"Audit Ready",value:auditReadyPct+"%",icon:"Audit",color:auditReadyPct>=70?C.green:C.amber},{label:"CAPA Needed",value:capaNeeded,icon:"CAPA",color:capaNeeded?C.red:C.green},{label:"Batches",value:batchCount,icon:"Batch",color:C.primary}]}/>
-      {aiReviewed.length>0&&<Card style={{marginBottom:14}}>
-        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+      {aiReviewed.length>0&&<Card style={{marginBottom:18}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:14,alignItems:"center"}}>
           <div style={TEXT.panelTitle}>AI Review Learning</div>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",justifyContent:"flex-end"}}>
             <span style={{fontSize:12,fontWeight:600,color:aiOverrideRate>25?C.amber:C.green}}>{aiOverrideRate}% override rate</span>
             <Btn size="sm" variant="secondary" onClick={downloadAiReviewCsv}>Export AI Dataset</Btn>
           </div>
         </div>
-        <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+        <div style={{padding:20,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
           {[["Reviewed",aiReviewed.length,C.primary],["Overrides",aiOverrides.length,aiOverrides.length?C.amber:C.green],["Aligned",aiReviewed.length-aiOverrides.length,C.green]].map(([label,value,color])=>(
             <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"10px",textAlign:"center"}}>
               <div style={{fontSize:18,fontWeight:700,color,lineHeight:1}}>{value}</div>
@@ -2592,26 +2592,26 @@ function FacAnalytics({insps}) {
             </div>
           ))}
         </div>
-        {aiOverrides.length>0&&<div style={{padding:"0 16px 16px",display:"flex",flexDirection:"column",gap:8}}>
-          {aiOverrides.slice(0,3).map(i=><div key={i.id} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:9,padding:"9px 10px"}}>
+        {aiOverrides.length>0&&<div style={{padding:"0 16px 16px",display:"flex",flexDirection:"column",gap:14}}>
+          {aiOverrides.slice(0,3).map(i=><div key={i.id} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:9,padding:"13px 14px"}}>
             <div style={{fontSize:12,fontWeight:600,color:C.amber}}>{i.stone}: {i.measurements.aiReview.suggestedGrade} -&gt; {i.measurements.aiReview.finalGrade}</div>
-            <div style={{fontSize:12,color:C.textMid,lineHeight:1.4,marginTop:3}}>{i.measurements.aiReview.overrideReason||"No override reason recorded"}</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:3}}>{i.measurements.aiReview.overrideReason||"No override reason recorded"}</div>
           </div>)}
         </div>}
       </Card>}
-      <Card style={{marginBottom:14}}>
+      <Card style={{marginBottom:18}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Grade Distribution</div>
-        <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           {GRADES.map(g=>{const count=byG(g.id);const pct=total?Math.round(count/total*100):0;return(
             <div key={g.id}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={TEXT.itemTitle}>{g.emoji} {g.id}</span><span style={{...TEXT.itemTitle,color:g.color}}>{count} ({pct}%)</span></div><PBar value={pct} color={g.color}/></div>
           );})}
         </div>
       </Card>
-      {stoneQuality.length>0&&<Card style={{marginBottom:14}}>
+      {stoneQuality.length>0&&<Card style={{marginBottom:18}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Stone Quality</div>
-        <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
+        <div style={{padding:20,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
           {stoneQuality.map(r=>(
-            <div key={r.key} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",background:r.rejectPct>15?C.redBg:C.white}}>
+            <div key={r.key} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",background:r.rejectPct>15?C.redBg:C.white}}>
               <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>{r.key}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
                 {[["Slabs",r.total,C.text],["Premium",r.premiumPct+"%",C.green],["Rejected",r.rejectPct+"%",r.rejectPct?C.red:C.textDim]].map(([l,v,col])=><div key={l} style={{background:C.surface,borderRadius:8,padding:"7px 5px",textAlign:"center"}}><div style={{fontSize:13,fontWeight:600,color:col}}>{v}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</div></div>)}
@@ -2620,12 +2620,12 @@ function FacAnalytics({insps}) {
           ))}
         </div>
       </Card>}
-      <Card style={{marginBottom:14}}>
-        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+      <Card style={{marginBottom:18}}>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:14,alignItems:"center"}}>
           <div style={TEXT.panelTitle}>Audit Readiness</div>
           <span style={{fontSize:12,fontWeight:600,color:auditReadyPct>=70?C.green:C.amber}}>{auditReadyCount}/{total||0} complete</span>
         </div>
-        <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           <div>
             <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:6}}><span>Traceability coverage</span><span>{traceCoverage}%</span></div>
             <PBar value={traceCoverage} color={traceCoverage>=70?C.green:C.amber} h={8}/>
@@ -2634,30 +2634,30 @@ function FacAnalytics({insps}) {
             <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:6}}><span>Audit checklist completion</span><span>{auditReadyPct}%</span></div>
             <PBar value={auditReadyPct} color={auditReadyPct>=70?C.green:C.amber} h={8}/>
           </div>
-          {capaNeeded>0&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:600}}>CAPA attention needed on {capaNeeded} slab{capaNeeded===1?"":"s"} with defects but no corrective action recorded.</div>}
+          {capaNeeded>0&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"14px 16px",fontSize:12,color:C.red,fontWeight:600}}>CAPA attention needed on {capaNeeded} slab{capaNeeded===1?"":"s"} with defects but no corrective action recorded.</div>}
         </div>
       </Card>
-      {sourceQuality.length>0&&<Card style={{marginBottom:14}}>
+      {sourceQuality.length>0&&<Card style={{marginBottom:18}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Source Quality</div>
-        <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           {sourceQuality.map(r=>(
-            <div key={r.key} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",background:r.rejectPct>15?C.redBg:C.white}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:12,marginBottom:6}}>
+            <div key={r.key} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",background:r.rejectPct>15?C.redBg:C.white}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:14,marginBottom:6}}>
                 <span style={{fontSize:13,fontWeight:600,color:C.text}}>{r.key}</span>
                 <span style={{fontSize:12,fontWeight:600,color:r.rejectPct>15?C.red:C.green}}>{r.total} slabs</span>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
                 {[["Premium",r.premiumPct+"%",C.green],["Rejected",r.rejectPct+"%",r.rejectPct?C.red:C.textDim],["Trace",r.tracePct+"%",r.tracePct>=70?C.green:C.amber]].map(([l,v,col])=><div key={l} style={{background:C.surface,borderRadius:8,padding:"7px 6px",textAlign:"center"}}><div style={{fontSize:13,fontWeight:600,color:col}}>{v}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</div></div>)}
               </div>
             </div>
           ))}
         </div>
       </Card>}
-      {batchQuality.some(r=>r.key!=="Not recorded")&&<Card style={{marginBottom:14}}>
+      {batchQuality.some(r=>r.key!=="Not recorded")&&<Card style={{marginBottom:18}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Batch Quality</div>
-        <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           {batchQuality.filter(r=>r.key!=="Not recorded").map(r=>(
-            <div key={r.key} style={{display:"flex",alignItems:"center",gap:10}}>
+            <div key={r.key} style={{display:"flex",alignItems:"center",gap:14}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.text}}>{r.key}</div>
                 <div style={{fontSize:12,color:C.textDim}}>{r.total} slabs - {r.defects} defect records</div>
@@ -2669,7 +2669,7 @@ function FacAnalytics({insps}) {
       </Card>}
       {topDefects.length>0&&<Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Top Defects</div>
-        <div style={{padding:16,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           {topDefects.map(([d,cnt])=>(
             <div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontSize:13,fontWeight:600,textTransform:"capitalize"}}>{d}</span>
@@ -2701,14 +2701,14 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
   return (
     <div>
       {manage&&<UserAccessModal user={manage} facs={[fac]} onClose={()=>setManage(null)} onSave={saveUser}/>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Team Access</div><div style={TEXT.meta}>{users.length} profiles</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn>
       </div>
-      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="search"/></div>
-      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="users" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No profiles found</div></Card>:
+      <div style={{marginBottom:16}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="search"/></div>
+      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="users" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No profiles found</div></Card>:
       <Card>{filtered.map((u,i)=>(
-        <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
+        <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||u.name?.slice(0,2).toUpperCase()||"??"} size={36}/>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}{u.company?" · "+u.company:""}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -2812,32 +2812,32 @@ function FacSuppliers({fac}) {
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <Inp label="Supplier Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required/>
           <Inp label="Contact Person" value={form.contact} onChange={v=>setForm(p=>({...p,contact:v}))}/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Inp label="Phone" value={form.phone} onChange={v=>setForm(p=>({...p,phone:v}))}/>
             <Inp label="Location" value={form.location} onChange={v=>setForm(p=>({...p,location:v}))}/>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setShow(false)}>Cancel</Btn><Btn onClick={create} disabled={!form.name}>Add</Btn></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setShow(false)}>Cancel</Btn><Btn onClick={create} disabled={!form.name}>Add</Btn></div>
         </div>
       </Modal>}
       {sel&&(()=>{const st=sel._stats;return <Modal title={sel.name+" Scorecard"} onClose={()=>setSel(null)}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:18}}>
           {[["Score",st.score,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red]].map(([l,v,c])=>(
             <div key={l} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</div></div>
           ))}
         </div>
-        <div style={{background:st.risk.bg,border:`1px solid ${st.risk.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:600,color:st.risk.color,marginBottom:12}}>{st.risk.label}: {st.recommendation}</div>
-        {sel._manual&&<Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder}}>
+        <div style={{background:st.risk.bg,border:`1px solid ${st.risk.border}`,borderRadius:10,padding:"14px 16px",fontSize:12,fontWeight:600,color:st.risk.color,marginBottom:16}}>{st.risk.label}: {st.recommendation}</div>
+        {sel._manual&&<Card style={{padding:20,marginBottom:16,borderColor:C.amberBorder}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Clean Up Typed Supplier Names</div>
-          <div style={{fontSize:12,color:C.textDim,lineHeight:1.5,marginBottom:12}}>Convert typed scan entries into registered suppliers so future scorecards stay accurate.</div>
-          {cleanup.error&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.red,fontWeight:600,marginBottom:10}}>{cleanup.error}</div>}
+          <div style={{fontSize:12,color:C.textDim,lineHeight:1.55,marginBottom:16}}>Convert typed scan entries into registered suppliers so future scorecards stay accurate.</div>
+          {cleanup.error&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:C.red,fontWeight:600,marginBottom:14}}>{cleanup.error}</div>}
           {manualGroups.map(group=>(
-            <div key={group.name} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:8}}>
+            <div key={group.name} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:14,marginBottom:8}}>
                 <div style={{minWidth:0}}><div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{group.name}</div><div style={{fontSize:12,color:C.textDim}}>{group.rows.length} scan{group.rows.length===1?"":"s"} to clean up</div></div>
                 <Btn size="sm" variant="ghost" disabled={cleanup.busy&&cleanup.name===group.name} onClick={()=>cleanupManualSupplier(group,"create")}>{cleanup.busy&&cleanup.name===group.name?"Working...":"Create"}</Btn>
               </div>
-              {suppliers.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
-                <select value={cleanup.name===group.name?cleanup.supplierId:""} onChange={e=>setCleanup({name:group.name,supplierId:e.target.value,busy:false,error:""})} style={{width:"100%",padding:"9px 10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
+              {suppliers.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:14}}>
+                <select value={cleanup.name===group.name?cleanup.supplierId:""} onChange={e=>setCleanup({name:group.name,supplierId:e.target.value,busy:false,error:""})} style={{width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
                   <option value="">Link to existing...</option>
                   {suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -2846,27 +2846,27 @@ function FacSuppliers({fac}) {
             </div>
           ))}
         </Card>}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:16}}>
           {[["Defect Rate",st.defectRate+"%",C.amber],["Export Ready",st.exportReadyPct+"%",C.teal],["Avg Price",fmtMoney(st.avgPrice),C.green]].map(([l,v,c])=>(
             <div key={l} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:15,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</div></div>
           ))}
         </div>
-        <Card style={{padding:14,marginBottom:12}}>
-          <div style={{fontSize:14,fontWeight:700,marginBottom:10}}>Grade Distribution</div>
+        <Card style={{padding:20,marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Grade Distribution</div>
           {GRADES.map(g=>{const count=st.rows.filter(i=>i.grade===g.id).length;const pct=st.total?Math.round(count/st.total*100):0;return(
-            <div key={g.id} style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:4}}><span>{g.id}</span><span style={{color:g.color}}>{count} ({pct}%)</span></div><PBar value={pct} color={g.color}/></div>
+            <div key={g.id} style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:4}}><span>{g.id}</span><span style={{color:g.color}}>{count} ({pct}%)</span></div><PBar value={pct} color={g.color}/></div>
           );})}
         </Card>
-        <Card style={{padding:14,marginBottom:12}}>
-          <div style={{fontSize:14,fontWeight:700,marginBottom:10}}>Top Defects</div>
+        <Card style={{padding:20,marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Top Defects</div>
           {st.topDefects.length===0?<div style={{fontSize:13,color:C.green,fontWeight:600}}>No defects recorded</div>:st.topDefects.map(([d,c])=>(
             <div key={d} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}><span style={{textTransform:"capitalize",fontWeight:700}}>{d}</span><span style={{fontWeight:700,color:C.amber}}>{c}</span></div>
           ))}
         </Card>
-        <Card style={{padding:14}}>
-          <div style={{fontSize:14,fontWeight:700,marginBottom:10}}>Recent Slabs</div>
+        <Card style={{padding:20}}>
+          <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Recent Slabs</div>
           {st.recent.length===0?<div style={{fontSize:13,color:C.textDim}}>No inspections yet.</div>:st.recent.map((r,i)=>{const g=gradeConf(r.grade);return(
-            <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<st.recent.length-1?`1px solid ${C.border}`:"none"}}>
+            <div key={r.id} style={{display:"flex",alignItems:"center",gap:14,padding:"9px 0",borderBottom:i<st.recent.length-1?`1px solid ${C.border}`:"none"}}>
               <div style={{width:34,height:34,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{g.emoji}</div>
               <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{r.stone}</div><div style={{fontSize:12,color:C.textDim}}>{r.date} · {r.id}</div></div>
               <span style={{fontSize:12,fontWeight:600,color:g.color,background:g.bg,border:`1px solid ${g.border}`,borderRadius:20,padding:"3px 8px"}}>{r.grade}</span>
@@ -2874,9 +2874,9 @@ function FacSuppliers({fac}) {
           );})}
         </Card>
       </Modal>;})()}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Supplier Scorecards</div><div style={TEXT.meta}>{suppliers.length} registered suppliers</div></div>
-        <div style={{display:"flex",gap:8}}><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ Add</Btn></div>
+        <div style={{display:"flex",gap:14}}><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn><Btn size="sm" onClick={()=>setShow(true)}>+ Add</Btn></div>
       </div>
       {scorecards.length>0&&<KpiGrid items={[
         {label:"Best Score",value:best?best._stats.score:"-",icon:"Top",color:C.green},
@@ -2884,24 +2884,24 @@ function FacSuppliers({fac}) {
         {label:"Reject Watch",value:mostRejected?mostRejected._stats.rejectPct+"%":"0%",icon:"Risk",color:C.red},
         {label:"Supplier Scans",value:totalSupplierScans,icon:"Scan",color:C.teal},
       ]}/>}
-      <Card style={{padding:12,marginBottom:12}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Card style={{padding:12,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Sel label="Scan Window" value={windowDays} onChange={setWindowDays} options={[{value:"30",label:"Last 30 days"},{value:"90",label:"Last 90 days"},{value:"180",label:"Last 180 days"},{value:"all",label:"All time"}]}/>
           <Sel label="Rank By" value={sortBy} onChange={setSortBy} options={[{value:"score",label:"Quality score"},{value:"premium",label:"Premium rate"},{value:"reject",label:"Rejection risk"},{value:"volume",label:"Scan volume"}]}/>
         </div>
       </Card>
       {scorecards.length===0?<EmptyState title="No supplier scorecards yet" body="Add suppliers and select them during scans. Scorecards will show premium rate, rejection risk, defect patterns, and scan volume." actionLabel="+ Add First Supplier" onAction={()=>setShow(true)}/>:
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {ranked.map(s=>{const st=s._stats;return(
-          <Card key={s.id} style={{padding:14,cursor:"pointer"}} onClick={()=>setSel(s)}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:10}}>
+          <Card key={s.id} style={{padding:20,cursor:"pointer"}} onClick={()=>setSel(s)}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:14}}>
               <div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{s.name}</div><div style={{fontSize:12,color:C.textDim}}>{s.location||"—"} · {s.contact||"—"}</div></div>
               <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:st.risk.color}}>{st.score}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>Score</div></div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:14}}>
               {[["Scans",st.total,C.primary],["Premium",st.premiumPct+"%",C.green],["Reject",st.rejectPct+"%",C.red],["Defects",st.defectRate+"%",C.amber]].map(([l,v,c])=><div key={l} style={{background:C.surface,borderRadius:8,padding:8,textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{l}</div></div>)}
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:st.topDefects.length>0?10:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:st.topDefects.length>0?10:0}}>
               <span style={{background:st.risk.bg,border:`1px solid ${st.risk.border}`,borderRadius:20,padding:"3px 9px",fontSize:12,fontWeight:600,color:st.risk.color}}>{st.risk.label}</span>
               <span style={{fontSize:12,fontWeight:600,color:C.textDim}}>{st.lastScan?`Last scan ${fmtD(st.lastScan)}`:"No scans yet"}</span>
             </div>
@@ -2937,14 +2937,14 @@ function FacBuyers({fac,actor,onActivity}) {
   }
   return (
     <div>
-{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>setShow(false)} onDone={closeAfterCreate} onSubmit={createBuyer}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>setShow(false)} onDone={closeAfterCreate} onSubmit={createBuyer}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Buyers</div><div style={TEXT.meta}>{buyers.length} accounts</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
       {manage&&<UserAccessModal user={manage} facs={[fac]} fixedRole="buyer" onClose={()=>setManage(null)} onSave={saveBuyer}/>}
       {buyers.length===0?<EmptyState title="No buyers yet" body="Create buyer access so customers can browse verified inventory, request quotes, and track accepted orders." actionLabel="+ Add First Buyer" onAction={()=>setShow(true)}/>:
       <Card>{buyers.map((b,i)=>(
-        <div key={b.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<buyers.length-1?`1px solid ${C.border}`:"none"}}>
+        <div key={b.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<buyers.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={b.name.slice(0,2).toUpperCase()} size={36} color={C.teal} bg="#e0f7fa" border="#80deea"/>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{b.name}</div><div style={TEXT.tinyMeta}>{b.company?b.company+" · ":""}{b.email}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -3019,31 +3019,31 @@ function FacInquiries({fac,onChange}) {
   return (
     <div>
       {sel&&(()=>{const req=quoteRequest(sel);const buyerEmail=sel.buyerEmail||sel.buyer_email;const slabId=sel.slabId||sel.slab_id;return <Modal title={req.isQuote?"Quote Request":"Buyer Inquiry"} onClose={()=>setSel(null)}>
-        <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:14,marginBottom:14}}>
+        <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:20,marginBottom:18}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{sel.buyerName||sel.buyer_name}{(sel.buyerCompany||sel.buyer_company)?" - "+(sel.buyerCompany||sel.buyer_company):""}</div>
           {[["Slab",slabId],["Stone",sel.stone],["Grade",sel.grade],...(req.isQuote?[]:[["Message",sel.message||"-"]])].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:12,fontWeight:600}}>{v}</span></div>
           ))}
         </div>
-        {req.isQuote&&<Card style={{padding:12,marginBottom:12,boxShadow:"none",background:C.greenBg,borderColor:C.greenBorder}}>
+        {req.isQuote&&<Card style={{padding:12,marginBottom:16,boxShadow:"none",background:C.greenBg,borderColor:C.greenBorder}}>
           <div style={{fontSize:13,fontWeight:600,color:C.green,marginBottom:9}}>Buyer quote requirements</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:req.buyerNotes||req.additionalMessage?9:0}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:req.buyerNotes||req.additionalMessage?9:0}}>
             {[["Area",req.area?`${req.area} sq ft`:"Not specified"],["Delivery",req.deliveryLocation||"Not specified"],["Target date",req.targetDate||"Not specified"],["Est. value",req.area?`Rs ${Math.round(Number(req.area||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0)).toLocaleString("en-IN")}`:"-"]].map(([l,v])=>(
               <div key={l} style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:8,padding:"8px 9px"}}><div style={{fontSize:12,color:C.textDim,fontWeight:600,marginBottom:3}}>{l}</div><div style={{fontSize:12,color:C.text,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis"}}>{v}</div></div>
             ))}
           </div>
-          {(req.buyerNotes||req.additionalMessage)&&<div style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:8,padding:"9px 10px",fontSize:12,lineHeight:1.45,color:C.textMid}}>{req.buyerNotes&&<div><span style={{fontWeight:700,color:C.text}}>Notes:</span> {req.buyerNotes}</div>}{req.additionalMessage&&<div style={{marginTop:req.buyerNotes?5:0}}><span style={{fontWeight:700,color:C.text}}>Message:</span> {req.additionalMessage}</div>}</div>}
+          {(req.buyerNotes||req.additionalMessage)&&<div style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:8,padding:"13px 14px",fontSize:12,lineHeight:1.65,color:C.textMid}}>{req.buyerNotes&&<div><span style={{fontWeight:700,color:C.text}}>Notes:</span> {req.buyerNotes}</div>}{req.additionalMessage&&<div style={{marginTop:req.buyerNotes?5:0}}><span style={{fontWeight:700,color:C.text}}>Message:</span> {req.additionalMessage}</div>}</div>}
         </Card>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}><Sel label="Priority" value={follow.priority} onChange={v=>setFollow(p=>({...p,priority:v}))} options={[{value:"hot",label:"Hot"},{value:"warm",label:"Warm"},{value:"low",label:"Low"}]}/><Inp label="Next follow-up" type="date" value={follow.followUpDate} onChange={v=>setFollow(p=>({...p,followUpDate:v}))}/></div>
-        <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Factory Notes</label><textarea value={follow.factoryNotes} onChange={e=>setFollow(p=>({...p,factoryNotes:e.target.value}))} rows={3} placeholder="Call notes, buyer requirement, next step..." style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}><Btn variant="ghost" onClick={()=>buyerEmail&&(window.location.href=`mailto:${buyerEmail}?subject=Epistable inquiry for ${slabId}`)} disabled={!buyerEmail}>Email</Btn><Btn variant="ghost" onClick={()=>{const p=buyerPhone(sel).replace(/[^0-9]/g,"");if(p)window.open(`https://wa.me/${p}`,"_blank");}} disabled={!buyerPhone(sel)}>WhatsApp</Btn></div>
-        <Card style={{padding:12,marginBottom:12,boxShadow:"none",background:C.surface}}><div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Create Quote</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}><Inp label="Area (sq ft)" value={quote.areaSqFt} onChange={v=>setQuote(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120"/><Inp label="Valid until" type="date" value={quote.validityDate} onChange={v=>setQuote(p=>({...p,validityDate:v}))}/></div><textarea value={quote.notes} onChange={e=>setQuote(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Quote notes, payment terms, delivery..." style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>Total: {fmtMoney(Math.round(Number(quote.areaSqFt||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0)))}</div><Btn size="sm" onClick={createQuote} disabled={quoteBusy||!Number(quote.areaSqFt||0)}>{quoteBusy?"Creating...":"Create Quote"}</Btn></div></Card>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={saveFollowup}>Save</Btn><Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>Contacted</Btn><Btn variant="ghost" onClick={()=>reserveInquiry(sel)}>Reserve</Btn><Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}><Sel label="Priority" value={follow.priority} onChange={v=>setFollow(p=>({...p,priority:v}))} options={[{value:"hot",label:"Hot"},{value:"warm",label:"Warm"},{value:"low",label:"Low"}]}/><Inp label="Next follow-up" type="date" value={follow.followUpDate} onChange={v=>setFollow(p=>({...p,followUpDate:v}))}/></div>
+        <div style={{marginBottom:16}}><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Factory Notes</label><textarea value={follow.factoryNotes} onChange={e=>setFollow(p=>({...p,factoryNotes:e.target.value}))} rows={3} placeholder="Call notes, buyer requirement, next step..." style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}><Btn variant="ghost" onClick={()=>buyerEmail&&(window.location.href=`mailto:${buyerEmail}?subject=Epistable inquiry for ${slabId}`)} disabled={!buyerEmail}>Email</Btn><Btn variant="ghost" onClick={()=>{const p=buyerPhone(sel).replace(/[^0-9]/g,"");if(p)window.open(`https://wa.me/${p}`,"_blank");}} disabled={!buyerPhone(sel)}>WhatsApp</Btn></div>
+        <Card style={{padding:12,marginBottom:16,boxShadow:"none",background:C.surface}}><div style={{fontSize:13,fontWeight:600,marginBottom:14}}>Create Quote</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}><Inp label="Area (sq ft)" value={quote.areaSqFt} onChange={v=>setQuote(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120"/><Inp label="Valid until" type="date" value={quote.validityDate} onChange={v=>setQuote(p=>({...p,validityDate:v}))}/></div><textarea value={quote.notes} onChange={e=>setQuote(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Quote notes, payment terms, delivery..." style={{width:"100%",padding:"14px 16px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:14}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>Total: {fmtMoney(Math.round(Number(quote.areaSqFt||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0)))}</div><Btn size="sm" onClick={createQuote} disabled={quoteBusy||!Number(quote.areaSqFt||0)}>{quoteBusy?"Creating...":"Create Quote"}</Btn></div></Card>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={saveFollowup}>Save</Btn><Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>Contacted</Btn><Btn variant="ghost" onClick={()=>reserveInquiry(sel)}>Reserve</Btn><Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn></div>
       </Modal>;})()}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}><div><div style={TEXT.pageHeader}>Buyer Inquiries</div><div style={TEXT.meta}>Prioritize quote requests, hot buyers, and overdue follow-ups</div></div><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:18}}><div><div style={TEXT.pageHeader}>Buyer Inquiries</div><div style={TEXT.meta}>Prioritize quote requests, hot buyers, and overdue follow-ups</div></div><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn></div>
       <KpiGrid items={[{label:"Open",value:inquiries.filter(q=>q.status!=="closed").length,icon:"Open",color:C.primary},{label:"Quote Requests",value:quoteRequestCount,icon:"Quote",color:C.green},{label:"Hot Buyers",value:hotCount,icon:"Hot",color:C.red},{label:"Overdue",value:overdueCount,icon:"Due",color:overdueCount?C.red:C.textDim}]}/>
-      <Card style={{padding:12,marginBottom:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search buyer, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="reserved">Reserved</option><option value="closed">Closed</option></select><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All priorities</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="low">Low</option></select><select value={requestFilter} onChange={e=>setRequestFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All inquiries</option><option value="quote">Quote requests</option><option value="overdue">Overdue follow-ups</option></select></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{filtered.length} of {inquiries.length} inquiries shown</div><button onClick={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Reset filters</button></div></Card>
-      {inquiries.length===0?<EmptyState title="No inquiries yet" body="When buyers scan certificates or browse inventory, their requests will appear here. Share slab QR codes or the public inventory preview to start demand."/>:filtered.length===0?<EmptyState title="No matching inquiries" body="Try clearing filters, widening the status, or searching another buyer, slab, or stone." actionLabel="Clear filters" onAction={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}}/>:<Card>{filtered.map((q,i)=>{const req=quoteRequest(q);const overdue=q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed";return(<div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:overdue?C.redBg:q.status==="new"?C.primaryBg:C.white}}><div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} - {q.grade}{req.isQuote?" - Quote request":""}{q.followUpAt?` - Follow up ${fmtD(q.followUpAt)}`:""}</div></div><div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>{overdue&&<span style={{fontSize:12,fontWeight:600,color:C.red,background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:20,padding:"3px 8px"}}>Overdue</span>}<span style={{fontSize:12,fontWeight:600,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span><InqPill status={q.status}/></div></div>);})}</Card>}
+      <Card style={{padding:12,marginBottom:18}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search buyer, slab, stone..." style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="reserved">Reserved</option><option value="closed">Closed</option></select><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)} style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All priorities</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="low">Low</option></select><select value={requestFilter} onChange={e=>setRequestFilter(e.target.value)} style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All inquiries</option><option value="quote">Quote requests</option><option value="overdue">Overdue follow-ups</option></select></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginTop:14}}><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{filtered.length} of {inquiries.length} inquiries shown</div><button onClick={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Reset filters</button></div></Card>
+      {inquiries.length===0?<EmptyState title="No inquiries yet" body="When buyers scan certificates or browse inventory, their requests will appear here. Share slab QR codes or the public inventory preview to start demand."/>:filtered.length===0?<EmptyState title="No matching inquiries" body="Try clearing filters, widening the status, or searching another buyer, slab, or stone." actionLabel="Clear filters" onAction={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}}/>:<Card>{filtered.map((q,i)=>{const req=quoteRequest(q);const overdue=q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed";return(<div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:overdue?C.redBg:q.status==="new"?C.primaryBg:C.white}}><div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} - {q.grade}{req.isQuote?" - Quote request":""}{q.followUpAt?` - Follow up ${fmtD(q.followUpAt)}`:""}</div></div><div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>{overdue&&<span style={{fontSize:12,fontWeight:600,color:C.red,background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:20,padding:"3px 8px"}}>Overdue</span>}<span style={{fontSize:12,fontWeight:600,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span><InqPill status={q.status}/></div></div>);})}</Card>}
     </div>
   );
 }
@@ -3186,31 +3186,31 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
   return (
     <div>
       {reviseQuote&&<Modal title="Create Revised Quote" onClose={()=>setReviseQuote(null)}>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:12}}>
             <div style={{fontSize:13,fontWeight:600,color:C.amber,marginBottom:4}}>Buyer requested changes</div>
-            <div style={{fontSize:12,color:C.textMid,lineHeight:1.5}}>{reviseQuote.buyerMessage||reviseQuote.buyer_message||"No buyer note provided."}</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.55}}>{reviseQuote.buyerMessage||reviseQuote.buyer_message||"No buyer note provided."}</div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Inp label="Area (sq ft)" value={reviseForm.areaSqFt} onChange={v=>setReviseForm(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))}/>
             <Inp label="Price / sq ft" value={reviseForm.pricePerSqFt} onChange={v=>setReviseForm(p=>({...p,pricePerSqFt:v.replace(/[^0-9.]/g,"")}))}/>
           </div>
           <Inp label="Valid until" type="date" value={reviseForm.validityDate} onChange={v=>setReviseForm(p=>({...p,validityDate:v}))}/>
-          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
             <div style={{fontSize:13,fontWeight:600,color:C.green}}>Total: {fmtMoney(Math.round(Number(reviseForm.areaSqFt||0)*Number(reviseForm.pricePerSqFt||0)))}</div>
             <Btn onClick={createRevision} disabled={reviseBusy||!Number(reviseForm.areaSqFt||0)||!Number(reviseForm.pricePerSqFt||0)}>{reviseBusy?"Creating...":"Create Revision"}</Btn>
           </div>
         </div>
       </Modal>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Quotes</div><div style={TEXT.meta}>Manage sent quotes, buyer decisions, revisions, and sold status</div></div>
       </div>
       <KpiGrid items={[{label:"Awaiting Response",value:awaitingResponse,icon:"Reply",color:C.primary},{label:"Needs Action",value:actionCount,icon:"Now",color:actionCount?C.amber:C.textDim},{label:"Expiring Soon",value:expiringSoon,icon:"Due",color:expiringSoon?C.amber:C.textDim},{label:"Sold Value",value:fmtMoney(soldValue),icon:"Sold",color:C.green}]}/>
-      <Card style={{padding:12,marginBottom:14}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, buyer, stone, slab..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/>
-          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}>
+      <Card style={{padding:12,marginBottom:18}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, buyer, stone, slab..." style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/>
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}>
             <option value="all">All statuses</option>
             <option value="sent">Sent</option>
             <option value="expiring_soon">Expiring soon</option>
@@ -3221,17 +3221,17 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
             <option value="sold">Sold</option>
           </select>
         </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+        <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:14}}>
           {["sent","expiring_soon","accepted","revision_requested","revised","expired","sold"].map(s=>{const cfg=statusStyle(s);const count=s==="expiring_soon"?expiringSoon:counts[s]||0;return <button key={s} onClick={()=>setStatusFilter(statusFilter===s?"all":s)} style={{padding:"5px 10px",background:statusFilter===s?cfg.bg:C.white,border:`1px solid ${statusFilter===s?cfg.b:C.border}`,borderRadius:20,color:statusFilter===s?cfg.c:C.textDim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{cfg.label} ({count})</button>;})}
         </div>
       </Card>
       {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes found"} body={quotes.length?"Clear the filters or search another quote, buyer, slab, or stone.":"Create a quote from a buyer inquiry. Sent quotes become buyer links, and accepted quotes become trackable orders."} actionLabel={quotes.length?"Clear filters":undefined} onAction={()=>{setSearch("");setStatusFilter("all");}}/>:
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {filtered.map(q=>{const status=effectiveStatus(q);const cfg=statusStyle(status);const step=nextStep(status,q);const canRevise=status==="revision_requested";const canSell=status==="accepted";const fulfillment=fulfillmentConf(activeFulfillment(q));const buyerEmail=q.buyerEmail||q.buyer_email;return(
-          <Card key={q.id} style={{padding:14,borderColor:canRevise?C.amberBorder:canSell?C.greenBorder:C.border}}>
-            <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:10,flexWrap:"wrap"}}>
+          <Card key={q.id} style={{padding:20,borderColor:canRevise?C.amberBorder:canSell?C.greenBorder:C.border}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"flex-start",marginBottom:14,flexWrap:"wrap"}}>
               <div style={{minWidth:0}}>
-                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
                   <span style={{fontSize:12,fontFamily:"monospace",fontWeight:600,color:C.text}}>{q.id}</span>
                   <span style={{fontSize:12,fontWeight:600,color:cfg.c,background:cfg.bg,border:`1px solid ${cfg.b}`,borderRadius:20,padding:"2px 8px"}}>{cfg.label}</span>
                   {isExpiringSoon(q)&&<span style={{fontSize:12,fontWeight:600,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"2px 8px"}}>Expiring soon</span>}
@@ -3246,15 +3246,15 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
                 <div style={{fontSize:12,color:C.textDim}}>{q.validityTs||q.validity_ts?`Valid ${fmtD(q.validityTs||q.validity_ts)}`:"No validity"}</div>
               </div>
             </div>
-            <div style={{background:step.bg,border:`1px solid ${step.b}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:step.c,lineHeight:1.45,fontWeight:600,marginBottom:10}}>{step.text}</div>
-            {status==="accepted"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:10}}>
+            <div style={{background:step.bg,border:`1px solid ${step.b}`,borderRadius:8,padding:"8px 10px",fontSize:12,color:step.c,lineHeight:1.65,fontWeight:600,marginBottom:14}}>{step.text}</div>
+            {status==="accepted"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Fulfillment stage</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:6}}>
                 {quoteFulfillmentSteps(activeFulfillment(q)).map(s=><button key={s.id} disabled={!!fulfillBusy||s.id==="sold"} onClick={()=>updateFulfillment(q,s.id)} style={{padding:"8px 6px",background:s.current?s.bg:C.white,border:`1px solid ${s.current?s.border:C.border}`,borderRadius:8,color:s.current?s.color:C.textMid,fontSize:12,fontWeight:600,cursor:fulfillBusy||s.id==="sold"?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:s.id==="sold"?0.65:1}}>{s.done&&!s.current?"Done · ":""}{s.label}</button>)}
               </div>
             </div>}
-            {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.white,border:`1px solid ${canRevise?C.amberBorder:C.border}`,borderRadius:8,padding:"9px 10px",fontSize:12,color:C.textMid,lineHeight:1.45,marginBottom:10}}><span style={{fontWeight:700,color:canRevise?C.amber:C.text}}>Buyer note:</span> {q.buyerMessage||q.buyer_message}</div>}
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.white,border:`1px solid ${canRevise?C.amberBorder:C.border}`,borderRadius:8,padding:"13px 14px",fontSize:12,color:C.textMid,lineHeight:1.65,marginBottom:14}}><span style={{fontWeight:700,color:canRevise?C.amber:C.text}}>Buyer note:</span> {q.buyerMessage||q.buyer_message}</div>}
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"flex-end"}}>
               <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open Buyer Quote</Btn>
               <Btn size="sm" variant="secondary" onClick={()=>copyQuote(q)}>{copied===q.id?"Copied":"Copy Link"}</Btn>
               <Btn size="sm" variant="secondary" onClick={()=>copyFollowup(q)}>{copied==="follow-"+q.id?"Copied Msg":"Copy Follow-up"}</Btn>
@@ -3345,25 +3345,25 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
   }
   return (
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Sales Dashboard</div><div style={TEXT.meta}>Buyer demand, quote movement, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
       </div>
       <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"currency",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:fmtMoney(wonValue),icon:"Sold",color:C.green}]}/>
-      <GuidanceCard title="Sales operating rhythm" subtitle="A simple daily checklist for factory follow-up" actionLabel={briefCopied?"Copied":"Copy update"} onAction={copySalesBrief} style={{marginBottom:14}} items={[
+      <GuidanceCard title="Sales operating rhythm" subtitle="A simple daily checklist for factory follow-up" actionLabel={briefCopied?"Copied":"Copy update"} onAction={copySalesBrief} style={{marginBottom:18}} items={[
         {label:"Morning",detail:"Review new inquiries and send quotes for interested slabs.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
         {label:"Afternoon",detail:"Follow up sent quotes and handle buyer change requests.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
         {label:"Dispatch",detail:"Move accepted orders through payment, dispatch, delivery, and sold.",color:C.green,bg:C.greenBg,border:C.greenBorder},
       ]}/>
-      <Card style={{padding:16,marginBottom:14,borderColor:activeOrders.length?C.primaryBorder:C.border}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
+      <Card style={{padding:20,marginBottom:18,borderColor:activeOrders.length?C.primaryBorder:C.border}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:18}}>
           <div>
             <div style={{fontSize:15,fontWeight:700}}>Active Orders</div>
             <div style={{fontSize:12,color:C.textDim,marginTop:2}}>Accepted quotes that need payment, dispatch, delivery, or sold closure</div>
           </div>
           <Btn size="sm" variant={activeOrders.length?"primary":"secondary"} onClick={()=>setPage("quotes")}>Manage Orders</Btn>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:activeOrders.length?14:0}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:14,marginBottom:activeOrders.length?14:0}}>
           {stageCounts.map(({conf,count})=>(
             <div key={conf.id} style={{background:count?conf.bg:C.surface,border:`1px solid ${count?conf.border:C.border}`,borderRadius:10,padding:"10px 9px"}}>
               <div style={{fontSize:18,fontWeight:700,color:count?conf.color:C.textDim,lineHeight:1}}>{count}</div>
@@ -3372,9 +3372,9 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           ))}
         </div>
         {activeOrders.length===0?<div style={{fontSize:13,color:C.textDim,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>No active accepted orders yet. When a buyer accepts a quote, it will appear here until sold.</div>:
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
           {activeOrders.slice(0,5).map(q=>{const conf=fulfillmentConf(activeFulfillment(q));const nextIndex=Math.max(0,stageRank[activeFulfillment(q)]??0);return(
-            <div key={q.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:10,alignItems:"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
+            <div key={q.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:14,alignItems:"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
                 <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{q.stone} - {fmtMoney(Number(q.totalAmount||q.total_amount||0))} - {q.id}</div>
@@ -3393,29 +3393,29 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           {activeOrders.length>5&&<button onClick={()=>setPage("quotes")} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,padding:"8px 0 0",textAlign:"left"}}>View {activeOrders.length-5} more active orders</button>}
         </div>}
       </Card>
-      {revisionRequests.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.amberBorder,background:C.amberBg}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+      {revisionRequests.length>0&&<Card style={{padding:20,marginBottom:18,borderColor:C.amberBorder,background:C.amberBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
           <div><div style={{fontSize:14,fontWeight:700,color:C.amber}}>Quote changes requested</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Handle these in Quotes so revisions stay tracked in one place.</div></div>
           <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>{revisionRequests.length} to review</Btn>
         </div>
         {revisionRequests.map((q,i)=>(
-          <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.amberBorder}`:"none",borderBottom:i<revisionRequests.length-1?`1px solid ${C.amberBorder}`:"none"}}>
+          <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 0",borderTop:i===0?`1px solid ${C.amberBorder}`:"none",borderBottom:i<revisionRequests.length-1?`1px solid ${C.amberBorder}`:"none"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
               <div style={{fontSize:12,color:C.textMid}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
-              {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:4}}>{q.buyerMessage}</div>}
+              {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:4}}>{q.buyerMessage}</div>}
             </div>
             <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Review</Btn>
           </div>
         ))}
       </Card>}
-      {acceptedActionItems.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.greenBorder,background:C.greenBg}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+      {acceptedActionItems.length>0&&<Card style={{padding:20,marginBottom:18,borderColor:C.greenBorder,background:C.greenBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
           <div><div style={{fontSize:14,fontWeight:700,color:C.green}}>Accepted quotes ready to move</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>Advance payment, dispatch, delivery, and sold status from this dashboard.</div></div>
           <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
         </div>
         {acceptedActionItems.map((q,i)=>(
-          <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.greenBorder}`:"none",borderBottom:i<acceptedActionItems.length-1?`1px solid ${C.greenBorder}`:"none"}}>
+          <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 0",borderTop:i===0?`1px solid ${C.greenBorder}`:"none",borderBottom:i<acceptedActionItems.length-1?`1px solid ${C.greenBorder}`:"none"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
               <div style={{fontSize:12,color:C.textMid}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
@@ -3424,53 +3424,53 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           </div>
         ))}
       </Card>}
-      {overdue.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.redBorder,background:C.redBg}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+      {overdue.length>0&&<Card style={{padding:20,marginBottom:18,borderColor:C.redBorder,background:C.redBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
           <div><div style={{fontSize:14,fontWeight:700,color:C.red}}>Follow up now</div><div style={{fontSize:12,color:C.textMid,marginTop:2}}>{overdue.slice(0,3).map(q=>q.buyerName||q.buyer_name).join(", ")}</div></div>
           <Btn size="sm" variant="red" onClick={()=>setPage("inquiries")}>Review</Btn>
         </div>
       </Card>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14}}>
-        <Card style={{padding:16}}>
-          <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Inquiry Funnel</div>
+        <Card style={{padding:20}}>
+          <div style={{fontSize:15,fontWeight:700,marginBottom:18}}>Inquiry Funnel</div>
           {funnel.map(([label,count,color])=>(
-            <div key={label} style={{marginBottom:12}}>
+            <div key={label} style={{marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,marginBottom:5}}><span>{label}</span><span style={{color}}>{count}</span></div>
               <PBar value={count/maxFunnel*100} color={color} h={8}/>
             </div>
           ))}
         </Card>
-        <Card style={{padding:16}}>
-          <div style={{fontSize:15,fontWeight:700,marginBottom:12}}>Top Interested Slabs</div>
+        <Card style={{padding:20}}>
+          <div style={{fontSize:15,fontWeight:700,marginBottom:16}}>Top Interested Slabs</div>
           {slabInterest.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer interest yet</div>:slabInterest.map((s,i)=>(
-            <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<slabInterest.length-1?`1px solid ${C.border}`:"none"}}>
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 0",borderBottom:i<slabInterest.length-1?`1px solid ${C.border}`:"none"}}>
               <div style={{width:28,height:28,borderRadius:8,background:C.primaryBg,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600}}>{i+1}</div>
               <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.stone||s.id}</div><div style={{fontSize:12,color:C.textDim}}>{s.grade||"Grade"} · {s.id}</div></div>
               <div style={{fontSize:13,fontWeight:600,color:C.primary}}>{s.count}</div>
             </div>
           ))}
         </Card>
-        <Card style={{padding:16}}>
-          <div style={{fontSize:15,fontWeight:700,marginBottom:12}}>Recent Buyer Activity</div>
+        <Card style={{padding:20}}>
+          <div style={{fontSize:15,fontWeight:700,marginBottom:16}}>Recent Buyer Activity</div>
           {recent.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer activity yet</div>:recent.map((a,i)=>(
-            <div key={`${a.kind}-${a.ts}-${i}`} style={{display:"flex",gap:10,padding:"10px 0",borderBottom:i<recent.length-1?`1px solid ${C.border}`:"none"}}>
+            <div key={`${a.kind}-${a.ts}-${i}`} style={{display:"flex",gap:14,padding:"10px 0",borderBottom:i<recent.length-1?`1px solid ${C.border}`:"none"}}>
               <div style={{width:9,height:9,borderRadius:"50%",background:a.color,marginTop:5,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600}}>{a.kind}: {a.title}</div><div style={{fontSize:12,color:C.textDim}}>{a.sub} · {fmtD(a.ts)}</div></div>
             </div>
           ))}
         </Card>
-        <Card style={{padding:16}}>
-          <div style={{fontSize:15,fontWeight:700,marginBottom:12}}>Latest Quote Updates</div>
+        <Card style={{padding:20}}>
+          <div style={{fontSize:15,fontWeight:700,marginBottom:16}}>Latest Quote Updates</div>
           {decidedQuotes.length===0?<div style={{fontSize:13,color:C.textDim}}>No accepted quotes or change requests yet.</div>:decidedQuotes.map((q,i)=>{
             const accepted=q.status==="accepted";
             return (
               <div key={q.id} style={{padding:"10px 0",borderBottom:i<decidedQuotes.length-1?`1px solid ${C.border}`:"none"}}>
-                <div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:4}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:14,marginBottom:4}}>
                   <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
                   <span style={{fontSize:12,fontWeight:600,color:accepted?C.green:C.amber,background:accepted?C.greenBg:C.amberBg,border:`1px solid ${accepted?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{accepted?"Accepted":"Changes requested"}</span>
                 </div>
                 <div style={{fontSize:12,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
-                {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45}}>{q.buyerMessage}</div>}
+                {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.65}}>{q.buyerMessage}</div>}
               </div>
             );
           })}
@@ -3489,12 +3489,12 @@ function FacDisputes({fac}) {
   return (
     <div>
       {sel&&<Modal title="Dispute" onClose={()=>{setSel(null);setResponse("");}}>
-        <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:20,marginBottom:18}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.stone} — {catLabel[sel.category]||sel.category}</div>
-          <div style={{fontSize:13,lineHeight:1.6}}>{sel.details}</div>
+          <div style={{fontSize:13,lineHeight:1.7}}>{sel.details}</div>
         </div>
-        <div style={{marginBottom:12}}><textarea value={response} onChange={e=>setResponse(e.target.value)} rows={3} placeholder="Your response…" style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{marginBottom:16}}><textarea value={response} onChange={e=>setResponse(e.target.value)} rows={3} placeholder="Your response…" style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" size="sm" onClick={()=>update(sel.id,"dismissed")}>✗ Dismiss</Btn>
           <Btn variant="green" size="sm" onClick={()=>update(sel.id,"resolved")}>✅ Resolve</Btn>
         </div>
@@ -3502,7 +3502,7 @@ function FacDisputes({fac}) {
       <div style={TEXT.pageTitle}>Disputes</div>
       {disputes.length===0?<EmptyState title="No disputes" body="Buyer certificate disputes and mismatch reports will appear here. For now, your certificate trail is clean."/>:
       <Card>{disputes.map((d,i)=>(
-        <div key={d.id} onClick={()=>{setSel(d);setResponse(d.response||"");}} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:d.status==="open"?C.redBg:C.white}}>
+        <div key={d.id} onClick={()=>{setSel(d);setResponse(d.response||"");}} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:d.status==="open"?C.redBg:C.white}}>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone}</div><div style={TEXT.tinyMeta}>{catLabel[d.category]||d.category} · {d.buyer_name}</div></div>
           <DisputeStatusPill status={d.status}/>
         </div>
@@ -3518,7 +3518,7 @@ function FacNotifs({notifs,onRead}) {
       <div style={TEXT.pageTitle}>Alerts</div>
       {notifs.length===0?<EmptyState title="No alerts yet" body="Quote updates, buyer decisions, follow-ups, and order movement will appear here."/>:
       <Card>{notifs.map((n,i)=>(
-        <div key={n.id} style={{display:"flex",gap:12,padding:"14px 16px",borderBottom:i<notifs.length-1?`1px solid ${C.border}`:"none",background:n.read?C.white:C.primaryBg}}>
+        <div key={n.id} style={{display:"flex",gap:14,padding:"14px 16px",borderBottom:i<notifs.length-1?`1px solid ${C.border}`:"none",background:n.read?C.white:C.primaryBg}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}><ChromeIcon icon={n.icon||"bell"} size={16} color={C.primary}/></div>
           <div style={{flex:1}}><div style={{...TEXT.itemTitle,marginBottom:2}}>{n.title}</div><div style={{...TEXT.meta,color:C.textMid}}>{n.msg}</div></div>
         </div>
@@ -3570,13 +3570,13 @@ function quoteTimelineItems(q) {
 
 function BuyerQuoteTimeline({quote}) {
   return (
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14}}>
       {quoteTimelineItems(quote).map((step,i)=>(
-        <div key={`${quote.id}-${step.label}`} style={{display:"flex",gap:8,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:10}}>
+        <div key={`${quote.id}-${step.label}`} style={{display:"flex",gap:14,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:10}}>
           <div style={{width:22,height:22,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{step.done?"OK":i+1}</div>
           <div style={{minWidth:0}}>
             <div style={{fontSize:12,fontWeight:600,color:step.done?C.green:step.current?C.primary:C.text}}>{step.label}</div>
-            <div style={{fontSize:12,color:C.textMid,lineHeight:1.35,marginTop:2}}>{step.detail}</div>
+            <div style={{fontSize:12,color:C.textMid,lineHeight:1.55,marginTop:2}}>{step.detail}</div>
           </div>
         </div>
       ))}
@@ -3683,21 +3683,21 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
             <div style={{fontSize:13,fontWeight:600,marginBottom:3}}>{quoteAction.quote.stone} - {fmtMoney(Number(quoteAction.quote.totalAmount||0))}</div>
             <div style={{fontSize:12,color:C.textDim}}>{quoteAction.quote.grade} - {quoteAction.quote.id}</div>
           </div>
-          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
           {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Btn variant="secondary" onClick={()=>setQuoteAction(null)}>Cancel</Btn>
             <Btn variant={quoteAction.decision==="accepted"?"green":"primary"} onClick={submitQuoteAction} disabled={!!quoteBusy}>{quoteBusy?"Sending...":quoteAction.decision==="accepted"?"Accept Quote":"Send Request"}</Btn>
           </div>
         </div>
       </Modal>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"16px 16px 22px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16}}>
           <button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Back</button>
           <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Sign Out</button>
         </div>
@@ -3708,30 +3708,30 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
       <div style={{padding:"14px 14px 60px"}}>
         <ErrorNotice message={loadError} onRetry={load}/>
         <KpiGrid items={[{label:"Need Response",value:needResponse,icon:"Reply",color:C.primary},{label:"Accepted",value:accepted,icon:"Won",color:C.green},{label:"Total Quotes",value:quotes.length,icon:"Quote",color:C.text},{label:"Factory",value:fac?.name?"1":"-",icon:"Mill",color:C.teal}]}/>
-        <Card style={{padding:12,marginBottom:14}}>
-          <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(130px,180px)",gap:8}}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/>
-            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}>
+        <Card style={{padding:12,marginBottom:18}}>
+          <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(130px,180px)",gap:14}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, slab, stone..." style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}>
               <option value="priority">Priority first</option>
               <option value="newest">Newest first</option>
               <option value="valueHigh">Value high-low</option>
               <option value="valueLow">Value low-high</option>
             </select>
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:9}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginTop:9}}>
             <div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{filtered.length} of {quotes.length} quotes shown</div>
             <button onClick={()=>{setSearch("");setSortBy("priority");setFilter("active");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Reset</button>
           </div>
         </Card>
-        <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
+        <div style={{display:"flex",gap:14,overflowX:"auto",marginBottom:18}}>
           {[["active","Active"],["respond","Need response"],["accepted","Accepted"],["closed","Closed"]].map(([id,label])=>(
             <button key={id} onClick={()=>setFilter(id)} style={{padding:"8px 14px",background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:20,color:filter===id?C.white:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
           ))}
         </div>
-        {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes here yet"} body={quotes.length?"Try another status filter or reset sorting to see more quotes.":"Browse verified slabs and express interest to receive a factory quote."} actionLabel="Browse Inventory" onAction={()=>onViewPortal(buyerFactoryId)} secondaryLabel={quotes.length?"Reset filters":undefined} onSecondary={()=>{setSearch("");setSortBy("priority");setFilter("active");}}/>:<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes here yet"} body={quotes.length?"Try another status filter or reset sorting to see more quotes.":"Browse verified slabs and express interest to receive a factory quote."} actionLabel="Browse Inventory" onAction={()=>onViewPortal(buyerFactoryId)} secondaryLabel={quotes.length?"Reset filters":undefined} onSecondary={()=>{setSearch("");setSortBy("priority");setFilter("active");}}/>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
           {filtered.map(q=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const next=buyerQuoteNextAction(q);const expired=q.validityTs&&q.validityTs<Date.now()&&q.status==="sent";const canRespond=q.status==="sent"&&!expired;return(
-            <Card key={q.id} style={{padding:14}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
+            <Card key={q.id} style={{padding:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:14}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone}</div>
                   <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{q.grade} - {q.id} - {fmtD(q.created_at)}</div>
@@ -3741,14 +3741,14 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
                   <div style={{fontSize:12,color:C.textDim}}>{q.validityTs?`Valid ${fmtD(q.validityTs)}`:"No validity"}</div>
                 </div>
               </div>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:10}}>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
                 <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"4px 9px",borderRadius:20,fontSize:12,fontWeight:600}}>{expired?"Expired":s.label}</span>
                 {q.status==="accepted"&&<span style={{background:f.bg,border:`1px solid ${f.border}`,color:f.color,padding:"4px 9px",borderRadius:20,fontSize:12,fontWeight:600}}>{f.label}</span>}
               </div>
-              <div style={{background:next.bg,border:`1px solid ${next.border}`,borderRadius:10,padding:"9px 11px",fontSize:12,fontWeight:600,color:next.color,marginBottom:12}}>{next.label}</div>
+              <div style={{background:next.bg,border:`1px solid ${next.border}`,borderRadius:10,padding:"9px 11px",fontSize:12,fontWeight:600,color:next.color,marginBottom:16}}>{next.label}</div>
               <BuyerQuoteTimeline quote={q}/>
-              {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10,fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:12}}><span style={{fontWeight:700,color:C.text}}>Your note:</span> {q.buyerMessage||q.buyer_message}</div>}
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end",marginTop:12}}>
+              {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10,fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:16}}><span style={{fontWeight:700,color:C.text}}>Your note:</span> {q.buyerMessage||q.buyer_message}</div>}
+              <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"flex-end",marginTop:16}}>
                 <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")}>Open Quote</Btn>
                 <Btn size="sm" variant="secondary" onClick={()=>copyBuyerQuoteSummary(q)}>{copiedQuote===q.id?"Copied":"Copy Summary"}</Btn>
                 {q.slabId&&<Btn size="sm" variant="secondary" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)}>Slab Certificate</Btn>}
@@ -3811,14 +3811,14 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
             <div style={{fontSize:13,fontWeight:600,marginBottom:3}}>{quoteAction.quote.stone} · {fmtMoney(Number(quoteAction.quote.totalAmount||0))}</div>
             <div style={{fontSize:12,color:C.textDim}}>{quoteAction.quote.grade} · {quoteAction.quote.id}</div>
           </div>
-          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
           {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Btn variant="secondary" onClick={()=>setQuoteAction(null)}>Cancel</Btn>
             <Btn variant={quoteAction.decision==="accepted"?"green":"primary"} onClick={submitQuoteAction} disabled={!!quoteBusy}>{quoteBusy? "Sending..." : quoteAction.decision==="accepted"?"Accept Quote":"Send Request"}</Btn>
           </div>
@@ -3835,8 +3835,8 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         </div>
         <div style={{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 16px"}}>
           <div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
-          <div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+          <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:16}}>{fac?.location} · Verified by Epistable</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
             {[["Available",insps.length,"package"],["Inquiries",activeInquiries,"mail"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
               <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:12}}>{icon}</div><div style={{fontSize:18,fontWeight:700,color:C.white,lineHeight:1.1,letterSpacing:0,marginBottom:2}}>{v}</div><div style={{fontSize:12,lineHeight:1.3,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
             ))}
@@ -3845,24 +3845,24 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         </div>
         <div style={{padding:"16px 16px 48px"}}>
         <ErrorNotice message={loadError}/>
-        <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
+        <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:18,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
           <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="package" size={26} color={C.white}/></div>
-          <div style={{flex:1}}><div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
+          <div style={{flex:1}}><div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
           <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
         </div>
-        <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
+        <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 18px",marginBottom:18,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
           <div style={{width:46,height:46,borderRadius:12,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,color:C.primary,flexShrink:0}}>Quote</div>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:3}}>Track Quotes & Orders</div><div style={{fontSize:12,color:C.textMid}}>{activeQuotes} active quotes, {responseQuotes} waiting for response</div></div>
           <span style={{fontSize:20,color:C.textDim}}>&gt;</span>
         </div>
-        <GuidanceCard title="How buying works" subtitle="From verified slab to delivery tracking" style={{marginBottom:14}} items={[
+        <GuidanceCard title="How buying works" subtitle="From verified slab to delivery tracking" style={{marginBottom:18}} items={[
           {label:"1. Shortlist",detail:"Open inventory, filter slabs, and review certificates.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
           {label:"2. Request quote",detail:"Send area, delivery location, and requirements.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
           {label:"3. Track order",detail:"Accept the quote and follow payment, dispatch, and delivery.",color:C.green,bg:C.greenBg,border:C.greenBorder},
         ]}/>
-        <SetupChecklist title="Buyer setup checklist" subtitle="The shortest path from browsing to confirmed order" items={buyerSetupItems} style={{marginBottom:14}}/>
-        {priorityQuote&&<Card style={{padding:14,marginBottom:14,borderColor:priorityAction.border,background:priorityAction.bg}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10}}>
+        <SetupChecklist title="Buyer setup checklist" subtitle="The shortest path from browsing to confirmed order" items={buyerSetupItems} style={{marginBottom:18}}/>
+        {priorityQuote&&<Card style={{padding:20,marginBottom:18,borderColor:priorityAction.border,background:priorityAction.bg}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:14}}>
             <div style={{minWidth:0}}>
               <div style={{fontSize:12,fontWeight:600,color:priorityAction.color,textTransform:"uppercase",marginBottom:4}}>Next action</div>
               <div style={{fontSize:15,fontWeight:700,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{priorityQuote.stone}</div>
@@ -3870,23 +3870,23 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
             </div>
             <span style={{fontSize:12,fontWeight:600,color:priorityAction.color,background:C.white,border:`1px solid ${priorityAction.border}`,borderRadius:20,padding:"5px 9px",whiteSpace:"nowrap"}}>{priorityAction.label}</span>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"flex-end"}}>
             <Btn size="sm" variant="secondary" onClick={onViewQuotes}>Track</Btn>
             <Btn size="sm" variant="secondary" onClick={()=>window.open(`/quote/${encodeURIComponent(priorityQuote.id)}`,"_blank","noopener,noreferrer")}>Open Quote</Btn>
             {priorityQuote.status==="sent"&&!(priorityQuote.validityTs&&priorityQuote.validityTs<Date.now())&&<Btn size="sm" variant="green" onClick={()=>openQuoteAction(priorityQuote,"accepted")}>Accept</Btn>}
           </div>
         </Card>}
-        <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
+        <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"14px 16px",display:"flex",gap:14}}>
           <span style={{display:"flex",alignItems:"center",flexShrink:0}}><Icon name="verified" size={18} color={C.green}/></span>
           <div><div style={{...TEXT.itemTitle,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{...TEXT.meta,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
         </div>
         {quotes.length>0&&<Card style={{marginTop:14}}>
-          <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div style={{padding:"15px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
             <div><div style={{fontSize:14,fontWeight:700}}>My Quotes</div><div style={{fontSize:12,color:C.textDim,marginTop:2}}>Track quotes sent by the factory</div></div>
             <button onClick={onViewQuotes} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>View all</button>
           </div>
           {visibleQuotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
-            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(visibleQuotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
+            <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderBottom:i<Math.min(visibleQuotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
                 <div style={{fontSize:12,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
@@ -3902,12 +3902,12 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           );})}
         </Card>}
         {inquiries.length>0&&<Card style={{marginTop:14}}>
-          <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{padding:"15px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:700}}>My Inquiries</div>
             <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Browse slabs</button>
           </div>
           {inquiries.slice(0,4).map((q,i)=>(
-            <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(inquiries.length,4)-1?`1px solid ${C.border}`:"none"}}>
+            <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderBottom:i<Math.min(inquiries.length,4)-1?`1px solid ${C.border}`:"none"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone}</div>
                 <div style={{fontSize:12,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
@@ -4062,8 +4062,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`}}>
-        <div style={{padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
             {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:FONT_STACK}}>← Back</button>}
             <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>Epistable</div>
           </div>
@@ -4071,39 +4071,39 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         </div>
         <div style={{padding:"0 18px 20px"}}>
           <div style={{fontSize:20,fontWeight:700,color:"#fff",marginBottom:4}}>{fac?.name||"Factory"}</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{insps.length} verified slabs available</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:18}}>{insps.length} verified slabs available</div>
         </div>
       </div>
       <div style={{padding:"14px 14px 80px"}}>
         <ErrorNotice message={loadError}/>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,marginBottom:10}}/>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:8,marginBottom:10}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,marginBottom:14}}/>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:14,marginBottom:14}}>
           {[["Available",availableCount,C.green],["Reserved",reservedCount,C.amber],["Export Ready",exportCount,C.teal],["Premium",premiumCount,C.primary]].map(([label,value,color])=>(
-            <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
+            <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
               <div style={{fontSize:18,fontWeight:700,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginTop:5}}>{label}</div>
             </div>
           ))}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
           {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
-            <button key={v.id} onClick={()=>setViewMode(v.id)} style={{padding:"10px 12px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:10,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <button key={v.id} onClick={()=>setViewMode(v.id)} style={{padding:"14px 16px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:10,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               <span>{v.label}</span>
               <span style={{fontSize:12,opacity:0.75}}>({v.count})</span>
             </button>
           ))}
         </div>
-        {savedIds.length>0&&<Card style={{padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:viewMode==="saved"?C.primaryBg:C.white,borderColor:viewMode==="saved"?C.primaryBorder:C.border}}>
+        {savedIds.length>0&&<Card style={{padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,background:viewMode==="saved"?C.primaryBg:C.white,borderColor:viewMode==="saved"?C.primaryBorder:C.border}}>
           <div style={{fontSize:12,color:C.textMid,fontWeight:600}}>{savedIds.length} saved slab{savedIds.length===1?"":"s"} in this browser</div>
           <button onClick={copyShortlist} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"6px 10px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
         </Card>}
-        <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
+        <div style={{display:"flex",gap:14,overflowX:"auto",marginBottom:18}}>
           {["All","Premium","Standard"].map(f=>(
             <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 16px",background:filter===f?C.primary:"transparent",border:`1px solid ${filter===f?C.primary:C.border}`,borderRadius:20,color:filter===f?C.white:C.textMid,fontSize:13,fontWeight:filter===f?600:400,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
           ))}
         </div>
-        <Card style={{padding:12,marginBottom:14}}>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
+        <Card style={{padding:12,marginBottom:18}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:14}}>
             <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
               {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All stones":o}</option>)}
             </select>
@@ -4130,13 +4130,13 @@ function BuyerPortal({factoryId,onBack,buyer}) {
               <option value="evidence">Evidence first</option>
             </select>
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginTop:14}}>
             <div style={{fontSize:12,color:C.textDim,fontWeight:600}}>{filtered.length} of {insps.length} slabs shown</div>
             <button onClick={clearFilters} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Reset filters</button>
           </div>
         </Card>
         {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to build a shortlist for comparison.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14}}>
           {filtered.map(slab=>{
             const g=gradeConf(slab.grade);
             const inv=slab.inventoryStatus||"available";
@@ -4187,36 +4187,36 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setInquiry(null)}>
           <div style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,padding:"20px"}} onClick={e=>e.stopPropagation()}>
             {inquirySent?<div style={{textAlign:"center",padding:"20px 0"}}>
-              <div style={{fontSize:48,marginBottom:12}}>₹</div>
+              <div style={{fontSize:48,marginBottom:16}}>₹</div>
               <div style={{...TEXT.pageHeader,marginBottom:8}}>Quote Request Sent</div>
-              <div style={{fontSize:13,lineHeight:1.5,color:C.textMid,marginBottom:20}}>Your quote request for slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
+              <div style={{fontSize:13,lineHeight:1.55,color:C.textMid,marginBottom:20}}>Your quote request for slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
               <button onClick={()=>setInquiry(null)} style={{padding:"12px 28px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Done</button>
             </div>:<div>
-              <div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,marginBottom:10}}>Request Quote — {inquiry.stone}</div>
-              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,marginBottom:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:4}}>
+              <div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,marginBottom:14}}>Request Quote — {inquiry.stone}</div>
+              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:4}}>
                   <div style={{fontSize:13,fontWeight:600}}>{inquiry.grade} slab</div>
                   <div style={{fontSize:14,fontWeight:700,color:C.green}}>Rs {inquiry.pricePerSqFt}/sqft</div>
                 </div>
                 <div style={{fontSize:12,color:C.textDim}}>{inquiry.id} · {slabDims(inquiry)}</div>
               </div>
-              <div style={{background:inquiryReadiness>=70?C.greenBg:C.amberBg,border:`1px solid ${inquiryReadiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:12,marginBottom:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
+              <div style={{background:inquiryReadiness>=70?C.greenBg:C.amberBg,border:`1px solid ${inquiryReadiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:12,marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:6}}>
                   <div style={{fontSize:13,fontWeight:600,color:inquiryReadiness>=70?C.green:C.amber}}>Evidence readiness</div>
                   <div style={{fontSize:16,fontWeight:700,color:inquiryReadiness>=70?C.green:C.amber}}>{inquiryReadiness}%</div>
                 </div>
-                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>Includes photo evidence, {inquiryEvidence.traceCount}/7 traceability fields, and {inquiryEvidence.auditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
+                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Includes photo evidence, {inquiryEvidence.traceCount}/7 traceability fields, and {inquiryEvidence.auditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
                 <Inp label="Area Required" value={quoteReq.areaSqFt} onChange={v=>setQuoteReq(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120" hint="sq ft"/>
                 <Inp label="Target Date" value={quoteReq.targetDate} onChange={v=>setQuoteReq(p=>({...p,targetDate:v}))} type="date"/>
               </div>
-              {estimateTotal>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:600,color:C.green,marginBottom:10}}>Estimated quote value: Rs {estimateTotal.toLocaleString("en-IN")}</div>}
+              {estimateTotal>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"14px 16px",fontSize:12,fontWeight:600,color:C.green,marginBottom:14}}>Estimated quote value: Rs {estimateTotal.toLocaleString("en-IN")}</div>}
               <Inp label="Delivery Location" value={quoteReq.deliveryLocation} onChange={v=>setQuoteReq(p=>({...p,deliveryLocation:v}))} placeholder="City, country" />
-              <textarea value={quoteReq.notes} onChange={e=>setQuoteReq(p=>({...p,notes:e.target.value}))} placeholder="Requirement notes, payment terms, packing, shipping..." rows={3} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",margin:"12px 0 10px"}}/>
-              <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Optional message to the factory..." rows={2} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
+              <textarea value={quoteReq.notes} onChange={e=>setQuoteReq(p=>({...p,notes:e.target.value}))} placeholder="Requirement notes, payment terms, packing, shipping..." rows={3} style={{width:"100%",padding:"14px 16px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.55,outline:"none",resize:"none",boxSizing:"border-box",margin:"12px 0 10px"}}/>
+              <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Optional message to the factory..." rows={2} style={{width:"100%",padding:"14px 16px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.55,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:18}}/>
               <ErrorNotice title="Could not send request" message={inquiryError} onRetry={submitInquiry}/>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Cancel</button>
                 <button onClick={submitInquiry} disabled={inquiryBusy} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:inquiryBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:inquiryBusy?0.65:1}}>{inquiryBusy?"Sending...":"Send Request"}</button>
               </div>
@@ -4328,29 +4328,29 @@ function PublicQuotePage({quoteId}) {
       </div>
       <div style={{maxWidth:820,margin:"-62px auto 0",padding:"0 14px 40px"}}>
         <Card style={{overflow:"hidden"}}>
-          <div style={{padding:18,borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,flexWrap:"wrap"}}>
+          <div style={{padding:20,borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,flexWrap:"wrap"}}>
             <div>
               <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginBottom:4}}>Quote ID</div>
               <div style={{fontSize:14,fontFamily:"monospace",fontWeight:700,color:C.text}}>{quote.id}</div>
             </div>
-            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
               {expired&&<span style={{background:C.redBg,border:`1px solid ${C.redBorder}`,color:C.red,borderRadius:20,padding:"5px 11px",fontSize:12,fontWeight:600}}>Expired</span>}
               {expiringSoon&&<span style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,color:C.amber,borderRadius:20,padding:"5px 11px",fontSize:12,fontWeight:600}}>Expires in {daysLeft} day{daysLeft===1?"":"s"}</span>}
               <span style={{background:C.surface,border:`1px solid ${C.border}`,color:statusColor,borderRadius:20,padding:"5px 11px",fontSize:12,fontWeight:600,textTransform:"capitalize"}}>{statusLabel}</span>
               {quote.status==="accepted"&&<span style={{background:fulfillment.bg,border:`1px solid ${fulfillment.border}`,color:fulfillment.color,borderRadius:20,padding:"5px 11px",fontSize:12,fontWeight:600}}>{fulfillment.label}</span>}
             </div>
           </div>
-          <div style={{padding:18,borderBottom:`1px solid ${C.border}`,background:expiringSoon?C.amberBg:C.greenBg}}>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
+          <div style={{padding:20,borderBottom:`1px solid ${C.border}`,background:expiringSoon?C.amberBg:C.greenBg}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
               {[["Verified slab",quote.slab_id||"-"],["Factory issued",quote.factory_name||"Verified factory"],["Buyer action",canDecide?"Accept or request changes":statusLabel],["Validity",expired?"Expired":quote.validity_ts?`${daysLeft} day${daysLeft===1?"":"s"} left`:"Not specified"]].map(([label,value])=>(
-                <div key={label} style={{background:C.white,border:`1px solid ${expiringSoon?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"10px 12px"}}>
+                <div key={label} style={{background:C.white,border:`1px solid ${expiringSoon?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"14px 16px"}}>
                   <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginBottom:4}}>{label}</div>
                   <div style={{fontSize:13,color:C.text,fontWeight:600}}>{value}</div>
                 </div>
               ))}
             </div>
           </div>
-          <div style={{padding:18,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,borderBottom:`1px solid ${C.border}`}}>
+          <div style={{padding:20,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,borderBottom:`1px solid ${C.border}`}}>
             {[["Buyer",quote.buyer_company||quote.buyer_name||"Buyer"],["Email",quote.buyer_email||"Not provided"],["Factory",quote.factory_name||"Factory"],["Valid Until",validUntil]].map(([label,value])=>(
               <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
                 <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginBottom:5}}>{label}</div>
@@ -4358,23 +4358,23 @@ function PublicQuotePage({quoteId}) {
               </div>
             ))}
           </div>
-          <div style={{padding:18,borderBottom:`1px solid ${C.border}`}}>
-            <div style={{fontSize:15,fontWeight:700,marginBottom:12}}>Quote timeline</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
+          <div style={{padding:20,borderBottom:`1px solid ${C.border}`}}>
+            <div style={{fontSize:15,fontWeight:700,marginBottom:16}}>Quote timeline</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
               {quoteTimeline.map((step,i)=>(
-                <div key={step.label} style={{display:"flex",gap:10,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:12,opacity:step.muted?0.72:1}}>
+                <div key={step.label} style={{display:"flex",gap:14,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:12,opacity:step.muted?0.72:1}}>
                   <div style={{width:24,height:24,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{step.done?"✓":i+1}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:600,color:step.done?C.green:step.current?C.primary:C.text}}>{step.label}</div>
-                    <div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:3}}>{step.detail}</div>
+                    <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:3}}>{step.detail}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <div style={{padding:18}}>
-            <div style={{fontSize:15,fontWeight:700,marginBottom:12}}>Slab details</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:16}}>
+          <div style={{padding:20}}>
+            <div style={{fontSize:15,fontWeight:700,marginBottom:16}}>Slab details</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14,marginBottom:16}}>
               {[["Slab",quote.slab_id],["Stone",quote.stone],["Grade",quote.grade],["Area",`${Number(quote.area_sq_ft||0).toLocaleString("en-IN")} sq ft`]].map(([label,value])=>(
                 <div key={label} style={{borderBottom:`1px solid ${C.border}`,padding:"0 0 10px"}}>
                   <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginBottom:4}}>{label}</div>
@@ -4382,8 +4382,8 @@ function PublicQuotePage({quoteId}) {
                 </div>
               ))}
             </div>
-            <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:16,marginBottom:16}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"center"}}>
+            <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:20,marginBottom:16}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:14,alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:12,color:C.primary,fontWeight:600,marginBottom:4}}>Total quote value</div>
                   <div style={{fontSize:28,fontWeight:700,color:C.green}}>{fmtMoney(Number(quote.total_amount||0))}</div>
@@ -4401,36 +4401,36 @@ function PublicQuotePage({quoteId}) {
             ]}/>
             {quote.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:13,marginBottom:16}}>
               <div style={{fontSize:12,color:C.textDim,fontWeight:600,marginBottom:5}}>Notes</div>
-              <div style={{fontSize:13,lineHeight:1.6}}>{quote.notes}</div>
+              <div style={{fontSize:13,lineHeight:1.7}}>{quote.notes}</div>
             </div>}
-            {quote.status==="accepted"&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
+            {quote.status==="accepted"&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:20,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:C.green,marginBottom:4}}>Quote accepted</div>
               <div style={{fontSize:12,color:C.textMid}}>Current next step: {fulfillment.buyer}. Keep this link for order tracking.</div>
-              {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
+              {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.55}}>Buyer note: {quote.buyer_message}</div>}
             </div>}
-            {quote.status==="revision_requested"&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
+            {quote.status==="revision_requested"&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:12,padding:20,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:C.amber,marginBottom:4}}>Changes requested</div>
               <div style={{fontSize:12,color:C.textMid}}>We sent your note to the factory. They can respond with a revised quote link.</div>
-              {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.5}}>Buyer note: {quote.buyer_message}</div>}
+              {quote.buyer_message&&<div style={{fontSize:12,color:C.text,marginTop:8,lineHeight:1.55}}>Buyer note: {quote.buyer_message}</div>}
             </div>}
-            {quote.status==="revised"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
+            {quote.status==="revised"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:20,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:C.textMid,marginBottom:4}}>Revised quote sent</div>
               <div style={{fontSize:12,color:C.textMid}}>This quote has been replaced by a newer quote. Please use the latest revised quote link from the factory.</div>
             </div>}
-            {canDecide&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
+            {canDecide&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:20,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,marginBottom:8}}>Respond to this quote</div>
-              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory, such as delivery terms, quantity, or pricing questions (optional)" style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
-              {decisionError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",marginBottom:10}}>{decisionError}</div>}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <button onClick={()=>submitDecision("revision_requested")} disabled={!!decisionBusy} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,padding:"11px 12px",fontSize:13,fontWeight:600,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:decisionBusy?0.65:1}}>{decisionBusy==="revision_requested"?"Sending...":"Request Changes"}</button>
-                <button onClick={()=>submitDecision("accepted")} disabled={!!decisionBusy} style={{background:C.green,border:"none",borderRadius:10,color:C.white,padding:"11px 12px",fontSize:13,fontWeight:600,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:decisionBusy?0.65:1}}>{decisionBusy==="accepted"?"Accepting...":"Accept Quote"}</button>
+              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory, such as delivery terms, quantity, or pricing questions (optional)" style={{width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:14}}/>
+              {decisionError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",marginBottom:14}}>{decisionError}</div>}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                <button onClick={()=>submitDecision("revision_requested")} disabled={!!decisionBusy} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,padding:"13px 14px",fontSize:13,fontWeight:600,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:decisionBusy?0.65:1}}>{decisionBusy==="revision_requested"?"Sending...":"Request Changes"}</button>
+                <button onClick={()=>submitDecision("accepted")} disabled={!!decisionBusy} style={{background:C.green,border:"none",borderRadius:10,color:C.white,padding:"13px 14px",fontSize:13,fontWeight:600,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:decisionBusy?0.65:1}}>{decisionBusy==="accepted"?"Accepting...":"Accept Quote"}</button>
               </div>
             </div>}
-            {!canDecide&&quote.status==="sent"&&expired&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
+            {!canDecide&&quote.status==="sent"&&expired&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:12,padding:20,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:C.red,marginBottom:4}}>Quote expired</div>
               <div style={{fontSize:12,color:C.textMid}}>Please ask the factory for an updated quote.</div>
             </div>}
-            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
               {quote.slab_id&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(quote.slab_id)}`)} style={{background:C.primary,border:"none",borderRadius:10,color:C.white,padding:"11px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>View slab certificate</button>}
               <button onClick={copyQuoteSummary} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:10,color:C.primary,padding:"11px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{summaryCopied?"Copied summary":"Copy summary"}</button>
               <button onClick={()=>window.print()} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"11px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Print quote</button>

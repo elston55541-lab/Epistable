@@ -1,17 +1,17 @@
 // Type scale - 5 steps
 export const TYPE = {
-  caption: { size: 11, lineHeight: 1.4, weight: 500, letterSpacing: 0.3 },
-  label: { size: 12, lineHeight: 1.4, weight: 600, letterSpacing: 0.2 },
-  body: { size: 14, lineHeight: 1.55, weight: 400, letterSpacing: 0 },
-  heading: { size: 18, lineHeight: 1.3, weight: 700, letterSpacing: -0.1 },
-  display: { size: 24, lineHeight: 1.2, weight: 700, letterSpacing: -0.3 },
+  caption: { size: 11, lineHeight: 1.5, weight: 500, letterSpacing: 0.25 },
+  label: { size: 12, lineHeight: 1.5, weight: 600, letterSpacing: 0.15 },
+  body: { size: 14, lineHeight: 1.65, weight: 400, letterSpacing: 0 },
+  heading: { size: 18, lineHeight: 1.4, weight: 700, letterSpacing: 0 },
+  display: { size: 24, lineHeight: 1.3, weight: 700, letterSpacing: 0 },
 };
 
 // Weight scale - 3 levels
 export const WEIGHT = { regular: 400, medium: 600, bold: 700 };
 
 // Spacing - 8px base
-export const SPACE = { xs: 4, sm: 8, md: 12, base: 16, lg: 20, xl: 24, xxl: 32 };
+export const SPACE = { xs: 4, sm: 8, md: 12, base: 16, lg: 20, xl: 24, xxl: 32, section: 28 };
 
 // Radius
 export const RADIUS = { sm: 6, md: 10, lg: 14, pill: 999 };

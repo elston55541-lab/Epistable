@@ -1,5 +1,5 @@
 import { C } from "../lib/domain";
-import { RADIUS, TYPE } from "../lib/tokens";
+import { RADIUS, SPACE, TYPE, WEIGHT } from "../lib/tokens";
 
 const TONES = {
   neutral: { color: C.textMid, bg: C.surface, border: C.border },
@@ -13,13 +13,13 @@ const TONES = {
 
 export function Pill({ tone = "neutral", children, icon, size = "md", style }) {
   const t = TONES[tone] || TONES.neutral;
-  const pad = size === "sm" ? "2px 8px" : "4px 10px";
+  const pad = size === "sm" ? `${SPACE.xs}px ${SPACE.sm + 2}px` : `${SPACE.xs + 1}px ${SPACE.md}px`;
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 4,
+        gap: SPACE.xs + 1,
         background: t.bg,
         border: `1px solid ${t.border}`,
         color: t.color,
@@ -27,8 +27,8 @@ export function Pill({ tone = "neutral", children, icon, size = "md", style }) {
         borderRadius: RADIUS.pill,
         whiteSpace: "nowrap",
         fontSize: TYPE.caption.size,
-        fontWeight: 600,
-        lineHeight: 1.2,
+        fontWeight: WEIGHT.medium,
+        lineHeight: 1.3,
         letterSpacing: TYPE.caption.letterSpacing,
         ...style,
       }}

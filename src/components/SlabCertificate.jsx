@@ -24,10 +24,10 @@ function Field({label,value}) {
 
 function CertificateError({title,msg}) {
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <Card style={{padding:24,maxWidth:460,textAlign:"center"}}>
         <div style={{fontSize:18,fontWeight:700,marginBottom:8,color:C.text}}>{title}</div>
-        <div style={{fontSize:13,color:C.textMid,lineHeight:1.6,marginBottom:16}}>{msg}</div>
+        <div style={{fontSize:13,color:C.textMid,lineHeight:1.7,marginBottom:16}}>{msg}</div>
         <Btn onClick={()=>window.location.assign("/")}>Go to Epistable</Btn>
       </Card>
     </div>
@@ -221,12 +221,12 @@ export function SlabCertificate({slabId}) {
         }
       `}</style>
       <div className="cert-actions" style={{position:"sticky",top:0,zIndex:50,background:"rgba(255,255,255,0.96)",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(8px)"}}>
-        <div style={{maxWidth:980,margin:"0 auto",padding:"10px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+        <div style={{maxWidth:980,margin:"0 auto",padding:"10px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:14}}>
           <div style={{minWidth:0}}>
             <div style={{fontSize:12,fontWeight:600,color:C.text}}>Certificate {slab.id}</div>
             <div style={{fontSize:12,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{slab.stone} · {slab.factory_name}</div>
           </div>
-          <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <div style={{display:"flex",gap:14,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
             <button onClick={copySummary} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Summary Copied":"Copy Summary"}</button>
             <button onClick={copyAuditNote} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Audit Copied":"Copy Audit Note"}</button>
             <button onClick={copyLink} style={{padding:"9px 11px",border:`1px solid ${C.border}`,borderRadius:9,background:C.white,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{copied?"Copied":"Copy Link"}</button>
@@ -236,7 +236,7 @@ export function SlabCertificate({slabId}) {
       </div>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,color:C.white}}>
         <div className="cert-hero" style={{maxWidth:980,margin:"0 auto",padding:"18px 18px 24px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:18}}>
             <div>
               <div style={{fontSize:22,fontWeight:700,letterSpacing:0}}>Epistable AI</div>
               <div style={{fontSize:12,color:"rgba(255,255,255,0.72)"}}>Verified slab certificate</div>
@@ -247,14 +247,14 @@ export function SlabCertificate({slabId}) {
             <div>
               <div style={{fontSize:13,color:"rgba(255,255,255,0.72)",fontFamily:"monospace",marginBottom:7}}>{slab.id}</div>
               <div style={{fontSize:30,fontWeight:700,lineHeight:1.08,marginBottom:8}}>{slab.stone}</div>
-              <div style={{fontSize:14,color:"rgba(255,255,255,0.78)",lineHeight:1.5}}>{slab.factory_name}{slab.factory_location ? `, ${slab.factory_location}` : ""}</div>
-              <div className="cert-interactive" style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:16}}>
+              <div style={{fontSize:14,color:"rgba(255,255,255,0.78)",lineHeight:1.55}}>{slab.factory_name}{slab.factory_location ? `, ${slab.factory_location}` : ""}</div>
+              <div className="cert-interactive" style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:16}}>
                 <button onClick={()=>scrollTo("certificate-inquiry")} disabled={!canInquire} style={{padding:"10px 14px",border:"none",borderRadius:10,background:canInquire?C.white:"rgba(255,255,255,0.18)",color:canInquire?C.primary:"rgba(255,255,255,0.62)",fontSize:13,fontWeight:600,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"Interested in this slab":inventory.label}</button>
                 <button onClick={()=>scrollTo("certificate-dispute")} style={{padding:"10px 14px",border:"1px solid rgba(255,255,255,0.28)",borderRadius:10,background:"rgba(255,255,255,0.1)",color:C.white,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Report mismatch</button>
               </div>
             </div>
-            <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:12,padding:14}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8}}>
+            <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:12,padding:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:8}}>
                 <div>
                   <div style={{fontSize:12,color:"rgba(255,255,255,0.68)",textTransform:"uppercase",fontWeight:600}}>Grade</div>
                   <div style={{fontSize:24,fontWeight:700,color:C.white}}>{slab.grade}</div>
@@ -262,8 +262,8 @@ export function SlabCertificate({slabId}) {
                 <div style={{background:g.bg,border:`1px solid ${g.border}`,color:g.color,borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:600}}>{g.label}</div>
               </div>
               <div style={{fontSize:26,fontWeight:700}}>Rs {slab.price_per_sq_ft || 0}<span style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)"}}> / sq ft</span></div>
-              <div style={{display:"inline-flex",marginTop:10,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:600,color:inventory.color}}>{inventory.label}</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
+              <div style={{display:"inline-flex",marginTop:14,background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:600,color:inventory.color}}>{inventory.label}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginTop:16}}>
                 {[["Defects",defects.length||"None"],["Photos",evidenceCount],["Export",slab.export_ready ? "Ready" : "No"]].map(([label,value])=>(
                   <div key={label} style={{background:"rgba(255,255,255,0.11)",border:"1px solid rgba(255,255,255,0.16)",borderRadius:9,padding:"8px 6px",textAlign:"center"}}>
                     <div style={{fontSize:14,fontWeight:700,color:C.white,lineHeight:1.1}}>{value}</div>
@@ -285,45 +285,45 @@ export function SlabCertificate({slabId}) {
               </div>
             </Card>
 
-            <Card className="cert-card" style={{padding:18}}>
+            <Card className="cert-card" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Inspection Summary</div>
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:8,marginBottom:12}}>
-                <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:16}}>
+                <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"13px 14px"}}>
                   <div style={{fontSize:12,fontWeight:600,color:C.green,marginBottom:2}}>Trust Signal</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{slab.export_ready ? "Export ready" : "Factory verified"}</div>
                 </div>
-                <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"13px 14px"}}>
                   <div style={{fontSize:12,fontWeight:600,color:C.primary,marginBottom:2}}>Evidence</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{evidenceCount} photo{evidenceCount===1 ? "" : "s"}</div>
                 </div>
-                <div style={{background:defects.length?C.amberBg:C.greenBg,border:`1px solid ${defects.length?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                <div style={{background:defects.length?C.amberBg:C.greenBg,border:`1px solid ${defects.length?C.amberBorder:C.greenBorder}`,borderRadius:10,padding:"13px 14px"}}>
                   <div style={{fontSize:12,fontWeight:600,color:defects.length?C.amber:C.green,marginBottom:2}}>Defects</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{defects.length ? `${defects.length} recorded` : "None recorded"}</div>
                 </div>
               </div>
               <div style={{fontSize:14,lineHeight:1.7,color:C.textMid}}>{slab.reason || "No grading reason was recorded for this slab."}</div>
-              {slab.notes&&<div style={{marginTop:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,fontSize:13,lineHeight:1.6,color:C.textMid}}>{slab.notes}</div>}
+              {slab.notes&&<div style={{marginTop:16,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,fontSize:13,lineHeight:1.7,color:C.textMid}}>{slab.notes}</div>}
             </Card>
 
-            <Card className="cert-card cert-interactive" style={{padding:18}}>
+            <Card className="cert-card cert-interactive" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Buyer verification checklist</div>
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14}}>
                 {[
                   ["Match slab ID",`Confirm ${slab.id} matches the physical slab or invoice.`],
                   ["Review evidence",`Check ${evidenceCount} photo${evidenceCount===1 ? "" : "s"}, defects, and measurements.`],
                   ["Request quote",canInquire?"Send area and delivery needs from this certificate.":"Ask the factory for alternatives."],
                 ].map(([label,detail])=>(
-                  <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
+                  <div key={label} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
                     <div style={{fontSize:12,fontWeight:600,color:C.primary,marginBottom:4}}>{label}</div>
-                    <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{detail}</div>
+                    <div style={{fontSize:12,lineHeight:1.65,color:C.textMid}}>{detail}</div>
                   </div>
                 ))}
               </div>
             </Card>
 
-            {photos.length>1&&<Card className="cert-card" style={{padding:18}}>
-              <div style={{fontSize:16,fontWeight:700,marginBottom:12}}>Photo Evidence</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+            {photos.length>1&&<Card className="cert-card" style={{padding:20}}>
+              <div style={{fontSize:16,fontWeight:700,marginBottom:16}}>Photo Evidence</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:14}}>
                 {photos.slice(1,7).map((p,idx)=><div key={idx} style={{position:"relative"}}>
                   <img src={p.src} alt="" style={{width:"100%",aspectRatio:"1",objectFit:"cover",borderRadius:10,border:`1px solid ${C.border}`,display:"block"}}/>
                   {p.label&&<div style={{position:"absolute",left:6,bottom:6,right:6,background:"rgba(0,0,0,0.62)",borderRadius:6,padding:"4px 6px",fontSize:12,fontWeight:600,color:"#fff",textAlign:"center"}}>{p.label}</div>}
@@ -333,7 +333,7 @@ export function SlabCertificate({slabId}) {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <Card className="cert-card" style={{padding:18}}>
+            <Card className="cert-card" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Certificate Details</div>
               <Field label="Factory" value={slab.factory_name}/>
               <Field label="Factory contact" value={slab.factory_contact_email}/>
@@ -344,19 +344,19 @@ export function SlabCertificate({slabId}) {
               <Field label="Inventory status" value={inventory.label}/>
             </Card>
 
-            <Card className="cert-card" style={{padding:18,borderColor:C.greenBorder,background:C.greenBg}}>
+            <Card className="cert-card" style={{padding:20,borderColor:C.greenBorder,background:C.greenBg}}>
               <div style={{fontSize:16,fontWeight:700,color:C.green,marginBottom:8}}>How to verify this certificate</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
                 {verificationItems.map(item=>(
-                  <div key={item.label} style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"9px 10px"}}>
+                  <div key={item.label} style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"13px 14px"}}>
                     <div style={{fontSize:12,fontWeight:600,color:C.green,marginBottom:3}}>{item.label}</div>
-                    <div style={{fontSize:12,lineHeight:1.45,color:C.textMid}}>{item.detail}</div>
+                    <div style={{fontSize:12,lineHeight:1.65,color:C.textMid}}>{item.detail}</div>
                   </div>
                 ))}
               </div>
             </Card>
 
-            <Card className="cert-card" style={{padding:18}}>
+            <Card className="cert-card" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Measurements</div>
               <Field label="Thickness" value={measurements.thickness ? `${measurements.thickness} mm` : ""}/>
               <Field label="Size" value={measurements.length && measurements.width ? `${measurements.length} x ${measurements.width} cm` : ""}/>
@@ -369,21 +369,21 @@ export function SlabCertificate({slabId}) {
               </div>}
             </Card>
 
-            <Card className="cert-card" style={{padding:18}}>
+            <Card className="cert-card" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Traceability</div>
-              <div style={{background:readinessScore>=70?C.greenBg:C.amberBg,border:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
+              <div style={{background:readinessScore>=70?C.greenBg:C.amberBg,border:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:"14px 16px",marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:6}}>
                   <span style={{fontSize:12,fontWeight:600,color:readinessScore>=70?C.green:C.amber}}>Evidence readiness</span>
                   <span style={{fontSize:16,fontWeight:700,color:readinessScore>=70?C.green:C.amber}}>{readinessScore}%</span>
                 </div>
-                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>This score reflects recorded traceability, audit proof, and photo evidence for this slab. It is not a third-party certification.</div>
+                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>This score reflects recorded traceability, audit proof, and photo evidence for this slab. It is not a third-party certification.</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                <div style={{background:traceabilityCount?C.primaryBg:C.surface,border:`1px solid ${traceabilityCount?C.primaryBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:8}}>
+                <div style={{background:traceabilityCount?C.primaryBg:C.surface,border:`1px solid ${traceabilityCount?C.primaryBorder:C.border}`,borderRadius:10,padding:"13px 14px"}}>
                   <div style={{fontSize:12,fontWeight:600,color:traceabilityCount?C.primary:C.textDim,marginBottom:2}}>Trace fields</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{traceabilityCount}/7 recorded</div>
                 </div>
-                <div style={{background:auditCount?C.greenBg:C.surface,border:`1px solid ${auditCount?C.greenBorder:C.border}`,borderRadius:10,padding:"9px 10px"}}>
+                <div style={{background:auditCount?C.greenBg:C.surface,border:`1px solid ${auditCount?C.greenBorder:C.border}`,borderRadius:10,padding:"13px 14px"}}>
                   <div style={{fontSize:12,fontWeight:600,color:auditCount?C.green:C.textDim,marginBottom:2}}>Audit fields</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{auditCount}/6 recorded</div>
                 </div>
@@ -397,15 +397,15 @@ export function SlabCertificate({slabId}) {
               <Field label="Customer / order ref" value={traceability.customerRef}/>
             </Card>
 
-            <Card className="cert-card" style={{padding:18}}>
+            <Card className="cert-card" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Audit Readiness</div>
-              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",fontSize:12,lineHeight:1.55,color:C.textMid,marginBottom:10}}>These fields help factories maintain inspection evidence for buyer QC programs, internal reviews, and certification preparation.</div>
-              <div style={{background:readinessScore>=80?C.greenBg:readinessScore>=55?C.amberBg:C.redBg,border:`1px solid ${readinessScore>=80?C.greenBorder:readinessScore>=55?C.amberBorder:C.redBorder}`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:6}}>
+              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",fontSize:12,lineHeight:1.65,color:C.textMid,marginBottom:14}}>These fields help factories maintain inspection evidence for buyer QC programs, internal reviews, and certification preparation.</div>
+              <div style={{background:readinessScore>=80?C.greenBg:readinessScore>=55?C.amberBg:C.redBg,border:`1px solid ${readinessScore>=80?C.greenBorder:readinessScore>=55?C.amberBorder:C.redBorder}`,borderRadius:10,padding:"14px 16px",marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:6}}>
                   <span style={{fontSize:12,fontWeight:600,color:readinessScore>=80?C.green:readinessScore>=55?C.amber:C.red}}>{auditReadinessLabel} evidence file</span>
                   <button onClick={copyAuditNote} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 9px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{auditNoteCopied?"Copied":"Copy note"}</button>
                 </div>
-                <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>{auditGaps.length?auditGaps.join("; "):"No evidence gaps are flagged from the current certificate data."}</div>
+                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>{auditGaps.length?auditGaps.join("; "):"No evidence gaps are flagged from the current certificate data."}</div>
               </div>
               <Field label="Calibration" value={audit.calibrationChecked ? "Checked" : ""}/>
               <Field label="Inspection checklist" value={audit.checklistComplete ? "Complete" : ""}/>
@@ -415,69 +415,69 @@ export function SlabCertificate({slabId}) {
               <Field label="Action due" value={audit.actionDue}/>
             </Card>
 
-            <Card className="cert-card" style={{padding:18}}>
-              <div style={{fontSize:16,fontWeight:700,marginBottom:10}}>Defects</div>
+            <Card className="cert-card" style={{padding:20}}>
+              <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>Defects</div>
               {defects.length===0?<div style={{fontSize:13,color:C.green,fontWeight:600}}>No defects recorded</div>:
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                 {defects.map(d=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:999,padding:"5px 10px",fontSize:12,fontWeight:600,color:C.amber,textTransform:"capitalize"}}>{d}</span>)}
               </div>}
             </Card>
 
-            <Card id="certificate-inquiry" className="cert-card cert-interactive" style={{padding:18}}>
+            <Card id="certificate-inquiry" className="cert-card cert-interactive" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Interested in this slab?</div>
-              {!canInquire?<div style={{background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:10,padding:14}}>
+              {!canInquire?<div style={{background:inventory.bg,border:`1px solid ${inventory.border}`,borderRadius:10,padding:20}}>
                 <div style={{fontSize:14,fontWeight:700,color:inventory.color,marginBottom:4}}>{inventory.label}</div>
-                <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>This slab is not currently marked available. Contact the factory for alternatives.</div>
-              </div>:inqSent?<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:14}}>
+                <div style={{fontSize:13,color:C.textMid,lineHeight:1.7}}>This slab is not currently marked available. Contact the factory for alternatives.</div>
+              </div>:inqSent?<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:20}}>
                 <div style={{fontSize:14,fontWeight:700,color:C.green,marginBottom:4}}>Inquiry sent</div>
-                <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>The factory has received your interest in slab {slab.id}.</div>
-              </div>:<div style={{display:"flex",flexDirection:"column",gap:10}}>
-                <input value={inq.name} onChange={e=>setInq(p=>({...p,name:e.target.value}))} placeholder="Your name" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
-                <input value={inq.company} onChange={e=>setInq(p=>({...p,company:e.target.value}))} placeholder="Company (optional)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
-                  <input value={inq.email} onChange={e=>setInq(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
-                  <input value={inq.phone} onChange={e=>setInq(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                <div style={{fontSize:13,color:C.textMid,lineHeight:1.7}}>The factory has received your interest in slab {slab.id}.</div>
+              </div>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
+                <input value={inq.name} onChange={e=>setInq(p=>({...p,name:e.target.value}))} placeholder="Your name" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <input value={inq.company} onChange={e=>setInq(p=>({...p,company:e.target.value}))} placeholder="Company (optional)" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14}}>
+                  <input value={inq.email} onChange={e=>setInq(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                  <input value={inq.phone} onChange={e=>setInq(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
                 </div>
-                <input value={inq.areaSqFt} onChange={e=>setInq(p=>({...p,areaSqFt:e.target.value.replace(/[^\d.]/g,"")}))} placeholder="Area required in sq ft (optional)" inputMode="decimal" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
-                {quoteEstimate>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12}}>
+                <input value={inq.areaSqFt} onChange={e=>setInq(p=>({...p,areaSqFt:e.target.value.replace(/[^\d.]/g,"")}))} placeholder="Area required in sq ft (optional)" inputMode="decimal" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                {quoteEstimate>0&&<div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:"14px 16px",display:"flex",justifyContent:"space-between",gap:14}}>
                   <span style={{fontSize:12,fontWeight:600,color:C.green}}>Estimated value</span>
                   <span style={{fontSize:14,fontWeight:700,color:C.green}}>Rs {quoteEstimate}</span>
                 </div>}
-                <textarea value={inq.message} onChange={e=>setInq(p=>({...p,message:e.target.value}))} rows={3} placeholder="Message (quantity, timeline, destination...)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
+                <textarea value={inq.message} onChange={e=>setInq(p=>({...p,message:e.target.value}))} rows={3} placeholder="Message (quantity, timeline, destination...)" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
                 {inqError&&<div style={{fontSize:12,color:C.red,fontWeight:600}}>{inqError}</div>}
                 <Btn full disabled={!inquiryReady||inqBusy} onClick={submitInquiry}>{inqBusy?"Sending...":"Send Inquiry"}</Btn>
-                <div style={{fontSize:12,color:C.textDim,lineHeight:1.5}}>Name and either email or phone are required.</div>
+                <div style={{fontSize:12,color:C.textDim,lineHeight:1.55}}>Name and either email or phone are required.</div>
               </div>}
             </Card>
 
-            <Card id="certificate-dispute" className="cert-card cert-interactive" style={{padding:18}}>
+            <Card id="certificate-dispute" className="cert-card cert-interactive" style={{padding:20}}>
               <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>Report an issue</div>
-              {disputeSent?<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:14}}>
+              {disputeSent?<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:20}}>
                 <div style={{fontSize:14,fontWeight:700,color:C.amber,marginBottom:4}}>Issue reported</div>
-                <div style={{fontSize:13,color:C.textMid,lineHeight:1.6}}>The factory can now review your concern for slab {slab.id}.</div>
-              </div>:<div style={{display:"flex",flexDirection:"column",gap:10}}>
-                <div style={{fontSize:12,color:C.textMid,lineHeight:1.5}}>Use this if the delivered slab does not match the certificate.</div>
-                <input value={dispute.name} onChange={e=>setDispute(p=>({...p,name:e.target.value}))} placeholder="Your name" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
-                <input value={dispute.company} onChange={e=>setDispute(p=>({...p,company:e.target.value}))} placeholder="Company (optional)" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
-                  <input value={dispute.email} onChange={e=>setDispute(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
-                  <input value={dispute.phone} onChange={e=>setDispute(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                <div style={{fontSize:13,color:C.textMid,lineHeight:1.7}}>The factory can now review your concern for slab {slab.id}.</div>
+              </div>:<div style={{display:"flex",flexDirection:"column",gap:14}}>
+                <div style={{fontSize:12,color:C.textMid,lineHeight:1.55}}>Use this if the delivered slab does not match the certificate.</div>
+                <input value={dispute.name} onChange={e=>setDispute(p=>({...p,name:e.target.value}))} placeholder="Your name" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <input value={dispute.company} onChange={e=>setDispute(p=>({...p,company:e.target.value}))} placeholder="Company (optional)" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif"}}/>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14}}>
+                  <input value={dispute.email} onChange={e=>setDispute(p=>({...p,email:e.target.value}))} placeholder="Email" type="email" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
+                  <input value={dispute.phone} onChange={e=>setDispute(p=>({...p,phone:e.target.value}))} placeholder="Phone" style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",minWidth:0}}/>
                 </div>
-                <select value={dispute.category} onChange={e=>setDispute(p=>({...p,category:e.target.value}))} style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",background:C.white}}>
+                <select value={dispute.category} onChange={e=>setDispute(p=>({...p,category:e.target.value}))} style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",background:C.white}}>
                   <option value="wrong_grade">Wrong grade</option>
                   <option value="defect_missed">Defect missed</option>
                   <option value="measurement">Measurement issue</option>
                   <option value="other">Other</option>
                 </select>
-                <textarea value={dispute.details} onChange={e=>setDispute(p=>({...p,details:e.target.value}))} rows={3} placeholder="Describe what does not match..." style={{padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
+                <textarea value={dispute.details} onChange={e=>setDispute(p=>({...p,details:e.target.value}))} rows={3} placeholder="Describe what does not match..." style={{padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:9,fontSize:13,fontFamily:"sans-serif",resize:"none"}}/>
                 {disputeError&&<div style={{fontSize:12,color:C.red,fontWeight:600}}>{disputeError}</div>}
                 <Btn full variant="secondary" disabled={!disputeReady||disputeBusy} onClick={submitDispute}>{disputeBusy?"Sending...":"Report Issue"}</Btn>
-                <div style={{fontSize:12,color:C.textDim,lineHeight:1.5}}>Name, contact, and issue details are required.</div>
+                <div style={{fontSize:12,color:C.textDim,lineHeight:1.55}}>Name, contact, and issue details are required.</div>
               </div>}
             </Card>
           </div>
         </div>
-        <div className="cert-print-footer" style={{display:"none",marginTop:14,paddingTop:10,borderTop:`1px solid ${C.border}`,fontSize:12,color:C.textDim,lineHeight:1.5}}>
+        <div className="cert-print-footer" style={{display:"none",marginTop:14,paddingTop:10,borderTop:`1px solid ${C.border}`,fontSize:12,color:C.textDim,lineHeight:1.55}}>
           Verified by Epistable AI · Certificate ID {slab.id} · Generated from {certificateUrl}
         </div>
       </main>
