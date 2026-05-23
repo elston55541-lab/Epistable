@@ -790,7 +790,7 @@ function Login({onOwner,onFactory,onBuyer}) {
     borderRadius:6,color:C.text,fontSize:isDesktop?16:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,
     boxShadow:focus===name?"0 0 0 3px rgba(0, 87, 168, 0.12)":"none"
   });
-  const LoginFields=()=>(
+  const loginFields=(
     <>
       <div style={{display:"flex",flexDirection:"column",gap:15,marginBottom:20}}>
         <div>
@@ -830,7 +830,7 @@ function Login({onOwner,onFactory,onBuyer}) {
         <div style={{width:"100%",maxWidth:460}}>
           <div style={{marginBottom:30,textAlign:"center"}}><div style={{fontSize:30,fontWeight:600,color:C.text,marginBottom:8}}>Welcome back</div><div style={{fontSize:15,color:C.textDim}}>Sign in with your assigned credentials</div></div>
           {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"11px 14px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
-          <LoginFields/>
+          {loginFields}
           <div style={{marginTop:16,textAlign:"center",fontSize:12,color:C.textDim}}>Contact your administrator for credentials</div>
         </div>
       </div>
@@ -856,7 +856,7 @@ function Login({onOwner,onFactory,onBuyer}) {
         </div>
         <div style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 8px 24px rgba(26,37,51,0.08)",padding:22,boxSizing:"border-box"}}>
           {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"11px 12px",fontSize:13,color:C.red,marginBottom:16,fontWeight:500}}>{err}</div>}
-          <LoginFields/>
+          {loginFields}
         </div>
 
         <div style={{width:"100%",marginTop:18,textAlign:"center"}}>
