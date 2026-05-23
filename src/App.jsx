@@ -2,10 +2,13 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./lib/supabase";
 import { acceptInviteWithPassword, friendlyAuthError, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
-import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl } from "./lib/domain";
+import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill, gradeConf, slabQrUrl, fmtMoney } from "./lib/domain";
 import { useBP } from "./hooks/useBP";
 import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loader, Modal, PBar, Sel, StatPill, T } from "./components/ui";
 import { SlabCertificate } from "./components/SlabCertificate";
+import { Icon } from "./components/Icon";
+import { Pill } from "./components/Pill";
+import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
 
 // ── DB (Supabase) ──
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
@@ -63,6 +66,60 @@ const TEXT = {
   tinyMeta: {fontSize:11,lineHeight:1.35,color:C.textDim,letterSpacing:0},
   emptyTitle: {fontSize:15,lineHeight:1.35,fontWeight:800,letterSpacing:0},
 };
+
+function AdvancedDisclosure({children}) {
+  const [open,setOpen]=useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={()=>setOpen(o=>!o)}
+        style={{background:"transparent",border:"none",color:C.textMid,fontSize:TYPE.label.size,fontWeight:WEIGHT.medium,cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:SPACE.xs,fontFamily:FONT_STACK}}
+      >
+        <Icon name={open?"remove":"add"} size={12}/>
+        {open?"Hide advanced":"Show advanced"}
+      </button>
+      {open&&<div style={{marginTop:SPACE.md}}>{children}</div>}
+    </>
+  );
+}
+
+const CHROME_ICON = {
+  "\u{1F3ED}": "factory",
+  "\u{1F464}": "user",
+  "\u{1F465}": "users",
+  "\u{1F4B3}": "billing",
+  "\u{1F50D}": "search",
+  "\u{1F6A8}": "alert",
+  "\u{23F8}": "pause",
+  "\u{25B6}": "play",
+  "\u{1F916}": "bot",
+  "\u{1FAA8}": "package",
+  "\u{1F4E6}": "package",
+  "\u{1F4C5}": "date",
+  "\u{1F4C6}": "date",
+  "\u{1F3C6}": "verified",
+  "\u{1F514}": "bell",
+  "\u{1F4E9}": "mail",
+  "\u{1F4DE}": "phone",
+  "\u{1F91D}": "users",
+  "\u{1F6E1}\uFE0F": "verified",
+  "\u{1F532}": "qr",
+  "\u{1F4A1}": "alert",
+  "\u{1F4F8}": "camera",
+  "\u{26A0}\uFE0F": "alert",
+  "\u{1F30D}": "location",
+  "\u20B9": "currency",
+  Quote: "message",
+  Sold: "check",
+  Now: "alert",
+};
+
+function ChromeIcon({icon,size=18,color="currentColor",style}) {
+  const name=CHROME_ICON[icon]||icon;
+  if(typeof name==="string")return <Icon name={name} size={size} color={color} style={style}/>;
+  return name||null;
+}
 
 function GuidanceCard({title,subtitle,items=[],actionLabel,onAction,style={}}) {
   return (
@@ -126,7 +183,7 @@ function SetupChecklist({title,subtitle,items=[],style={}}) {
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {items.map(item=>(
-          <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:10,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"10px 11px",cursor:item.onClick?"pointer":"default",fontFamily:"sans-serif",textAlign:"left"}}>
+          <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:10,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"10px 11px",cursor:item.onClick?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left"}}>
             <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:900,flexShrink:0}}>{item.done?"✓":"•"}</span>
             <span style={{flex:1,minWidth:0}}>
               <span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{item.label}</span>
@@ -508,6 +565,12 @@ function ActivityList({items=[],compact=false}) {
     profile_suspended:"suspended access",
     profile_restored:"restored access"
   };
+  const activityIcon={
+    profile_created:"add",
+    profile_updated:"refresh",
+    profile_suspended:"pause",
+    profile_restored:"play"
+  };
   async function copyActivitySummary(){
     const visible=items.slice(0,compact?5:8);
     const text=[
@@ -533,7 +596,7 @@ function ActivityList({items=[],compact=false}) {
       {items.length===0?<div style={{padding:"24px 16px",textAlign:"center",fontSize:13,color:C.textDim}}>No activity yet</div>:
       items.slice(0,compact?5:8).map((a,i)=>(
         <div key={a.id} style={{display:"flex",gap:10,padding:"12px 16px",borderBottom:i<Math.min(items.length,compact?5:8)-1?`1px solid ${C.border}`:"none"}}>
-          <div style={{width:32,height:32,borderRadius:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>↻</div>
+          <div style={{width:32,height:32,borderRadius:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}><Icon name={activityIcon[a.action]||"refresh"} size={15} color={C.primary}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:800,color:C.text}}>{a.actor_name||"Someone"} {labels[a.action]||a.action} for {a.target_name}</div>
             <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{a.factory_name||"Platform"} · {fmtD(a.ts)} · {fmtT(a.ts)}</div>
@@ -551,8 +614,8 @@ const INV_STATUS = {
 };
 const invConf=status=>INV_STATUS[status]||INV_STATUS.available;
 function InventoryPill({status}) {
-  const s=invConf(status);
-  return <span style={{background:s.bg,border:`1px solid ${s.border}`,color:s.color,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:900,whiteSpace:"nowrap"}}>{s.label}</span>;
+  const tone={available:"success",reserved:"warning",sold:"danger"}[status]||"neutral";
+  return <Pill tone={tone} size="sm">{invConf(status).label}</Pill>;
 }
 
 function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}) {
@@ -570,9 +633,9 @@ function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}
       <nav style={{padding:"10px 8px",flex:1,overflowY:"auto"}}>
         {navItems.map(n=>{
           const active=page===n.id;
-          return <button key={n.id} onClick={()=>{onNav(n.id);setDrawer(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px",background:active?C.primaryBg:"transparent",border:`1px solid ${active?C.primaryBorder:"transparent"}`,borderRadius:8,color:active?C.primary:C.textMid,fontSize:14,cursor:"pointer",marginBottom:2,textAlign:"left",fontWeight:active?700:400,fontFamily:"sans-serif",WebkitTapHighlightColor:"transparent"}}>
-            <span style={{fontSize:18,flexShrink:0,opacity:active?1:0.55}}>{n.icon}</span>{n.label}
-            {n.badge&&<span style={{marginLeft:"auto",background:C.red,color:C.white,borderRadius:20,padding:"1px 7px",fontSize:11,fontWeight:700}}>{n.badge}</span>}
+          return <button key={n.id} onClick={()=>{onNav(n.id);setDrawer(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px",background:active?C.primaryBg:"transparent",border:`1px solid ${active?C.primaryBorder:"transparent"}`,borderRadius:8,color:active?C.primary:C.textMid,fontSize:14,cursor:"pointer",marginBottom:2,textAlign:"left",fontWeight:active?700:400,fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent"}}>
+            <span style={{display:"flex",alignItems:"center",flexShrink:0,opacity:active?1:0.55}}><ChromeIcon icon={n.icon} size={18}/></span>{n.label}
+            {n.badge&&<Pill tone="danger" size="sm" style={{marginLeft:"auto"}}>{n.badge}</Pill>}
           </button>;
         })}
       </nav>
@@ -586,7 +649,7 @@ function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}
     </div>
   );
   if(!isDesktop) return (
-    <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",flexDirection:"column"}}>
+    <div style={{background:C.bg,minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"flex",flexDirection:"column"}}>
       <div style={{background:C.white,borderBottom:`1px solid ${C.border}`,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",position:"sticky",top:0,zIndex:100,flexShrink:0}}>
         <button onClick={()=>setDrawer(true)} style={{background:"none",border:"none",cursor:"pointer",padding:8,display:"flex",flexDirection:"column",gap:5,WebkitTapHighlightColor:"transparent"}}>
           <div style={{width:22,height:2,background:C.text,borderRadius:2}}/><div style={{width:16,height:2,background:C.text,borderRadius:2}}/><div style={{width:22,height:2,background:C.text,borderRadius:2}}/>
@@ -600,20 +663,20 @@ function Shell({brandSub,navItems,page,onNav,onLogout,userName,userSub,children}
         {navItems.slice(0,5).map(n=>{
           const active=page===n.id;
           return <button key={n.id} onClick={()=>onNav(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 4px",background:"none",border:"none",cursor:"pointer",borderTop:`2px solid ${active?C.primary:"transparent"}`,WebkitTapHighlightColor:"transparent",position:"relative"}}>
-            <span style={{fontSize:20,marginBottom:2,opacity:active?1:0.4}}>{n.icon}</span>
+            <span style={{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:2,opacity:active?1:0.4}}><ChromeIcon icon={n.icon} size={20}/></span>
             <span style={{fontSize:10,fontWeight:active?700:400,color:active?C.primary:C.textDim}}>{n.label}</span>
-            {n.badge&&<span style={{position:"absolute",top:4,right:"calc(50% - 16px)",background:C.red,color:C.white,borderRadius:10,padding:"0 4px",fontSize:9,fontWeight:700}}>{n.badge}</span>}
+            {n.badge&&<Pill tone="danger" size="sm" style={{position:"absolute",top:4,right:"calc(50% - 16px)",padding:"0 4px",fontSize:9}}>{n.badge}</Pill>}
           </button>;
         })}
       </div>
     </div>
   );
   return (
-    <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",fontSize:14}}>
+    <div style={{background:C.bg,minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"flex",fontSize:14}}>
       <div style={{width:220,background:C.white,borderRight:`1px solid ${C.border}`,flexShrink:0,display:"flex",flexDirection:"column",minHeight:"100vh"}}>{Sidebar}</div>
       <div style={{flex:1,display:"flex",flexDirection:"column",maxHeight:"100vh",overflow:"hidden"}}>
         <div style={{background:C.white,borderBottom:`1px solid ${C.border}`,height:50,display:"flex",alignItems:"center",padding:"0 24px",flexShrink:0}}>
-          <span style={{fontSize:14,fontWeight:600,color:C.text}}>{navItems.find(n=>n.id===page)?.icon} {navItems.find(n=>n.id===page)?.label}</span>
+          <span style={{fontSize:14,fontWeight:600,color:C.text,display:"flex",alignItems:"center",gap:6}}><ChromeIcon icon={navItems.find(n=>n.id===page)?.icon} size={16}/> {navItems.find(n=>n.id===page)?.label}</span>
         </div>
         <div style={{flex:1,overflowY:"auto",padding:24}}>{children}</div>
       </div>
@@ -636,14 +699,14 @@ function ChatBot({role,ctxData}) {
       const mon=curMon();
       const tb=facs.reduce((s,f)=>{const sc=f.current_month===mon?f.current_month_scans||0:0;return s+calcBill(f.plan||"Starter",sc).total;},0);
       const totalScans=facs.reduce((s,f)=>s+(f.scans_total||0),0)||insps.length;
-      return `You are Epistable's owner assistant.\nPlatform: ${facs.length} factories, ${users.length} users, ${totalScans} inspections, ₹${tb} billed.\nAnswer concisely. Hindi if asked.`;
+      return `You are Epistable's owner assistant.\nPlatform: ${facs.length} factories, ${users.length} users, ${totalScans} inspections, ${fmtMoney(tb)} billed.\nAnswer concisely. Hindi if asked.`;
     }
     const {fac,insps,user}=ctxData;
     const mon=curMon();
     const sc=fac?.current_month===mon?fac?.current_month_scans||0:0;
     const b=fac?calcBill(fac.plan||"Starter",sc):{total:0,includedScans:100};
     const byG=g=>insps.filter(i=>i.grade===g).length;
-    return `You are Epistable's assistant for ${user.name} at ${user.factory_name}.\nFactory: ${fac?.name}, Plan=${fac?.plan||"Starter"}\nBilling: ${sc}/${b.includedScans} scans, ₹${b.total} due\nInspections: Total=${insps.length}, Premium=${byG("Premium")}, Standard=${byG("Standard")}, Commercial=${byG("Commercial")}, Rejected=${byG("Rejected")}\nAnswer concisely. Hindi if asked.`;
+    return `You are Epistable's assistant for ${user.name} at ${user.factory_name}.\nFactory: ${fac?.name}, Plan=${fac?.plan||"Starter"}\nBilling: ${sc}/${b.includedScans} scans, ${fmtMoney(b.total)} due\nInspections: Total=${insps.length}, Premium=${byG("Premium")}, Standard=${byG("Standard")}, Commercial=${byG("Commercial")}, Rejected=${byG("Rejected")}\nAnswer concisely. Hindi if asked.`;
   }
 
   async function send() {
@@ -664,13 +727,13 @@ function ChatBot({role,ctxData}) {
   const sugg=role==="owner"?["Which factory has most rejections?","Any new buyer inquiries?","Open disputes?"]:["How many slabs today?","Any new inquiries?","Top supplier this month?"];
   return (
     <>
-      <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:isMobile?80:24,right:20,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${C.primary},${C.teal})`,border:"none",boxShadow:"0 4px 20px rgba(0,87,168,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,zIndex:150,WebkitTapHighlightColor:"transparent"}}>🤖</button>
+      <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:isMobile?80:24,right:20,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${C.primary},${C.teal})`,border:"none",boxShadow:"0 4px 20px rgba(0,87,168,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,zIndex:150,WebkitTapHighlightColor:"transparent"}}><Icon name="bot" size={24} color={C.white}/></button>
       {open&&(
         <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:isMobile?"center":"flex-end",padding:isMobile?0:"0 20px 20px",background:isMobile?"rgba(0,0,0,0.4)":"transparent"}} onClick={isMobile?()=>setOpen(false):undefined}>
           <div style={{width:isMobile?"100%":380,height:isMobile?"85vh":520,background:C.white,borderRadius:isMobile?"20px 20px 0 0":"16px",boxShadow:"0 8px 40px rgba(0,0,0,0.2)",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
             <div style={{background:`linear-gradient(135deg,${C.primary},${C.teal})`,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🤖</div>
+                <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}><Icon name="bot" size={18} color={C.white}/></div>
                 <div><div style={{fontSize:15,fontWeight:700,color:C.white}}>Epistable Assistant</div><div style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>Ask anything</div></div>
               </div>
               <button onClick={()=>setOpen(false)} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:"50%",color:C.white,width:30,height:30,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent"}}>×</button>
@@ -684,9 +747,9 @@ function ChatBot({role,ctxData}) {
               {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 16px",borderRadius:"14px 14px 14px 4px",background:C.surface,border:`1px solid ${C.border}`,display:"flex",gap:4,alignItems:"center"}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.textDim,animation:`pulse 1s ease-in-out ${i*0.2}s infinite`}}/>)}</div></div>}
               <div ref={bottomRef}/>
             </div>
-            {msgs.length<=1&&<div style={{padding:"0 16px 10px",display:"flex",gap:6,overflowX:"auto",flexShrink:0}}>{sugg.map(s=><button key={s} onClick={()=>setInput(s)} style={{padding:"6px 12px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:20,color:C.primary,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"sans-serif",WebkitTapHighlightColor:"transparent",flexShrink:0}}>{s}</button>)}</div>}
+            {msgs.length<=1&&<div style={{padding:"0 16px 10px",display:"flex",gap:6,overflowX:"auto",flexShrink:0}}>{sugg.map(s=><button key={s} onClick={()=>setInput(s)} style={{padding:"6px 12px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:20,color:C.primary,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent",flexShrink:0}}>{s}</button>)}</div>}
             <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:10,flexShrink:0}}>
-              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask anything…" style={{flex:1,padding:"10px 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:24,color:C.text,fontSize:14,outline:"none",fontFamily:"sans-serif"}}/>
+              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask anything…" style={{flex:1,padding:"10px 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:24,color:C.text,fontSize:14,outline:"none",fontFamily:FONT_STACK}}/>
               <button onClick={send} disabled={!input.trim()||loading} style={{width:42,height:42,borderRadius:"50%",background:input.trim()&&!loading?C.primary:C.border,border:"none",cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,WebkitTapHighlightColor:"transparent"}}>➤</button>
             </div>
           </div>
@@ -723,7 +786,7 @@ function Login({onOwner,onFactory,onBuyer}) {
 
   const fieldStyle={
     width:"100%",padding:isDesktop?"15px 16px":"13px 14px",background:C.white,border:`1px solid ${C.border}`,
-    borderRadius:6,color:C.text,fontSize:isDesktop?16:15,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif"
+    borderRadius:6,color:C.text,fontSize:isDesktop?16:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK
   };
   const LoginFields=()=>(
     <>
@@ -735,7 +798,7 @@ function Login({onOwner,onFactory,onBuyer}) {
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
             <label style={{fontSize:13,fontWeight:600,color:C.text}}>Password</label>
-            <button type="button" onClick={()=>setShowP(p=>!p)} style={{background:"none",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>{showP?"Hide":"Show"}</button>
+            <button type="button" onClick={()=>setShowP(p=>!p)} style={{background:"none",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{showP?"Hide":"Show"}</button>
           </div>
           <input type={showP?"text":"password"} value={pass} onChange={e=>{setPass(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="current-password" placeholder="Enter password" style={fieldStyle}/>
         </div>
@@ -744,7 +807,7 @@ function Login({onOwner,onFactory,onBuyer}) {
     </>
   );
   if(isDesktop)return (
-    <div style={{minHeight:"100vh",background:C.bg,display:"grid",gridTemplateColumns:"minmax(360px,40%) minmax(0,1fr)",fontFamily:"'Segoe UI',sans-serif"}}>
+    <div style={{minHeight:"100vh",background:C.bg,display:"grid",gridTemplateColumns:"minmax(360px,40%) minmax(0,1fr)",fontFamily:FONT_STACK}}>
       <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 56px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",minHeight:"100vh",boxSizing:"border-box",textAlign:"center"}}>
         <div style={{marginBottom:58,width:"100%",maxWidth:360}}>
           <div style={{fontSize:34,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
@@ -772,7 +835,7 @@ function Login({onOwner,onFactory,onBuyer}) {
     </div>
   );
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",flexDirection:"column",boxSizing:"border-box"}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text,display:"flex",flexDirection:"column",boxSizing:"border-box"}}>
       <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 62%,#001f3d)`,padding:"58px 24px 40px",color:C.white}}>
         <div style={{maxWidth:390,margin:"0 auto",textAlign:"center"}}>
           <div style={{fontSize:26,fontWeight:800,lineHeight:1.15,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
@@ -829,7 +892,7 @@ function InviteAccept({onAccepted}) {
     }
   }
   return (
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif",padding:24}}>
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT_STACK,padding:24}}>
       <Card style={{width:"100%",maxWidth:430,padding:22}}>
         <div style={{fontSize:22,fontWeight:900,color:C.text,marginBottom:6}}>Accept Epistable Invite</div>
         <div style={{fontSize:13,color:C.textDim,marginBottom:18}}>Use the same email your admin invited. If an email confirmation link fails, come back to this page and use the same email here.</div>
@@ -878,11 +941,11 @@ function Owner({onLogout}) {
 
   const nav=[
     {id:"overview",label:"Overview",icon:"⊞"},
-    {id:"billing",label:"Billing",icon:"💳",badge:overdue||undefined},
-    {id:"factories",label:"Factories",icon:"🏭"},
-    {id:"users",label:"Users",icon:"👤"},
-    {id:"disputes",label:"Disputes",icon:"⚠️"},
-    {id:"inquiries",label:"Inquiries",icon:"📩"},
+    {id:"billing",label:"Billing",icon:"billing",badge:overdue||undefined},
+    {id:"factories",label:"Factories",icon:"factory"},
+    {id:"users",label:"Users",icon:"user"},
+    {id:"disputes",label:"Disputes",icon:"alert"},
+    {id:"inquiries",label:"Inquiries",icon:"mail"},
     {id:"settings",label:"Settings",icon:"⚙"},
   ];
   const pages={
@@ -954,12 +1017,12 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
         <div style={{...TEXT.heroTitle,marginBottom:4}}>Owner Console</div>
         <div style={{fontSize:13,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:14}}>Full platform visibility</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-          {[["₹"+totalBill,"Billed This Month"],[totalScans,"Total Scans"],[facs.filter(f=>f.status==="active").length,"Active Factories"],[overdue,"Overdue"]].map(([v,l])=>(
+          {[[fmtMoney(totalBill),"Billed This Month"],[totalScans,"Total Scans"],[facs.filter(f=>f.status==="active").length,"Active Factories"],[overdue,"Overdue"]].map(([v,l])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"12px"}}><div style={{fontSize:20,fontWeight:800}}>{v}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.7)"}}>{l}</div></div>
           ))}
         </div>
       </div>
-      <KpiGrid items={[{label:"Billed This Month",value:"₹"+totalBill,icon:"💳",color:C.green},{label:"Scans This Month",value:ms,icon:"🔍",color:C.primary},{label:"Factories",value:facs.length,icon:"🏭",color:C.teal},{label:"Users",value:users.length,icon:"👤",color:C.text}]}/>
+      <KpiGrid items={[{label:"Billed This Month",value:fmtMoney(totalBill),icon:"billing",color:C.green},{label:"Scans This Month",value:ms,icon:"search",color:C.primary},{label:"Factories",value:facs.length,icon:"factory",color:C.teal},{label:"Users",value:users.length,icon:"user",color:C.text}]}/>
       <Card style={{padding:14,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
           <div>
@@ -988,7 +1051,7 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
         </div>
         {needsReadiness.length>0&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {needsReadiness.slice(0,3).map(r=>(
-            <button key={r.fac.id} onClick={()=>pickFac(r.fac)} style={{display:"flex",alignItems:"center",gap:10,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+            <button key={r.fac.id} onClick={()=>pickFac(r.fac)} style={{display:"flex",alignItems:"center",gap:10,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{fontSize:13,fontWeight:900,color:r.score<50?C.red:C.amber,width:42}}>{r.score}%</span>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{r.fac.name}</span><span style={{display:"block",fontSize:11,color:C.textDim}}>Trace {r.tracePct}% - audit {r.audit}% - CAPA {r.capa}</span></span>
               <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Open</span>
@@ -1004,8 +1067,8 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
         {facs.length===0?<div style={{padding:32,textAlign:"center",color:C.textDim}}>No factories yet</div>:facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);
           return <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}} onClick={()=>pickFac(f)}>
-            <div style={{width:38,height:38,borderRadius:10,background:C.primaryBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🏭</div>
-            <div style={{flex:1,minWidth:0}}><div style={{...TEXT.itemTitle,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={TEXT.tinyMeta}>{sc} scans · ₹{b.total} due</div></div>
+            <div style={{width:38,height:38,borderRadius:10,background:C.primaryBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}><Icon name="factory" size={18} color={C.primary}/></div>
+            <div style={{flex:1,minWidth:0}}><div style={{...TEXT.itemTitle,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={TEXT.tinyMeta}>{sc} scans · {fmtMoney(b.total)} due</div></div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
               <StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/>
             </div>
@@ -1025,7 +1088,7 @@ function OwnerBilling({facs,onRefresh}) {
   async function resumeF(f){await DB.updFac(f.id,{status:"active",billing_status:"paid"});onRefresh();}
   return (
     <div>
-      <KpiGrid items={[{label:"Total Due",value:"₹"+totalDue,icon:"💳",color:C.green},{label:"Overdue",value:facs.filter(f=>f.billing_status==="overdue").length,icon:"🚨",color:C.red},{label:"Active",value:facs.filter(f=>f.status==="active").length,icon:"🏭",color:C.teal},{label:"Paused",value:facs.filter(f=>f.status==="paused").length,icon:"⏸",color:C.amber}]}/>
+      <KpiGrid items={[{label:"Total Due",value:fmtMoney(totalDue),icon:"billing",color:C.green},{label:"Overdue",value:facs.filter(f=>f.billing_status==="overdue").length,icon:"alert",color:C.red},{label:"Active",value:facs.filter(f=>f.status==="active").length,icon:"factory",color:C.teal},{label:"Paused",value:facs.filter(f=>f.status==="paused").length,icon:"pause",color:C.amber}]}/>
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Invoices — {mon}</div>
         {facs.map((f,i)=>{
@@ -1033,13 +1096,13 @@ function OwnerBilling({facs,onRefresh}) {
           return <div key={f.id} style={{padding:16,borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",background:paused?C.redBg:C.white}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
               <div><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.plan||"Starter"}{paused&&<span style={{color:C.red,fontWeight:800}}> · 🚫 PAUSED</span>}</div></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:800,color:C.green}}>₹{b.total}</div><BillPill status={f.billing_status||"pending"}/></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:800,color:C.green}}>{fmtMoney(b.total)}</div><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <PBar value={sc/b.includedScans*100} color={sc>b.includedScans?C.red:C.primary}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <Btn variant="ghost" size="sm" style={{flex:1}} onClick={()=>markPaid(f)}>✓ Mark Paid</Btn>
-              {!paused?<Btn variant="secondary" size="sm" style={{flex:1,color:C.red,borderColor:C.redBorder}} onClick={()=>pauseF(f)}>⏸ Pause</Btn>
-              :<Btn variant="secondary" size="sm" style={{flex:1,color:C.green,borderColor:C.greenBorder}} onClick={()=>resumeF(f)}>▶ Resume</Btn>}
+              {!paused?<Btn variant="secondary" size="sm" style={{flex:1,color:C.red,borderColor:C.redBorder}} onClick={()=>pauseF(f)}><Icon name="pause" size={14}/> Pause</Btn>
+              :<Btn variant="secondary" size="sm" style={{flex:1,color:C.green,borderColor:C.greenBorder}} onClick={()=>resumeF(f)}><Icon name="play" size={14}/> Resume</Btn>}
             </div>
           </div>;
         })}
@@ -1065,7 +1128,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
           <Inp label="Factory Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Kishangarh Marble Works"/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Inp label="Location" value={form.location} onChange={v=>setForm(p=>({...p,location:v}))} placeholder="Rajasthan"/>
-            <Sel label="Plan" value={form.plan} onChange={v=>setForm(p=>({...p,plan:v}))} options={Object.keys(PLANS)} hint={`₹${PLANS[form.plan].monthlyFee}/mo`}/>
+            <Sel label="Plan" value={form.plan} onChange={v=>setForm(p=>({...p,plan:v}))} options={Object.keys(PLANS)} hint={`${fmtMoney(PLANS[form.plan].monthlyFee)}/mo`}/>
           </div>
           <Inp label="Contact Email" value={form.contact_email} onChange={v=>setForm(p=>({...p,contact_email:v}))} required type="email"/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setShow(false)}>Cancel</Btn><Btn onClick={create} disabled={!form.name||!form.contact_email}>Create</Btn></div>
@@ -1075,7 +1138,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
         <div><div style={TEXT.pageHeader}>Factories</div><div style={TEXT.meta}>{facs.length} registered</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
-      {facs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🏭</div><Btn onClick={()=>setShow(true)}>+ Create First Factory</Btn></Card>:
+      {facs.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="factory" size={48} color={C.primary}/></div><Btn onClick={()=>setShow(true)}>+ Create First Factory</Btn></Card>:
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {facs.map(f=>{const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const uCount=users.filter(u=>u.factory_id===f.id).length;return(
           <Card key={f.id}><div style={{padding:"14px 16px"}}>
@@ -1084,7 +1147,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
               <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}><StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-              {[["Scans",sc,C.primary],["Users",uCount,C.text],["Bill","₹"+b.total,C.green]].map(([l,v,col])=>(
+              {[["Scans",sc,C.primary],["Users",uCount,C.text],["Bill",fmtMoney(b.total),C.green]].map(([l,v,col])=>(
                 <div key={l} style={{background:C.surface,borderRadius:8,padding:"8px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:800,color:col}}>{v}</div><div style={{fontSize:10,color:C.textDim}}>{l}</div></div>
               ))}
             </div>
@@ -1135,7 +1198,7 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
     <div>
       {show&&<UserFormModal title={"Add User — "+fac.name} facs={[fac]} onClose={()=>setShow(false)} onSubmit={createUser}/>}
       {showBuyer&&<UserFormModal title={"Add Buyer — "+fac.name} isBuyer onClose={()=>setShowBuyer(false)} onSubmit={createBuyer}/>}
-      <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:"sans-serif"}}>← Back</button>
+      <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:FONT_STACK}}>← Back</button>
       {manage&&<UserAccessModal user={manage} facs={[fac]} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
       <Card style={{marginBottom:14,padding:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
@@ -1143,7 +1206,7 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
           <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}><StatPill status={fac.status}/><BillPill status={fac.billing_status||"pending"}/></div>
         </div>
         <PBar value={sc/b.includedScans*100} color={sc>b.includedScans?C.red:C.primary} h={8}/>
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:8}}><span style={{fontSize:12,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:14,fontWeight:800,color:C.green}}>₹{b.total}</span></div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:8}}><span style={{fontSize:12,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:14,fontWeight:800,color:C.green}}>{fmtMoney(b.total)}</span></div>
       </Card>
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1205,7 +1268,7 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required placeholder="Rajesh Kumar"/>
         {isBuyer&&<Inp label="Company" value={form.company} onChange={v=>setForm(p=>({...p,company:v}))} placeholder="Al-Rashid Stone Trading, Dubai"/>}
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
-        <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional" hint="Leave blank for invite flow. The user links this by accepting /invite."/>
+        <AdvancedDisclosure><Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} placeholder="Optional" hint="Leave blank for invite flow. The user links this by accepting /invite."/></AdvancedDisclosure>
         {!isBuyer&&<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={[{value:"inspector",label:"Inspector"},{value:"manager",label:"Manager"},{value:"admin",label:"Admin"}]}/>}
         {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red,fontWeight:700}}>{err}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -1266,7 +1329,7 @@ function UserAccessModal({user,facs,onClose,onSave,ownerMode=false,fixedRole=nul
         </div>
         <Inp label="Full Name" value={form.name} onChange={v=>setForm(p=>({...p,name:v}))} required/>
         <Inp label="Email" value={form.email} onChange={v=>setForm(p=>({...p,email:v}))} required type="email"/>
-        <Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} hint="This links the profile to Supabase Auth login."/>
+        <AdvancedDisclosure><Inp label="Supabase Auth User ID" value={form.authUserId} onChange={v=>setForm(p=>({...p,authUserId:v}))} hint="This links the profile to Supabase Auth login."/></AdvancedDisclosure>
         <div style={{display:"grid",gridTemplateColumns:ownerMode?"1fr 1fr":"1fr",gap:12}}>
           {fixedRole?<div><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Role</label><div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"12px 14px",fontSize:13,fontWeight:800,color:C.primary,textTransform:"capitalize"}}>{fixedRole}</div></div>:<Sel label="Role" value={form.role} onChange={v=>setForm(p=>({...p,role:v}))} options={roleOptions}/>}
           {ownerMode&&<Sel label="Factory" value={form.factoryId} onChange={v=>setForm(p=>({...p,factoryId:v}))} options={facOptions}/>}
@@ -1309,8 +1372,8 @@ function OwnerUsers({users,facs,onRefresh}) {
         <div><div style={TEXT.pageHeader}>All Users</div><div style={TEXT.meta}>{users.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
-      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factory…" icon="🔍"/></div>
-      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{fontSize:32,marginBottom:12}}>👤</div><div style={{fontWeight:600}}>No users yet</div></Card>:
+      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factory…" icon="search"/></div>
+      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="user" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No users yet</div></Card>:
       <Card>{filtered.map((u,i)=>(
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||"??"} size={36}/>
@@ -1335,7 +1398,7 @@ function OwnerDisputes() {
   return (
     <div>
       <div style={TEXT.pageTitle}>All Disputes</div>
-      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🤝</div><div style={TEXT.emptyTitle}>No disputes yet</div></Card>:
+      {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="users" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No disputes yet</div></Card>:
       <Card>{disputes.map((d,i)=>(
         <div key={d.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",background:d.status==="open"?C.redBg:C.white}}>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone} <span style={TEXT.tinyMeta}>#{d.slab_id}</span></div><div style={TEXT.tinyMeta}>{d.factory_name} · {d.buyer_name} · {catLabel[d.category]||d.category}</div></div>
@@ -1355,7 +1418,7 @@ function OwnerInquiries() {
   return (
     <div>
       <div style={TEXT.pageTitle}>All Buyer Inquiries</div>
-      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📩</div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
+      {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="mail" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
         <div key={q.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",background:q.status==="new"?C.primaryBg:C.white}}>
           <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyer_name}{q.buyer_company?" · "+q.buyer_company:""}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.factory_name} · {fmtD(q.created_at)}</div></div>
@@ -1429,13 +1492,13 @@ function FactoryApp({user,onLogout}) {
 
   const nav=[
     {id:"home",label:"Home",icon:"🏠"},
-    {id:"scan",label:"Scan",icon:"🔍"},
+    {id:"scan",label:"Scan",icon:"search"},
     {id:"history",label:"History",icon:"📋"},
     {id:"analytics",label:"Analytics",icon:"📊"},
-    ...(isAdmin?[{id:"team",label:"Team",icon:"👥"},{id:"suppliers",label:"Suppliers",icon:"🏭"},{id:"buyers",label:"Buyers",icon:"🌐"},{id:"inquiries",label:"Inquiries",icon:"📩"},{id:"disputes",label:"Disputes",icon:"⚠️"}]:[]),
-    {id:"notifs",label:"Alerts",icon:"🔔",badge:unread||undefined},
+    ...(isAdmin?[{id:"team",label:"Team",icon:"users"},{id:"suppliers",label:"Suppliers",icon:"factory"},{id:"buyers",label:"Buyers",icon:"🌐"},{id:"inquiries",label:"Inquiries",icon:"mail"},{id:"disputes",label:"Disputes",icon:"alert"}]:[]),
+    {id:"notifs",label:"Alerts",icon:"bell",badge:unread||undefined},
   ];
-  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"₹"});
+  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(4,0,{id:"sales",label:"Sales",icon:"currency"});
   if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(5,0,{id:"quotes",label:"Quotes",icon:"Q"});
 
   const pages={
@@ -1517,7 +1580,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
     }
   }
   const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
-  const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:"Rs "+b.total,icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
+  const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:fmtMoney(b.total),icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
   const factoryNextSteps=isAdmin?[
     {label:"1. Publish trust",detail:`${availableSlabs} available slabs can be shared from buyer inventory.`,color:C.green,bg:C.greenBg,border:C.greenBorder},
     {label:"2. Convert demand",detail:quoteRequests.length?`${quoteRequests.length} quote request${quoteRequests.length===1?"":"s"} need pricing.`:"Create quotes from fresh inquiries.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
@@ -1555,7 +1618,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         <div style={{...TEXT.heroTitle,marginBottom:4}}>{user.name}</div>
         <div style={{fontSize:13,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:14}}>{fac?.name||"Factory"}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-          {[["Today",today.length,"🔍"],["Total",insps.length,"📦"],["Premium%",pp+"%","🏆"]].map(([l,v,icon])=>(
+          {[["Today",today.length,"search"],["Total",insps.length,"package"],["Premium%",pp+"%","verified"]].map(([l,v,icon])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.12)",borderRadius:10,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:12}}>{icon}</div><div style={{fontSize:18,fontWeight:800,lineHeight:1.1,letterSpacing:0,marginTop:4}}>{v}</div><div style={{fontSize:10,lineHeight:1.3,color:"rgba(255,255,255,0.65)",marginTop:2}}>{l}</div></div>
           ))}
         </div>
@@ -1577,7 +1640,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         <PBar value={pilotPct} color={pilotPct>=70?C.green:C.amber} h={8}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:12}}>
           {pilotItems.map(item=>(
-            <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:9,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+            <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:9,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}}>{item.done?"✓":"•"}</span>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{item.label}</span><span style={{display:"block",fontSize:11,color:item.done?C.green:C.textDim,fontWeight:800,marginTop:2}}>{item.value}</span></span>
             </button>
@@ -1609,7 +1672,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         </div>
         {readinessActions.length>0&&<div style={{borderTop:`1px solid ${readinessScore>=70?C.greenBorder:C.amberBorder}`,marginTop:12,paddingTop:12,display:"flex",flexDirection:"column",gap:8}}>
           {readinessActions.map(action=>(
-            <button key={action.label} onClick={()=>setPage(action.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+            <button key={action.label} onClick={()=>setPage(action.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
               <span style={{width:8,height:8,borderRadius:"50%",background:action.color,flexShrink:0}}/>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{action.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,lineHeight:1.35}}>{action.detail}</span></span>
               <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Fix</span>
@@ -1633,7 +1696,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         {adminPriorities.length===0?<div style={{fontSize:12,color:C.textDim,background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:10}}>No urgent buyer follow-ups right now.</div>:
           <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {adminPriorities.map((p,i)=>(
-              <button key={`${p.label}-${i}`} onClick={()=>setPage(p.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"sans-serif",textAlign:"left"}}>
+              <button key={`${p.label}-${i}`} onClick={()=>setPage(p.page)} style={{display:"flex",alignItems:"center",gap:9,background:C.white,border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
                 <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
                 <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:900,color:C.text}}>{p.label}</span><span style={{display:"block",fontSize:11,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.detail}</span></span>
                 <span style={{fontSize:11,color:C.primary,fontWeight:900}}>Open</span>
@@ -1651,10 +1714,10 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         </div>
       </Card>}
       <PBar value={sc/b.includedScans*100} color={sc>=b.includedScans?C.red:sc/b.includedScans>0.8?C.amber:C.primary} h={8}/>
-      <div style={{display:"flex",justifyContent:"space-between",marginTop:6,marginBottom:14}}><span style={{fontSize:11,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:11,fontWeight:700,color:C.amber}}>₹{b.total} due</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:6,marginBottom:14}}><span style={{fontSize:11,color:C.textDim}}>{sc}/{b.includedScans} scans</span><span style={{fontSize:11,fontWeight:700,color:C.amber}}>{fmtMoney(b.total)} due</span></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
         <button onClick={()=>setPage("scan")} disabled={paused} style={{background:paused?"#e2e8f0":`linear-gradient(135deg,${C.primary},${C.teal})`,border:"none",borderRadius:14,padding:"20px 16px",cursor:paused?"not-allowed":"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
-          <div style={{fontSize:28,marginBottom:8}}>🔍</div><div style={{fontSize:15,fontWeight:800,color:paused?C.textDim:C.white}}>New Scan</div>
+          <div style={{marginBottom:8,display:"flex"}}><Icon name="search" size={28} color={paused?C.textDim:C.white}/></div><div style={{fontSize:15,fontWeight:800,color:paused?C.textDim:C.white}}>New Scan</div>
         </button>
         {isAdmin?
           <button onClick={openPortal} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 16px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
@@ -1834,7 +1897,7 @@ function FacScan({user,fac,paused,onSaved}) {
     <div style={{textAlign:"center",padding:"48px 24px"}}>
       <div style={{fontSize:64,marginBottom:16}}>{gradeConf(grade?.grade||"Standard").emoji}</div>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>{grade?.grade}</div>
-      <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade?.pricePerSqFt}/sqft</div>
+      <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>{fmtMoney(grade?.pricePerSqFt)}/sqft</div>
       <div style={{fontSize:13,color:C.textMid,marginBottom:24,lineHeight:1.6}}>{grade?.reason}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <Btn variant="secondary" onClick={()=>{setStep(0);setForm({stone:"makrana",supplierId:"",supplier:"",measurements:defaultMeasurements(),defects:[],exportReady:false,notes:""});setSupplierMode("registered");setQuickSupplier("");setSupplierErr("");setGrade(null);setAiGrade("");setOverrideReason("");setSaved(false);setPhotos({});setPhotoSlot("front");}}>New Scan</Btn>
@@ -1850,7 +1913,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <canvas ref={canvasRef} style={{display:"none"}}/>
       {cameraOpen&&<div style={{position:"fixed",inset:0,background:"#000",zIndex:500,display:"flex",flexDirection:"column"}}>
         <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
-          <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>✕ Cancel</button>
+          <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>✕ Cancel</button>
           <div style={{color:"#fff",fontSize:13,fontWeight:800}}>{PHOTO_SLOTS.find(s=>s.id===photoSlot)?.label}</div>
         </div>
         {cameraError?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24,color:"#fff"}}>{cameraError}</div>:
@@ -1858,7 +1921,7 @@ function FacScan({user,fac,paused,onSaved}) {
           <video ref={videoRef} autoPlay playsInline muted style={{width:"100%",height:"100%",objectFit:"cover"}}/>
         </div>}
         <div style={{padding:"20px",display:"flex",justifyContent:"center",flexShrink:0}}>
-          <button onClick={capturePhoto} style={{width:72,height:72,borderRadius:"50%",background:"#fff",border:"4px solid rgba(255,255,255,0.4)",cursor:"pointer",fontSize:28,WebkitTapHighlightColor:"transparent"}}>📸</button>
+          <button onClick={capturePhoto} style={{width:72,height:72,borderRadius:"50%",background:"#fff",border:"4px solid rgba(255,255,255,0.4)",cursor:"pointer",fontSize:28,WebkitTapHighlightColor:"transparent"}}><Icon name="camera" size={28} color={C.primary}/></button>
         </div>
       </div>}
       <div style={{display:"flex",gap:4,marginBottom:20}}>
@@ -1870,7 +1933,7 @@ function FacScan({user,fac,paused,onSaved}) {
         <div style={{fontSize:16,fontWeight:700}}>Stone Type</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {STONES.map(s=>(
-            <button key={s.id} onClick={()=>setForm(p=>({...p,stone:s.id}))} style={{padding:"12px",background:form.stone===s.id?C.primaryBg:C.white,border:`2px solid ${form.stone===s.id?C.primary:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:"sans-serif",WebkitTapHighlightColor:"transparent"}}>
+            <button key={s.id} onClick={()=>setForm(p=>({...p,stone:s.id}))} style={{padding:"12px",background:form.stone===s.id?C.primaryBg:C.white,border:`2px solid ${form.stone===s.id?C.primary:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent"}}>
               <div style={{fontSize:13,fontWeight:700,color:form.stone===s.id?C.primary:C.text}}>{s.label}</div>
             </button>
           ))}
@@ -1885,14 +1948,14 @@ function FacScan({user,fac,paused,onSaved}) {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
             {[["registered","Registered"],["manual","Typed"],["unknown","Unknown"]].map(([mode,label])=>(
-              <button key={mode} onClick={()=>chooseSupplierMode(mode)} style={{padding:"9px 6px",background:supplierMode===mode?C.primary:C.white,border:`1px solid ${supplierMode===mode?C.primary:C.border}`,borderRadius:8,color:supplierMode===mode?C.white:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{label}</button>
+              <button key={mode} onClick={()=>chooseSupplierMode(mode)} style={{padding:"9px 6px",background:supplierMode===mode?C.primary:C.white,border:`1px solid ${supplierMode===mode?C.primary:C.border}`,borderRadius:8,color:supplierMode===mode?C.white:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>{label}</button>
             ))}
           </div>
           {supplierMode==="registered"&&<>
             {suppliers.length>0?<Sel label="Select Supplier" value={form.supplierId} onChange={v=>setForm(p=>({...p,supplierId:v}))} options={[{value:"",label:"Select supplier..."},...suppliers.map(s=>({value:s.id,label:s.name}))]}/>
             :<div style={{fontSize:12,color:C.textMid,marginBottom:10}}>No registered suppliers yet. Add one below or use Typed/Unknown.</div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:10}}>
-              <input value={quickSupplier} onChange={e=>setQuickSupplier(e.target.value)} placeholder="Quick add supplier" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif"}}/>
+              <input value={quickSupplier} onChange={e=>setQuickSupplier(e.target.value)} placeholder="Quick add supplier" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK}}/>
               <Btn size="sm" variant="secondary" onClick={addQuickSupplier} disabled={supplierBusy}>{supplierBusy?"Adding...":"+ Add"}</Btn>
             </div>
           </>}
@@ -1915,8 +1978,8 @@ function FacScan({user,fac,paused,onSaved}) {
                 <div style={{padding:9}}>
                   <div style={{fontSize:12,fontWeight:800,color:C.text,marginBottom:6}}>{photos[slot.id]?"✓ ":""}{slot.label}</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                    <button onClick={()=>openCamera(slot.id)} style={{padding:"7px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Camera</button>
-                    <button onClick={()=>chooseUpload(slot.id)} style={{padding:"7px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Upload</button>
+                    <button onClick={()=>openCamera(slot.id)} style={{padding:"7px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Camera</button>
+                    <button onClick={()=>chooseUpload(slot.id)} style={{padding:"7px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Upload</button>
                   </div>
                 </div>
               </div>
@@ -1936,8 +1999,8 @@ function FacScan({user,fac,paused,onSaved}) {
           <label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:8}}>Polish Level: {form.measurements.polish}/5</label>
           <input type="range" min={1} max={5} value={form.measurements.polish} onChange={e=>setMeas("polish",Number(e.target.value))} style={{width:"100%"}}/>
         </div>
-        <Sel label="Sound Test" value={form.measurements.soundTest} onChange={v=>setMeas("soundTest",v)} options={[{value:"clear",label:"🔔 Clear"},{value:"dull",label:"💀 Dull"},{value:"hollow",label:"💨 Hollow"}]}/>
-        <Sel label="Edge Condition" value={form.measurements.edgeCondition} onChange={v=>setMeas("edgeCondition",v)} options={[{value:"good",label:"✅ Good"},{value:"minor",label:"⚠️ Minor chips"},{value:"damaged",label:"❌ Damaged"}]}/>
+        <Sel label="Sound Test" value={form.measurements.soundTest} onChange={v=>setMeas("soundTest",v)} options={[{value:"clear",label:"Clear"},{value:"dull",label:"Dull"},{value:"hollow",label:"Hollow"}]}/>
+        <Sel label="Edge Condition" value={form.measurements.edgeCondition} onChange={v=>setMeas("edgeCondition",v)} options={[{value:"good",label:"Good"},{value:"minor",label:"Minor chips"},{value:"damaged",label:"Damaged"}]}/>
         <Sel label="Surface Finish" value={form.measurements.surfaceFinish} onChange={v=>setMeas("surfaceFinish",v)} options={[{value:"polished",label:"Polished"},{value:"honed",label:"Honed"},{value:"brushed",label:"Brushed"},{value:"sandblasted",label:"Sandblasted"}]}/>
         <Card style={{padding:14}}>
           <div style={{fontSize:14,fontWeight:900,marginBottom:4}}>Traceability</div>
@@ -1956,8 +2019,8 @@ function FacScan({user,fac,paused,onSaved}) {
           <div style={{fontSize:14,fontWeight:900,marginBottom:4}}>Audit Readiness</div>
           <div style={{fontSize:11,color:C.textDim,lineHeight:1.45,marginBottom:12}}>Capture simple proof points that reduce audit and buyer follow-up later.</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <button onClick={()=>setAudit("calibrationChecked",!form.measurements.audit?.calibrationChecked)} style={{padding:"10px",background:form.measurements.audit?.calibrationChecked?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.calibrationChecked?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.calibrationChecked?C.green:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{form.measurements.audit?.calibrationChecked?"Calibration checked":"Mark calibration"}</button>
-            <button onClick={()=>setAudit("checklistComplete",!form.measurements.audit?.checklistComplete)} style={{padding:"10px",background:form.measurements.audit?.checklistComplete?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.checklistComplete?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.checklistComplete?C.green:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{form.measurements.audit?.checklistComplete?"Checklist complete":"Mark checklist"}</button>
+            <button onClick={()=>setAudit("calibrationChecked",!form.measurements.audit?.calibrationChecked)} style={{padding:"10px",background:form.measurements.audit?.calibrationChecked?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.calibrationChecked?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.calibrationChecked?C.green:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK}}>{form.measurements.audit?.calibrationChecked?"Calibration checked":"Mark calibration"}</button>
+            <button onClick={()=>setAudit("checklistComplete",!form.measurements.audit?.checklistComplete)} style={{padding:"10px",background:form.measurements.audit?.checklistComplete?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.checklistComplete?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.checklistComplete?C.green:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK}}>{form.measurements.audit?.checklistComplete?"Checklist complete":"Mark checklist"}</button>
           </div>
         </Card>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
@@ -1966,12 +2029,12 @@ function FacScan({user,fac,paused,onSaved}) {
         <div style={{fontSize:16,fontWeight:700}}>Defects Found</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {DEFECTS.map(d=>{const sel=form.defects.includes(d.id);return(
-            <button key={d.id} onClick={()=>toggleDefect(d.id)} style={{padding:"12px",background:sel?"#fff3e0":C.white,border:`2px solid ${sel?d.color:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:"sans-serif"}}>
+            <button key={d.id} onClick={()=>toggleDefect(d.id)} style={{padding:"12px",background:sel?"#fff3e0":C.white,border:`2px solid ${sel?d.color:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:FONT_STACK}}>
               <div style={{fontSize:13,fontWeight:700,color:sel?d.color:C.text}}>{sel?"✓ ":""}{d.label}</div>
             </button>
           );})}
         </div>
-        <button onClick={()=>setForm(p=>({...p,exportReady:!p.exportReady}))} style={{padding:"10px 18px",background:form.exportReady?C.greenBg:C.white,border:`2px solid ${form.exportReady?C.green:C.border}`,borderRadius:10,cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"sans-serif",color:form.exportReady?C.green:C.textMid,alignSelf:"flex-start"}}>{form.exportReady?"✅ Export Ready":"📦 Domestic Only"}</button>
+        <button onClick={()=>setForm(p=>({...p,exportReady:!p.exportReady}))} style={{padding:"10px 18px",background:form.exportReady?C.greenBg:C.white,border:`2px solid ${form.exportReady?C.green:C.border}`,borderRadius:10,cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:FONT_STACK,color:form.exportReady?C.green:C.textMid,alignSelf:"flex-start"}}>{form.exportReady?"Export Ready":"Domestic Only"}</button>
         {form.defects.length>0&&<Card style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
             <div>
@@ -1985,9 +2048,9 @@ function FacScan({user,fac,paused,onSaved}) {
               {photos.defect?<img src={photos.defect.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<span style={{fontSize:11,color:C.textDim,fontWeight:700,textAlign:"center",padding:8}}>Defect photo</span>}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:8,justifyContent:"center"}}>
-              <button onClick={()=>openCamera("defect")} style={{padding:"10px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Camera</button>
-              <button onClick={()=>chooseUpload("defect")} style={{padding:"10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Upload</button>
-              {photos.defect&&<button onClick={()=>removeEvidencePhoto("defect")} style={{padding:"8px",background:"transparent",border:"none",color:C.red,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Remove</button>}
+              <button onClick={()=>openCamera("defect")} style={{padding:"10px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Camera</button>
+              <button onClick={()=>chooseUpload("defect")} style={{padding:"10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Upload</button>
+              {photos.defect&&<button onClick={()=>removeEvidencePhoto("defect")} style={{padding:"8px",background:"transparent",border:"none",color:C.red,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Remove</button>}
             </div>
           </div>
         </Card>}
@@ -2001,22 +2064,22 @@ function FacScan({user,fac,paused,onSaved}) {
           <div style={{marginTop:10}}><Inp label="Corrective Action" value={form.measurements.audit?.correctiveAction||""} onChange={v=>setAudit("correctiveAction",v)} placeholder="Re-polish edge and inspect next batch"/></div>
           <div style={{marginTop:10}}><Inp label="Due Date" value={form.measurements.audit?.actionDue||""} onChange={v=>setAudit("actionDue",v)} placeholder="2026-05-30"/></div>
         </Card>}
-        <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}>🤖 Grade with AI</Btn></div>
+        <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}><Icon name="bot" size={15}/> Grade with AI</Btn></div>
       </div>}
       {step===3&&<div>
         <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>AI Grade Result</div>
-        {loading?<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>🤖</div><div style={{fontSize:16,fontWeight:700}}>Analysing slab…</div></div>
+        {loading?<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="bot" size={48} color={C.primary}/></div><div style={{fontSize:16,fontWeight:700}}>Analysing slab…</div></div>
         :grade?(()=>{const g=gradeConf(grade.grade);return(
           <div>
             <div style={{background:g.bg,border:`2px solid ${g.border}`,borderRadius:14,padding:"24px",textAlign:"center",marginBottom:14}}>
               <div style={{fontSize:52,marginBottom:8}}>{g.emoji}</div>
               <div style={{fontSize:26,fontWeight:800,color:g.color,marginBottom:4}}>{grade.grade}</div>
-              <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>₹{grade.pricePerSqFt}<span style={{fontSize:16,fontWeight:400,color:C.textDim}}>/sqft</span></div>
+              <div style={{fontSize:32,fontWeight:800,color:C.green,marginBottom:8}}>{fmtMoney(grade.pricePerSqFt)}<span style={{fontSize:16,fontWeight:400,color:C.textDim}}>/sqft</span></div>
             </div>
             <Card style={{padding:16,marginBottom:12}}>
               <div style={{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:8}}>{grade.reason}</div>
-              {grade.tips&&<div style={{background:C.primaryBg,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.primary}}>💡 {grade.tips}</div>}
+              {grade.tips&&<div style={{background:C.primaryBg,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.primary}}><Icon name="alert" size={13}/> {grade.tips}</div>}
             </Card>
             <Card style={{padding:14,marginBottom:12,borderColor:C.amberBorder,background:C.amberBg}}>
               <div style={{fontSize:13,fontWeight:900,color:C.amber,marginBottom:5}}>AI-assisted, inspector-confirmed</div>
@@ -2025,7 +2088,7 @@ function FacScan({user,fac,paused,onSaved}) {
             </Card>
             {aiGrade&&grade.grade!==aiGrade&&<Card style={{padding:14,marginBottom:12,borderColor:C.primaryBorder,background:C.primaryBg}}>
               <div style={{fontSize:13,fontWeight:900,color:C.primary,marginBottom:6}}>Override reason</div>
-              <textarea value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} rows={2} placeholder="Why did the inspector change the AI grade?" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:9,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"sans-serif"}}/>
+              <textarea value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} rows={2} placeholder="Why did the inspector change the AI grade?" style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:9,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:FONT_STACK}}/>
               <div style={{fontSize:11,color:C.textMid,lineHeight:1.45,marginTop:6}}>This helps build a future training dataset for AI grading confidence and human overrides.</div>
             </Card>}
             <Card style={{padding:14,marginBottom:12,borderColor:evidenceScore>=70?C.greenBorder:C.amberBorder,background:evidenceScore>=70?C.greenBg:C.amberBg}}>
@@ -2047,7 +2110,7 @@ function FacScan({user,fac,paused,onSaved}) {
             </Card>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:14}}>
               {GRADES.map(g=>(
-                <button key={g.id} onClick={()=>{setGrade({...grade,grade:g.id,pricePerSqFt:g.price});if(g.id===aiGrade)setOverrideReason("");}} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"sans-serif",textAlign:"center"}}>
+                <button key={g.id} onClick={()=>{setGrade({...grade,grade:g.id,pricePerSqFt:g.price});if(g.id===aiGrade)setOverrideReason("");}} style={{padding:"8px 4px",background:grade.grade===g.id?g.bg:C.white,border:`2px solid ${grade.grade===g.id?g.border:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:FONT_STACK,textAlign:"center"}}>
                   <div style={{fontSize:14,marginBottom:3}}>{g.emoji}</div><div style={{fontSize:9,fontWeight:700,color:grade.grade===g.id?g.color:C.textDim}}>{g.id}</div>
                 </button>
               ))}
@@ -2099,7 +2162,7 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
             </div>
             <span style={{fontSize:12,fontWeight:900,color:g.color,background:C.white,border:`1px solid ${g.border}`,borderRadius:20,padding:"5px 10px",flexShrink:0}}>{slab.grade}</span>
           </div>
-          <div style={{fontSize:24,fontWeight:900,color:C.green}}>Rs {slab.pricePerSqFt||0}<span style={{fontSize:12,fontWeight:600,color:C.textDim}}> / sq ft</span></div>
+          <div style={{fontSize:24,fontWeight:900,color:C.green}}>{fmtMoney(slab.pricePerSqFt)}<span style={{fontSize:12,fontWeight:600,color:C.textDim}}> / sq ft</span></div>
         </div>
         <Card style={{padding:14}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
@@ -2111,7 +2174,7 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
             {Object.entries(INV_STATUS).map(([id,c])=>(
-              <button key={id} disabled={statusBusy} onClick={()=>changeStatus(id)} style={{padding:"9px 6px",background:(slab.inventoryStatus||"available")===id?c.bg:C.white,border:`1px solid ${(slab.inventoryStatus||"available")===id?c.border:C.border}`,borderRadius:8,color:(slab.inventoryStatus||"available")===id?c.color:C.textMid,fontSize:12,fontWeight:900,cursor:statusBusy?"not-allowed":"pointer",fontFamily:"sans-serif"}}>{c.label}</button>
+              <button key={id} disabled={statusBusy} onClick={()=>changeStatus(id)} style={{padding:"9px 6px",background:(slab.inventoryStatus||"available")===id?c.bg:C.white,border:`1px solid ${(slab.inventoryStatus||"available")===id?c.border:C.border}`,borderRadius:8,color:(slab.inventoryStatus||"available")===id?c.color:C.textMid,fontSize:12,fontWeight:900,cursor:statusBusy?"not-allowed":"pointer",fontFamily:FONT_STACK}}>{c.label}</button>
             ))}
           </div>
         </Card>
@@ -2196,21 +2259,21 @@ function FacHistory({insps}) {
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onStatus={updateStatus} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
       <div style={TEXT.pageTitle}>Scan History</div>
-      <div style={{marginBottom:10}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="🔍"/></div>
+      <div style={{marginBottom:10}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="search"/></div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
         {["All",...GRADES.map(g=>g.id)].map(f=>(
-          <button key={f} onClick={()=>setFilterG(f)} style={{padding:"6px 14px",background:filterG===f?C.primary:C.white,border:`1px solid ${filterG===f?C.primary:C.border}`,borderRadius:20,color:filterG===f?C.white:C.textMid,fontSize:12,fontWeight:filterG===f?700:400,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
+          <button key={f} onClick={()=>setFilterG(f)} style={{padding:"6px 14px",background:filterG===f?C.primary:C.white,border:`1px solid ${filterG===f?C.primary:C.border}`,borderRadius:20,color:filterG===f?C.white:C.textMid,fontSize:12,fontWeight:filterG===f?700:400,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14}}>
         {["All","Strong Evidence","Weak Evidence","Trace","Missing Trace","Audit Ready","CAPA Needed","AI Reviewed","AI Overrides"].map(f=>(
-          <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
+          <button key={f} onClick={()=>setEvidenceFilter(f)} style={{padding:"6px 14px",background:evidenceFilter===f?C.primaryBg:C.white,border:`1px solid ${evidenceFilter===f?C.primaryBorder:C.border}`,borderRadius:20,color:evidenceFilter===f?C.primary:C.textMid,fontSize:12,fontWeight:evidenceFilter===f?800:500,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
         ))}
       </div>
       <Card style={{padding:12,marginBottom:14}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
           {[["Missing Trace",missingTraceCount,missingTraceCount?C.amber:C.green],["Audit Ready",auditReadyCount,C.green],["CAPA Needed",capaNeededCount,capaNeededCount?C.red:C.green],["AI Reviewed",aiReviewedCount,C.primary],["AI Overrides",aiOverrideCount,aiOverrideCount?C.amber:C.green]].map(([label,value,color])=>(
-            <button key={label} onClick={()=>setEvidenceFilter(label)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 6px",textAlign:"center",cursor:"pointer",fontFamily:"sans-serif"}}>
+            <button key={label} onClick={()=>setEvidenceFilter(label)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 6px",textAlign:"center",cursor:"pointer",fontFamily:FONT_STACK}}>
               <div style={{fontSize:16,fontWeight:900,color,lineHeight:1}}>{value}</div>
               <div style={{fontSize:10,color:C.textDim,fontWeight:800,marginTop:4}}>{label}</div>
             </button>
@@ -2230,7 +2293,7 @@ function FacHistory({insps}) {
             {hasAiOverride&&<span style={{fontSize:10,fontWeight:800,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>AI override</span>}
             {needsCapa(r)&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:6,padding:"2px 8px"}}>CAPA</span>}
             {!hasTrace(r)&&<span style={{fontSize:10,fontWeight:800,color:C.amber,background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:6,padding:"2px 8px"}}>No trace</span>}
-            <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
+            <button onClick={e=>{e.stopPropagation();setQrSlab(r);}} style={{fontSize:10,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:FONT_STACK}}><Icon name="qr" size={12}/> QR</button>
           </div>
         </div>
       );})}
@@ -2512,7 +2575,7 @@ function FacAnalytics({insps}) {
           <Btn size="sm" variant="secondary" onClick={downloadAuditCsv} disabled={!insps.length}>Export Evidence CSV</Btn>
         </div>
       </div>
-      <KpiGrid items={[{label:"Today",value:today,icon:"📅",color:C.primary},{label:"This Week",value:week,icon:"📆",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"🏆",color:C.green},{label:"Total",value:total,icon:"📦",color:C.text}]}/>
+      <KpiGrid items={[{label:"Today",value:today,icon:"date",color:C.primary},{label:"This Week",value:week,icon:"date",color:C.teal},{label:"Premium Rate",value:pp+"%",icon:"verified",color:C.green},{label:"Total",value:total,icon:"package",color:C.text}]}/>
       <KpiGrid items={[{label:"Trace Coverage",value:traceCoverage+"%",icon:"Trace",color:traceCoverage>=70?C.green:C.amber},{label:"Audit Ready",value:auditReadyPct+"%",icon:"Audit",color:auditReadyPct>=70?C.green:C.amber},{label:"CAPA Needed",value:capaNeeded,icon:"CAPA",color:capaNeeded?C.red:C.green},{label:"Batches",value:batchCount,icon:"Batch",color:C.primary}]}/>
       {aiReviewed.length>0&&<Card style={{marginBottom:14}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
@@ -2643,8 +2706,8 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
         <div><div style={TEXT.pageHeader}>Team Access</div><div style={TEXT.meta}>{users.length} profiles</div></div>
         <Btn size="sm" variant="secondary" onClick={load}>↺</Btn>
       </div>
-      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="🔍"/></div>
-      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{fontSize:32,marginBottom:12}}>👥</div><div style={{fontWeight:600}}>No profiles found</div></Card>:
+      <div style={{marginBottom:12}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="search"/></div>
+      {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="users" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No profiles found</div></Card>:
       <Card>{filtered.map((u,i)=>(
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||u.name?.slice(0,2).toUpperCase()||"??"} size={36}/>
@@ -2775,7 +2838,7 @@ function FacSuppliers({fac}) {
                 <Btn size="sm" variant="ghost" disabled={cleanup.busy&&cleanup.name===group.name} onClick={()=>cleanupManualSupplier(group,"create")}>{cleanup.busy&&cleanup.name===group.name?"Working...":"Create"}</Btn>
               </div>
               {suppliers.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
-                <select value={cleanup.name===group.name?cleanup.supplierId:""} onChange={e=>setCleanup({name:group.name,supplierId:e.target.value,busy:false,error:""})} style={{width:"100%",padding:"9px 10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+                <select value={cleanup.name===group.name?cleanup.supplierId:""} onChange={e=>setCleanup({name:group.name,supplierId:e.target.value,busy:false,error:""})} style={{width:"100%",padding:"9px 10px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
                   <option value="">Link to existing...</option>
                   {suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -2785,7 +2848,7 @@ function FacSuppliers({fac}) {
           ))}
         </Card>}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          {[["Defect Rate",st.defectRate+"%",C.amber],["Export Ready",st.exportReadyPct+"%",C.teal],["Avg Price","Rs "+st.avgPrice,C.green]].map(([l,v,c])=>(
+          {[["Defect Rate",st.defectRate+"%",C.amber],["Export Ready",st.exportReadyPct+"%",C.teal],["Avg Price",fmtMoney(st.avgPrice),C.green]].map(([l,v,c])=>(
             <div key={l} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:10,textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:10,color:C.textDim,fontWeight:700}}>{l}</div></div>
           ))}
         </div>
@@ -2973,14 +3036,14 @@ function FacInquiries({fac,onChange}) {
           {(req.buyerNotes||req.additionalMessage)&&<div style={{background:C.white,border:`1px solid ${C.greenBorder}`,borderRadius:8,padding:"9px 10px",fontSize:12,lineHeight:1.45,color:C.textMid}}>{req.buyerNotes&&<div><span style={{fontWeight:900,color:C.text}}>Notes:</span> {req.buyerNotes}</div>}{req.additionalMessage&&<div style={{marginTop:req.buyerNotes?5:0}}><span style={{fontWeight:900,color:C.text}}>Message:</span> {req.additionalMessage}</div>}</div>}
         </Card>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}><Sel label="Priority" value={follow.priority} onChange={v=>setFollow(p=>({...p,priority:v}))} options={[{value:"hot",label:"Hot"},{value:"warm",label:"Warm"},{value:"low",label:"Low"}]}/><Inp label="Next follow-up" type="date" value={follow.followUpDate} onChange={v=>setFollow(p=>({...p,followUpDate:v}))}/></div>
-        <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Factory Notes</label><textarea value={follow.factoryNotes} onChange={e=>setFollow(p=>({...p,factoryNotes:e.target.value}))} rows={3} placeholder="Call notes, buyer requirement, next step..." style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>Factory Notes</label><textarea value={follow.factoryNotes} onChange={e=>setFollow(p=>({...p,factoryNotes:e.target.value}))} rows={3} placeholder="Call notes, buyer requirement, next step..." style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}><Btn variant="ghost" onClick={()=>buyerEmail&&(window.location.href=`mailto:${buyerEmail}?subject=Epistable inquiry for ${slabId}`)} disabled={!buyerEmail}>Email</Btn><Btn variant="ghost" onClick={()=>{const p=buyerPhone(sel).replace(/[^0-9]/g,"");if(p)window.open(`https://wa.me/${p}`,"_blank");}} disabled={!buyerPhone(sel)}>WhatsApp</Btn></div>
-        <Card style={{padding:12,marginBottom:12,boxShadow:"none",background:C.surface}}><div style={{fontSize:13,fontWeight:900,marginBottom:10}}>Create Quote</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}><Inp label="Area (sq ft)" value={quote.areaSqFt} onChange={v=>setQuote(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120"/><Inp label="Valid until" type="date" value={quote.validityDate} onChange={v=>setQuote(p=>({...p,validityDate:v}))}/></div><textarea value={quote.notes} onChange={e=>setQuote(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Quote notes, payment terms, delivery..." style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:800}}>Total: Rs {Math.round(Number(quote.areaSqFt||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0)).toLocaleString("en-IN")}</div><Btn size="sm" onClick={createQuote} disabled={quoteBusy||!Number(quote.areaSqFt||0)}>{quoteBusy?"Creating...":"Create Quote"}</Btn></div></Card>
+        <Card style={{padding:12,marginBottom:12,boxShadow:"none",background:C.surface}}><div style={{fontSize:13,fontWeight:900,marginBottom:10}}>Create Quote</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}><Inp label="Area (sq ft)" value={quote.areaSqFt} onChange={v=>setQuote(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120"/><Inp label="Valid until" type="date" value={quote.validityDate} onChange={v=>setQuote(p=>({...p,validityDate:v}))}/></div><textarea value={quote.notes} onChange={e=>setQuote(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Quote notes, payment terms, delivery..." style={{width:"100%",padding:"10px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:800}}>Total: {fmtMoney(Math.round(Number(quote.areaSqFt||0)*Number(sel.pricePerSqFt||sel.price_per_sq_ft||0)))}</div><Btn size="sm" onClick={createQuote} disabled={quoteBusy||!Number(quote.areaSqFt||0)}>{quoteBusy?"Creating...":"Create Quote"}</Btn></div></Card>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Btn variant="secondary" onClick={saveFollowup}>Save</Btn><Btn variant="secondary" onClick={()=>updStatus(sel.id,"contacted")}>Contacted</Btn><Btn variant="ghost" onClick={()=>reserveInquiry(sel)}>Reserve</Btn><Btn variant="green" onClick={()=>updStatus(sel.id,"closed")}>Close</Btn></div>
       </Modal>;})()}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}><div><div style={TEXT.pageHeader}>Buyer Inquiries</div><div style={TEXT.meta}>Prioritize quote requests, hot buyers, and overdue follow-ups</div></div><Btn size="sm" variant="secondary" onClick={load}>Refresh</Btn></div>
       <KpiGrid items={[{label:"Open",value:inquiries.filter(q=>q.status!=="closed").length,icon:"Open",color:C.primary},{label:"Quote Requests",value:quoteRequestCount,icon:"Quote",color:C.green},{label:"Hot Buyers",value:hotCount,icon:"Hot",color:C.red},{label:"Overdue",value:overdueCount,icon:"Due",color:overdueCount?C.red:C.textDim}]}/>
-      <Card style={{padding:12,marginBottom:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search buyer, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}/><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}><option value="all">All statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="reserved">Reserved</option><option value="closed">Closed</option></select><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}><option value="all">All priorities</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="low">Low</option></select><select value={requestFilter} onChange={e=>setRequestFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}><option value="all">All inquiries</option><option value="quote">Quote requests</option><option value="overdue">Overdue follow-ups</option></select></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:800}}>{filtered.length} of {inquiries.length} inquiries shown</div><button onClick={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset filters</button></div></Card>
+      <Card style={{padding:12,marginBottom:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search buyer, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="reserved">Reserved</option><option value="closed">Closed</option></select><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All priorities</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="low">Low</option></select><select value={requestFilter} onChange={e=>setRequestFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}><option value="all">All inquiries</option><option value="quote">Quote requests</option><option value="overdue">Overdue follow-ups</option></select></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}><div style={{fontSize:12,color:C.textDim,fontWeight:800}}>{filtered.length} of {inquiries.length} inquiries shown</div><button onClick={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Reset filters</button></div></Card>
       {inquiries.length===0?<EmptyState title="No inquiries yet" body="When buyers scan certificates or browse inventory, their requests will appear here. Share slab QR codes or the public inventory preview to start demand."/>:filtered.length===0?<EmptyState title="No matching inquiries" body="Try clearing filters, widening the status, or searching another buyer, slab, or stone." actionLabel="Clear filters" onAction={()=>{setSearch("");setStatusFilter("all");setPriorityFilter("all");setRequestFilter("all");}}/>:<Card>{filtered.map((q,i)=>{const req=quoteRequest(q);const overdue=q.followUpAt&&q.followUpAt<Date.now()&&q.status!=="closed";return(<div key={q.id} onClick={()=>openInquiry(q)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:overdue?C.redBg:q.status==="new"?C.primaryBg:C.white}}><div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyerName||q.buyer_name}</div><div style={TEXT.tinyMeta}>{q.stone} - {q.grade}{req.isQuote?" - Quote request":""}{q.followUpAt?` - Follow up ${fmtD(q.followUpAt)}`:""}</div></div><div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>{overdue&&<span style={{fontSize:10,fontWeight:800,color:C.red,background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:20,padding:"3px 8px"}}>Overdue</span>}<span style={{fontSize:10,fontWeight:800,color:(q.priority||"warm")==="hot"?C.red:(q.priority||"warm")==="low"?C.textDim:C.amber,background:C.white,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",textTransform:"capitalize"}}>{q.priority||"warm"}</span><InqPill status={q.status}/></div></div>);})}</Card>}
     </div>
   );
@@ -3134,9 +3197,9 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
             <Inp label="Price / sq ft" value={reviseForm.pricePerSqFt} onChange={v=>setReviseForm(p=>({...p,pricePerSqFt:v.replace(/[^0-9.]/g,"")}))}/>
           </div>
           <Inp label="Valid until" type="date" value={reviseForm.validityDate} onChange={v=>setReviseForm(p=>({...p,validityDate:v}))}/>
-          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <textarea value={reviseForm.notes} onChange={e=>setReviseForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Revised quote notes, delivery, payment terms..." style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-            <div style={{fontSize:13,fontWeight:900,color:C.green}}>Total: Rs {Math.round(Number(reviseForm.areaSqFt||0)*Number(reviseForm.pricePerSqFt||0)).toLocaleString("en-IN")}</div>
+            <div style={{fontSize:13,fontWeight:900,color:C.green}}>Total: {fmtMoney(Math.round(Number(reviseForm.areaSqFt||0)*Number(reviseForm.pricePerSqFt||0)))}</div>
             <Btn onClick={createRevision} disabled={reviseBusy||!Number(reviseForm.areaSqFt||0)||!Number(reviseForm.pricePerSqFt||0)}>{reviseBusy?"Creating...":"Create Revision"}</Btn>
           </div>
         </div>
@@ -3144,11 +3207,11 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
         <div><div style={TEXT.pageHeader}>Quotes</div><div style={TEXT.meta}>Manage sent quotes, buyer decisions, revisions, and sold status</div></div>
       </div>
-      <KpiGrid items={[{label:"Awaiting Response",value:awaitingResponse,icon:"Reply",color:C.primary},{label:"Needs Action",value:actionCount,icon:"Now",color:actionCount?C.amber:C.textDim},{label:"Expiring Soon",value:expiringSoon,icon:"Due",color:expiringSoon?C.amber:C.textDim},{label:"Sold Value",value:"Rs "+soldValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      <KpiGrid items={[{label:"Awaiting Response",value:awaitingResponse,icon:"Reply",color:C.primary},{label:"Needs Action",value:actionCount,icon:"Now",color:actionCount?C.amber:C.textDim},{label:"Expiring Soon",value:expiringSoon,icon:"Due",color:expiringSoon?C.amber:C.textDim},{label:"Sold Value",value:fmtMoney(soldValue),icon:"Sold",color:C.green}]}/>
       <Card style={{padding:12,marginBottom:14}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, buyer, stone, slab..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}/>
-          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none"}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, buyer, stone, slab..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/>
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none"}}>
             <option value="all">All statuses</option>
             <option value="sent">Sent</option>
             <option value="expiring_soon">Expiring soon</option>
@@ -3160,7 +3223,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
           </select>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
-          {["sent","expiring_soon","accepted","revision_requested","revised","expired","sold"].map(s=>{const cfg=statusStyle(s);const count=s==="expiring_soon"?expiringSoon:counts[s]||0;return <button key={s} onClick={()=>setStatusFilter(statusFilter===s?"all":s)} style={{padding:"5px 10px",background:statusFilter===s?cfg.bg:C.white,border:`1px solid ${statusFilter===s?cfg.b:C.border}`,borderRadius:20,color:statusFilter===s?cfg.c:C.textDim,fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{cfg.label} ({count})</button>;})}
+          {["sent","expiring_soon","accepted","revision_requested","revised","expired","sold"].map(s=>{const cfg=statusStyle(s);const count=s==="expiring_soon"?expiringSoon:counts[s]||0;return <button key={s} onClick={()=>setStatusFilter(statusFilter===s?"all":s)} style={{padding:"5px 10px",background:statusFilter===s?cfg.bg:C.white,border:`1px solid ${statusFilter===s?cfg.b:C.border}`,borderRadius:20,color:statusFilter===s?cfg.c:C.textDim,fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK}}>{cfg.label} ({count})</button>;})}
         </div>
       </Card>
       {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes found"} body={quotes.length?"Clear the filters or search another quote, buyer, slab, or stone.":"Create a quote from a buyer inquiry. Sent quotes become buyer links, and accepted quotes become trackable orders."} actionLabel={quotes.length?"Clear filters":undefined} onAction={()=>{setSearch("");setStatusFilter("all");}}/>:
@@ -3180,7 +3243,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
                 <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} · {q.grade} · {q.slabId||q.slab_id}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontSize:18,fontWeight:900,color:C.green}}>Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                <div style={{fontSize:18,fontWeight:900,color:C.green}}>{fmtMoney(Number(q.totalAmount||0))}</div>
                 <div style={{fontSize:11,color:C.textDim}}>{q.validityTs||q.validity_ts?`Valid ${fmtD(q.validityTs||q.validity_ts)}`:"No validity"}</div>
               </div>
             </div>
@@ -3188,7 +3251,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
             {status==="accepted"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:10}}>
               <div style={{fontSize:12,fontWeight:900,marginBottom:8}}>Fulfillment stage</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:6}}>
-                {quoteFulfillmentSteps(activeFulfillment(q)).map(s=><button key={s.id} disabled={!!fulfillBusy||s.id==="sold"} onClick={()=>updateFulfillment(q,s.id)} style={{padding:"8px 6px",background:s.current?s.bg:C.white,border:`1px solid ${s.current?s.border:C.border}`,borderRadius:8,color:s.current?s.color:C.textMid,fontSize:11,fontWeight:900,cursor:fulfillBusy||s.id==="sold"?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:s.id==="sold"?0.65:1}}>{s.done&&!s.current?"Done · ":""}{s.label}</button>)}
+                {quoteFulfillmentSteps(activeFulfillment(q)).map(s=><button key={s.id} disabled={!!fulfillBusy||s.id==="sold"} onClick={()=>updateFulfillment(q,s.id)} style={{padding:"8px 6px",background:s.current?s.bg:C.white,border:`1px solid ${s.current?s.border:C.border}`,borderRadius:8,color:s.current?s.color:C.textMid,fontSize:11,fontWeight:900,cursor:fulfillBusy||s.id==="sold"?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:s.id==="sold"?0.65:1}}>{s.done&&!s.current?"Done · ":""}{s.label}</button>)}
               </div>
             </div>}
             {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.white,border:`1px solid ${canRevise?C.amberBorder:C.border}`,borderRadius:8,padding:"9px 10px",fontSize:12,color:C.textMid,lineHeight:1.45,marginBottom:10}}><span style={{fontWeight:900,color:canRevise?C.amber:C.text}}>Buyer note:</span> {q.buyerMessage||q.buyer_message}</div>}
@@ -3287,7 +3350,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
         <div><div style={TEXT.pageHeader}>Sales Dashboard</div><div style={TEXT.meta}>Buyer demand, quote movement, and follow-ups</div></div>
         <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Open Quotes</Btn>
       </div>
-      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"₹",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:"₹"+wonValue.toLocaleString("en-IN"),icon:"Sold",color:C.green}]}/>
+      <KpiGrid items={[{label:"New Inquiries",value:byStatus("new"),icon:"New",color:C.primary},{label:"Quotes Sent",value:sentQuotes,icon:"currency",color:C.green},{label:"Accepted Quotes",value:acceptedQuotes,icon:"Won",color:C.green},{label:"Sold Value",value:fmtMoney(wonValue),icon:"Sold",color:C.green}]}/>
       <GuidanceCard title="Sales operating rhythm" subtitle="A simple daily checklist for factory follow-up" actionLabel={briefCopied?"Copied":"Copy update"} onAction={copySalesBrief} style={{marginBottom:14}} items={[
         {label:"Morning",detail:"Review new inquiries and send quotes for interested slabs.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
         {label:"Afternoon",detail:"Follow up sent quotes and handle buyer change requests.",color:C.amber,bg:C.amberBg,border:C.amberBorder},
@@ -3315,7 +3378,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
             <div key={q.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1.2fr) minmax(120px,0.7fr) auto",gap:10,alignItems:"center",padding:"11px 0",borderTop:`1px solid ${C.border}`}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-                <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} - Rs {Number(q.totalAmount||q.total_amount||0).toLocaleString("en-IN")} - {q.id}</div>
+                <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.stone} - {fmtMoney(Number(q.totalAmount||q.total_amount||0))} - {q.id}</div>
               </div>
               <div>
                 <div style={{fontSize:10,fontWeight:900,color:conf.color,marginBottom:5}}>{conf.label}</div>
@@ -3328,7 +3391,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
               </div>
             </div>
           );})}
-          {activeOrders.length>5&&<button onClick={()=>setPage("quotes")} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",padding:"8px 0 0",textAlign:"left"}}>View {activeOrders.length-5} more active orders</button>}
+          {activeOrders.length>5&&<button onClick={()=>setPage("quotes")} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK,padding:"8px 0 0",textAlign:"left"}}>View {activeOrders.length-5} more active orders</button>}
         </div>}
       </Card>
       {revisionRequests.length>0&&<Card style={{padding:14,marginBottom:14,borderColor:C.amberBorder,background:C.amberBg}}>
@@ -3340,7 +3403,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.amberBorder}`:"none",borderBottom:i<revisionRequests.length-1?`1px solid ${C.amberBorder}`:"none"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-              <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+              <div style={{fontSize:11,color:C.textMid}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
               {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45,marginTop:4}}>{q.buyerMessage}</div>}
             </div>
             <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Review</Btn>
@@ -3356,7 +3419,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i===0?`1px solid ${C.greenBorder}`:"none",borderBottom:i<acceptedActionItems.length-1?`1px solid ${C.greenBorder}`:"none"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-              <div style={{fontSize:11,color:C.textMid}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+              <div style={{fontSize:11,color:C.textMid}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
             </div>
             <Btn size="sm" variant="green" disabled={orderBusy===q.id} onClick={()=>advanceOrder(q)}>{orderBusy===q.id?"Updating...":orderAction(q)}</Btn>
           </div>
@@ -3407,7 +3470,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
                   <div style={{fontSize:13,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
                   <span style={{fontSize:10,fontWeight:900,color:accepted?C.green:C.amber,background:accepted?C.greenBg:C.amberBg,border:`1px solid ${accepted?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{accepted?"Accepted":"Changes requested"}</span>
                 </div>
-                <div style={{fontSize:11,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                <div style={{fontSize:11,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
                 {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.45}}>{q.buyerMessage}</div>}
               </div>
             );
@@ -3431,7 +3494,7 @@ function FacDisputes({fac}) {
           <div style={{fontSize:14,fontWeight:800,marginBottom:4}}>{sel.stone} — {catLabel[sel.category]||sel.category}</div>
           <div style={{fontSize:13,lineHeight:1.6}}>{sel.details}</div>
         </div>
-        <div style={{marginBottom:12}}><textarea value={response} onChange={e=>setResponse(e.target.value)} rows={3} placeholder="Your response…" style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:12}}><textarea value={response} onChange={e=>setResponse(e.target.value)} rows={3} placeholder="Your response…" style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <Btn variant="secondary" size="sm" onClick={()=>update(sel.id,"dismissed")}>✗ Dismiss</Btn>
           <Btn variant="green" size="sm" onClick={()=>update(sel.id,"resolved")}>✅ Resolve</Btn>
@@ -3457,7 +3520,7 @@ function FacNotifs({notifs,onRead}) {
       {notifs.length===0?<EmptyState title="No alerts yet" body="Quote updates, buyer decisions, follow-ups, and order movement will appear here."/>:
       <Card>{notifs.map((n,i)=>(
         <div key={n.id} style={{display:"flex",gap:12,padding:"14px 16px",borderBottom:i<notifs.length-1?`1px solid ${C.border}`:"none",background:n.read?C.white:C.primaryBg}}>
-          <div style={{width:36,height:36,borderRadius:"50%",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{n.icon||"🔔"}</div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}><ChromeIcon icon={n.icon||"bell"} size={16} color={C.primary}/></div>
           <div style={{flex:1}}><div style={{...TEXT.itemTitle,marginBottom:2}}>{n.title}</div><div style={{...TEXT.meta,color:C.textMid}}>{n.msg}</div></div>
         </div>
       ))}</Card>}
@@ -3619,14 +3682,14 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   const accepted=quoteCounts.accepted;
   if(loading)return <Loader/>;
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
-            <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>{quoteAction.quote.stone} - Rs {Number(quoteAction.quote.totalAmount||0).toLocaleString("en-IN")}</div>
+            <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>{quoteAction.quote.stone} - {fmtMoney(Number(quoteAction.quote.totalAmount||0))}</div>
             <div style={{fontSize:11,color:C.textDim}}>{quoteAction.quote.grade} - {quoteAction.quote.id}</div>
           </div>
-          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
           {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Btn variant="secondary" onClick={()=>setQuoteAction(null)}>Cancel</Btn>
@@ -3636,8 +3699,8 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
       </Modal>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"16px 16px 22px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
-          <button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Back</button>
-          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Sign Out</button>
+          <button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Back</button>
+          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Sign Out</button>
         </div>
         <div style={{fontSize:12,color:"rgba(255,255,255,0.68)",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:5}}>Buyer Quotes</div>
         <div style={{fontSize:24,fontWeight:900,color:C.white,marginBottom:4}}>Track quotes and orders</div>
@@ -3648,8 +3711,8 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
         <KpiGrid items={[{label:"Need Response",value:needResponse,icon:"Reply",color:C.primary},{label:"Accepted",value:accepted,icon:"Won",color:C.green},{label:"Total Quotes",value:quotes.length,icon:"Quote",color:C.text},{label:"Factory",value:fac?.name?"1":"-",icon:"Mill",color:C.teal}]}/>
         <Card style={{padding:12,marginBottom:14}}>
           <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(130px,180px)",gap:8}}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}/>
-            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",outline:"none",minWidth:0}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search quote, slab, stone..." style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}/>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,outline:"none",minWidth:0}}>
               <option value="priority">Priority first</option>
               <option value="newest">Newest first</option>
               <option value="valueHigh">Value high-low</option>
@@ -3658,12 +3721,12 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:9}}>
             <div style={{fontSize:12,color:C.textDim,fontWeight:800}}>{filtered.length} of {quotes.length} quotes shown</div>
-            <button onClick={()=>{setSearch("");setSortBy("priority");setFilter("active");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset</button>
+            <button onClick={()=>{setSearch("");setSortBy("priority");setFilter("active");}} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Reset</button>
           </div>
         </Card>
         <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
           {[["active","Active"],["respond","Need response"],["accepted","Accepted"],["closed","Closed"]].map(([id,label])=>(
-            <button key={id} onClick={()=>setFilter(id)} style={{padding:"8px 14px",background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:20,color:filter===id?C.white:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
+            <button key={id} onClick={()=>setFilter(id)} style={{padding:"8px 14px",background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:20,color:filter===id?C.white:C.textMid,fontSize:12,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
           ))}
         </div>
         {filtered.length===0?<EmptyState title={quotes.length?"No matching quotes":"No quotes here yet"} body={quotes.length?"Try another status filter or reset sorting to see more quotes.":"Browse verified slabs and express interest to receive a factory quote."} actionLabel="Browse Inventory" onAction={()=>onViewPortal(buyerFactoryId)} secondaryLabel={quotes.length?"Reset filters":undefined} onSecondary={()=>{setSearch("");setSortBy("priority");setFilter("active");}}/>:<div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -3675,7 +3738,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
                   <div style={{fontSize:11,color:C.textDim,marginTop:2}}>{q.grade} - {q.id} - {fmtD(q.created_at)}</div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontSize:18,fontWeight:900,color:C.green}}>Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                  <div style={{fontSize:18,fontWeight:900,color:C.green}}>{fmtMoney(Number(q.totalAmount||0))}</div>
                   <div style={{fontSize:11,color:C.textDim}}>{q.validityTs?`Valid ${fmtD(q.validityTs)}`:"No validity"}</div>
                 </div>
               </div>
@@ -3747,14 +3810,14 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
     setQuoteAction(null);setQuoteMsg("");
   }
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
-            <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>{quoteAction.quote.stone} · Rs {Number(quoteAction.quote.totalAmount||0).toLocaleString("en-IN")}</div>
+            <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>{quoteAction.quote.stone} · {fmtMoney(Number(quoteAction.quote.totalAmount||0))}</div>
             <div style={{fontSize:11,color:C.textDim}}>{quoteAction.quote.grade} · {quoteAction.quote.id}</div>
           </div>
-          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box"}}/>
+          <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
           {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Btn variant="secondary" onClick={()=>setQuoteAction(null)}>Cancel</Btn>
@@ -3769,13 +3832,13 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
             <div style={{fontSize:20,fontWeight:800,color:C.white}}>Hello, {buyer.name.split(" ")[0]}!</div>
             {buyer.company&&<div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:2}}>{buyer.company}</div>}
           </div>
-          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Sign Out</button>
+          <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Sign Out</button>
         </div>
         <div style={{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 16px"}}>
           <div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
           <div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{fac?.location} · Verified by Epistable</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-            {[["Available",insps.length,"📦"],["Inquiries",activeInquiries,"📩"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
+            {[["Available",insps.length,"package"],["Inquiries",activeInquiries,"mail"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
               <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:11}}>{icon}</div><div style={{fontSize:18,fontWeight:800,color:C.white,lineHeight:1.1,letterSpacing:0,marginBottom:2}}>{v}</div><div style={{fontSize:10,lineHeight:1.3,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
             ))}
           </div>
@@ -3784,7 +3847,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         <div style={{padding:"16px 16px 48px"}}>
         <ErrorNotice message={loadError}/>
         <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:14,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
-          <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>🪨</div>
+          <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="package" size={26} color={C.white}/></div>
           <div style={{flex:1}}><div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,lineHeight:1.45,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
           <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
         </div>
@@ -3804,7 +3867,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
             <div style={{minWidth:0}}>
               <div style={{fontSize:11,fontWeight:900,color:priorityAction.color,textTransform:"uppercase",marginBottom:4}}>Next action</div>
               <div style={{fontSize:15,fontWeight:900,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{priorityQuote.stone}</div>
-              <div style={{fontSize:12,color:C.textMid,marginTop:3}}>{priorityQuote.grade} - Rs {Number(priorityQuote.totalAmount||0).toLocaleString("en-IN")}</div>
+              <div style={{fontSize:12,color:C.textMid,marginTop:3}}>{priorityQuote.grade} - {fmtMoney(Number(priorityQuote.totalAmount||0))}</div>
             </div>
             <span style={{fontSize:11,fontWeight:900,color:priorityAction.color,background:C.white,border:`1px solid ${priorityAction.border}`,borderRadius:20,padding:"5px 9px",whiteSpace:"nowrap"}}>{priorityAction.label}</span>
           </div>
@@ -3815,34 +3878,34 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           </div>
         </Card>}
         <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:"12px 14px",display:"flex",gap:10}}>
-          <span style={{fontSize:18,flexShrink:0}}>🛡️</span>
+          <span style={{display:"flex",alignItems:"center",flexShrink:0}}><Icon name="verified" size={18} color={C.green}/></span>
           <div><div style={{...TEXT.itemTitle,color:C.green,marginBottom:2}}>Epistable Verified</div><div style={{...TEXT.meta,color:C.textMid}}>All slabs independently graded. Records are tamper-proof.</div></div>
         </div>
         {quotes.length>0&&<Card style={{marginTop:14}}>
           <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <div><div style={{fontSize:14,fontWeight:800}}>My Quotes</div><div style={{fontSize:11,color:C.textDim,marginTop:2}}>Track quotes sent by the factory</div></div>
-            <button onClick={onViewQuotes} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>View all</button>
+            <button onClick={onViewQuotes} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>View all</button>
           </div>
           {visibleQuotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
             <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(visibleQuotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · Rs {Number(q.totalAmount||0).toLocaleString("en-IN")}</div>
+                <div style={{fontSize:13,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
                 <div style={{fontSize:11,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
               </div>
               <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{s.label}</span>
               {q.status==="accepted"&&<span style={{background:f.bg,border:`1px solid ${f.border}`,color:f.color,padding:"3px 9px",borderRadius:20,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{f.label}</span>}
-              <button onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Track</button>
-              <button onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Open</button>
-              {q.slabId&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Slab</button>}
-              {canRespond&&<button onClick={()=>openQuoteAction(q,"revision_requested")} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:8,color:C.amber,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Changes</button>}
-              {canRespond&&<button onClick={()=>openQuoteAction(q,"accepted")} style={{background:C.green,border:"none",borderRadius:8,color:C.white,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>Accept</button>}
+              <button onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>Track</button>
+              <button onClick={()=>window.open(`/quote/${encodeURIComponent(q.id)}`,"_blank","noopener,noreferrer")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.primary,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>Open</button>
+              {q.slabId&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(q.slabId)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>Slab</button>}
+              {canRespond&&<button onClick={()=>openQuoteAction(q,"revision_requested")} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:8,color:C.amber,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>Changes</button>}
+              {canRespond&&<button onClick={()=>openQuoteAction(q,"accepted")} style={{background:C.green,border:"none",borderRadius:8,color:C.white,padding:"5px 8px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>Accept</button>}
             </div>
           );})}
         </Card>}
         {inquiries.length>0&&<Card style={{marginTop:14}}>
           <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:800}}>My Inquiries</div>
-            <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Browse slabs</button>
+            <button onClick={onViewPortal} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Browse slabs</button>
           </div>
           {inquiries.slice(0,4).map((q,i)=>(
             <div key={q.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<Math.min(inquiries.length,4)-1?`1px solid ${C.border}`:"none"}}>
@@ -3997,12 +4060,12 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   const inquiryEvidence=inquiry?evidenceReadiness(inquiry):{score:0,traceCount:0,auditCount:0};
   const inquiryReadiness=inquiryEvidence.score;
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`}}>
         <div style={{padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"sans-serif"}}>← Back</button>}
+            {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:FONT_STACK}}>← Back</button>}
             <div style={{fontSize:15,fontWeight:800,color:"#fff"}}>Epistable</div>
           </div>
           <div style={{background:"rgba(255,255,255,0.1)",borderRadius:20,padding:"4px 12px",display:"flex",alignItems:"center",gap:5}}><div style={{width:6,height:6,borderRadius:"50%",background:"#4ade80"}}/><span style={{fontSize:11,color:"rgba(255,255,255,0.8)",fontWeight:600}}>Verified</span></div>
@@ -4014,7 +4077,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       </div>
       <div style={{padding:"14px 14px 80px"}}>
         <ErrorNotice message={loadError}/>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"sans-serif",marginBottom:10}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,marginBottom:10}}/>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:8,marginBottom:10}}>
           {[["Available",availableCount,C.green],["Reserved",reservedCount,C.amber],["Export Ready",exportCount,C.teal],["Premium",premiumCount,C.primary]].map(([label,value,color])=>(
             <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 11px"}}>
@@ -4025,7 +4088,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
-            <button key={v.id} onClick={()=>setViewMode(v.id)} style={{padding:"10px 12px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:10,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <button key={v.id} onClick={()=>setViewMode(v.id)} style={{padding:"10px 12px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:10,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               <span>{v.label}</span>
               <span style={{fontSize:11,opacity:0.75}}>({v.count})</span>
             </button>
@@ -4033,34 +4096,34 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         </div>
         {savedIds.length>0&&<Card style={{padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:viewMode==="saved"?C.primaryBg:C.white,borderColor:viewMode==="saved"?C.primaryBorder:C.border}}>
           <div style={{fontSize:12,color:C.textMid,fontWeight:800}}>{savedIds.length} saved slab{savedIds.length===1?"":"s"} in this browser</div>
-          <button onClick={copyShortlist} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"6px 10px",fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
+          <button onClick={copyShortlist} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,padding:"6px 10px",fontSize:11,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
         </Card>}
         <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14}}>
           {["All","Premium","Standard"].map(f=>(
-            <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 16px",background:filter===f?C.primary:"transparent",border:`1px solid ${filter===f?C.primary:C.border}`,borderRadius:20,color:filter===f?C.white:C.textMid,fontSize:13,fontWeight:filter===f?600:400,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
+            <button key={f} onClick={()=>setFilter(f)} style={{padding:"7px 16px",background:filter===f?C.primary:"transparent",border:`1px solid ${filter===f?C.primary:C.border}`,borderRadius:20,color:filter===f?C.white:C.textMid,fontSize:13,fontWeight:filter===f?600:400,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
           ))}
         </div>
         <Card style={{padding:12,marginBottom:14}}>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
-            <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+            <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
               {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All stones":o}</option>)}
             </select>
-            <select value={supplierFilter} onChange={e=>setSupplierFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+            <select value={supplierFilter} onChange={e=>setSupplierFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
               {supplierOptions.map(o=><option key={o} value={o}>{o==="All"?"All suppliers":o}</option>)}
             </select>
-            <select value={exportFilter} onChange={e=>setExportFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+            <select value={exportFilter} onChange={e=>setExportFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
               <option value="All">Export + domestic</option>
               <option value="Export">Export ready</option>
               <option value="Domestic">Domestic only</option>
             </select>
-            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
               <option value="available">Available only</option>
               <option value="reserved">Reserved</option>
               <option value="sold">Sold</option>
               <option value="All">All statuses</option>
             </select>
-            <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="Max Rs/sqft" style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}/>
-            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:"sans-serif",minWidth:0}}>
+            <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="Max Rs/sqft" style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}/>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"10px",border:`1px solid ${C.border}`,borderRadius:8,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
               <option value="newest">Newest first</option>
               <option value="priceLow">Price low-high</option>
               <option value="priceHigh">Price high-low</option>
@@ -4070,7 +4133,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:10}}>
             <div style={{fontSize:12,color:C.textDim,fontWeight:700}}>{filtered.length} of {insps.length} slabs shown</div>
-            <button onClick={clearFilters} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>Reset filters</button>
+            <button onClick={clearFilters} style={{background:"transparent",border:"none",color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Reset filters</button>
           </div>
         </Card>
         {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to build a shortlist for comparison.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
@@ -4090,8 +4153,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                     {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:
                     <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28}}>{g.emoji}</span></div>}
                     <div style={{position:"absolute",top:8,right:8,background:g.bg,border:`1px solid ${g.border}`,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,color:g.color}}>{slab.grade}</div>
-                    <button onClick={e=>{e.stopPropagation();setQrSlab(slab);}} style={{position:"absolute",top:8,left:8,background:"rgba(255,255,255,0.9)",border:"none",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>🔲 QR</button>
-                    <button onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{position:"absolute",top:8,left:58,background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:800,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:"sans-serif"}}>{saved?"Saved":"Save"}</button>
+                    <button onClick={e=>{e.stopPropagation();setQrSlab(slab);}} style={{position:"absolute",top:8,left:8,background:"rgba(255,255,255,0.9)",border:"none",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}><Icon name="qr" size={12}/> QR</button>
+                    <button onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{position:"absolute",top:8,left:58,background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:800,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK}}>{saved?"Saved":"Save"}</button>
                     <div style={{position:"absolute",bottom:8,left:8,display:"flex",gap:6,flexWrap:"wrap"}}>
                       <InventoryPill status={inv}/>
                       <span style={{background:readiness>=70?C.greenBg:C.amberBg,border:`1px solid ${readiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:800,color:readiness>=70?C.green:C.amber}}>Evidence {readiness}%</span>
@@ -4111,9 +4174,9 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                 <div style={{padding:"0 14px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${C.border}`,paddingTop:8}}>
                   <div style={{fontSize:16,lineHeight:1.25,fontWeight:800,letterSpacing:0,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:11,fontWeight:400,color:C.textDim}}>/sqft</span></div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                    <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"sans-serif"}}>View</button>
-                    <button onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"5px 9px",color:saved?C.white:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif"}}>{saved?"Saved":"Save"}</button>
-                    <button disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{background:canInquire?C.primaryBg:C.surface,border:`1px solid ${canInquire?C.primaryBorder:C.border}`,borderRadius:8,padding:"5px 10px",color:canInquire?C.primary:C.textDim,fontSize:11,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:"sans-serif"}}>{canInquire?"Request Quote":invConf(inv).label}</button>
+                    <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View</button>
+                    <button onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"5px 9px",color:saved?C.white:C.textMid,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>{saved?"Saved":"Save"}</button>
+                    <button disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{background:canInquire?C.primaryBg:C.surface,border:`1px solid ${canInquire?C.primaryBorder:C.border}`,borderRadius:8,padding:"5px 10px",color:canInquire?C.primary:C.textDim,fontSize:11,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK}}>{canInquire?"Request Quote":invConf(inv).label}</button>
                   </div>
                 </div>
               </div>
@@ -4128,7 +4191,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
               <div style={{fontSize:48,marginBottom:12}}>₹</div>
               <div style={{...TEXT.pageHeader,marginBottom:8}}>Quote Request Sent</div>
               <div style={{fontSize:13,lineHeight:1.5,color:C.textMid,marginBottom:20}}>Your quote request for slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
-              <button onClick={()=>setInquiry(null)} style={{padding:"12px 28px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Done</button>
+              <button onClick={()=>setInquiry(null)} style={{padding:"12px 28px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Done</button>
             </div>:<div>
               <div style={{fontSize:16,lineHeight:1.3,fontWeight:800,letterSpacing:0,marginBottom:10}}>Request Quote — {inquiry.stone}</div>
               <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,marginBottom:12}}>
@@ -4155,8 +4218,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
               <textarea value={inquiryMsg} onChange={e=>setInquiryMsg(e.target.value)} placeholder="Optional message to the factory..." rows={2} style={{width:"100%",padding:"12px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box",marginBottom:14}}/>
               <ErrorNotice title="Could not send request" message={inquiryError} onRetry={submitInquiry}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"sans-serif"}}>Cancel</button>
-                <button onClick={submitInquiry} disabled={inquiryBusy} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:inquiryBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:inquiryBusy?0.65:1}}>{inquiryBusy?"Sending...":"Send Request"}</button>
+                <button onClick={()=>setInquiry(null)} style={{padding:"12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Cancel</button>
+                <button onClick={submitInquiry} disabled={inquiryBusy} style={{padding:"12px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:inquiryBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:inquiryBusy?0.65:1}}>{inquiryBusy?"Sending...":"Send Request"}</button>
               </div>
             </div>}
           </div>
@@ -4189,7 +4252,7 @@ function PublicQuotePage({quoteId}) {
   },[quoteId]);
   if(loading)return <Loader/>;
   if(error)return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <Card style={{padding:24,maxWidth:420,textAlign:"center"}}>
         <div style={{fontSize:18,fontWeight:900,marginBottom:8}}>Quote unavailable</div>
         <div style={{fontSize:13,color:C.textMid}}>{error}</div>
@@ -4253,7 +4316,7 @@ function PublicQuotePage({quoteId}) {
     if(row)setQuote(row);
   }
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"22px 18px 90px"}}>
         <div style={{maxWidth:820,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
           <div>
@@ -4261,7 +4324,7 @@ function PublicQuotePage({quoteId}) {
             <div style={{fontSize:28,fontWeight:900,color:C.white,lineHeight:1.1,marginBottom:6}}>Proforma quote</div>
             <div style={{fontSize:13,color:"rgba(255,255,255,0.72)"}}>{quote.factory_name||"Verified factory"} - {quote.stone}</div>
           </div>
-          <button onClick={copyLink} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:10,color:C.white,padding:"9px 13px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"sans-serif",whiteSpace:"nowrap"}}>{copied?"Copied":"Copy link"}</button>
+          <button onClick={copyLink} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:10,color:C.white,padding:"9px 13px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{copied?"Copied":"Copy link"}</button>
         </div>
       </div>
       <div style={{maxWidth:820,margin:"-62px auto 0",padding:"0 14px 40px"}}>
@@ -4324,11 +4387,11 @@ function PublicQuotePage({quoteId}) {
               <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:12,color:C.primary,fontWeight:900,marginBottom:4}}>Total quote value</div>
-                  <div style={{fontSize:28,fontWeight:900,color:C.green}}>Rs {Number(quote.total_amount||0).toLocaleString("en-IN")}</div>
+                  <div style={{fontSize:28,fontWeight:900,color:C.green}}>{fmtMoney(Number(quote.total_amount||0))}</div>
                 </div>
                 <div style={{textAlign:"right"}}>
                   <div style={{fontSize:11,color:C.textDim,fontWeight:800}}>Rate</div>
-                  <div style={{fontSize:15,fontWeight:900}}>Rs {Number(quote.price_per_sq_ft||0).toLocaleString("en-IN")}/sq ft</div>
+                  <div style={{fontSize:15,fontWeight:900}}>{fmtMoney(Number(quote.price_per_sq_ft||0))}/sq ft</div>
                 </div>
               </div>
             </div>
@@ -4357,11 +4420,11 @@ function PublicQuotePage({quoteId}) {
             </div>}
             {canDecide&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:900,marginBottom:8}}>Respond to this quote</div>
-              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory, such as delivery terms, quantity, or pricing questions (optional)" style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"sans-serif",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+              <textarea value={buyerMessage} onChange={e=>setBuyerMessage(e.target.value)} rows={3} placeholder="Add a note for the factory, such as delivery terms, quantity, or pricing questions (optional)" style={{width:"100%",padding:"11px 12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
               {decisionError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px",marginBottom:10}}>{decisionError}</div>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <button onClick={()=>submitDecision("revision_requested")} disabled={!!decisionBusy} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:decisionBusy?0.65:1}}>{decisionBusy==="revision_requested"?"Sending...":"Request Changes"}</button>
-                <button onClick={()=>submitDecision("accepted")} disabled={!!decisionBusy} style={{background:C.green,border:"none",borderRadius:10,color:C.white,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:"sans-serif",opacity:decisionBusy?0.65:1}}>{decisionBusy==="accepted"?"Accepting...":"Accept Quote"}</button>
+                <button onClick={()=>submitDecision("revision_requested")} disabled={!!decisionBusy} style={{background:C.white,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:decisionBusy?0.65:1}}>{decisionBusy==="revision_requested"?"Sending...":"Request Changes"}</button>
+                <button onClick={()=>submitDecision("accepted")} disabled={!!decisionBusy} style={{background:C.green,border:"none",borderRadius:10,color:C.white,padding:"11px 12px",fontSize:13,fontWeight:900,cursor:decisionBusy?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:decisionBusy?0.65:1}}>{decisionBusy==="accepted"?"Accepting...":"Accept Quote"}</button>
               </div>
             </div>}
             {!canDecide&&quote.status==="sent"&&expired&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:12,padding:14,marginBottom:16}}>
@@ -4369,9 +4432,9 @@ function PublicQuotePage({quoteId}) {
               <div style={{fontSize:12,color:C.textMid}}>Please ask the factory for an updated quote.</div>
             </div>}
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              {quote.slab_id&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(quote.slab_id)}`)} style={{background:C.primary,border:"none",borderRadius:10,color:C.white,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>View slab certificate</button>}
-              <button onClick={copyQuoteSummary} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:10,color:C.primary,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>{summaryCopied?"Copied summary":"Copy summary"}</button>
-              <button onClick={()=>window.print()} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:"sans-serif"}}>Print quote</button>
+              {quote.slab_id&&<button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(quote.slab_id)}`)} style={{background:C.primary,border:"none",borderRadius:10,color:C.white,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK}}>View slab certificate</button>}
+              <button onClick={copyQuoteSummary} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:10,color:C.primary,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK}}>{summaryCopied?"Copied summary":"Copy summary"}</button>
+              <button onClick={()=>window.print()} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"11px 16px",fontSize:13,fontWeight:900,cursor:"pointer",fontFamily:FONT_STACK}}>Print quote</button>
             </div>
           </div>
         </Card>
