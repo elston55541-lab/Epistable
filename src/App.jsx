@@ -766,6 +766,7 @@ function Login({onOwner,onFactory,onBuyer}) {
   const [showP,setShowP]=useState(false);
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
+  const [focus,setFocus]=useState("");
   const {isDesktop}=useBP();
 
   async function submit() {
@@ -784,23 +785,24 @@ function Login({onOwner,onFactory,onBuyer}) {
     } catch(e){setErr(friendlyAuthError(e,"login"));setLoading(false);}
   }
 
-  const fieldStyle={
+  const fieldStyle=name=>({
     width:"100%",padding:isDesktop?"15px 16px":"13px 14px",background:C.white,border:`1px solid ${C.border}`,
-    borderRadius:6,color:C.text,fontSize:isDesktop?16:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK
-  };
+    borderRadius:6,color:C.text,fontSize:isDesktop?16:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,
+    boxShadow:focus===name?"0 0 0 3px rgba(0, 87, 168, 0.12)":"none"
+  });
   const LoginFields=()=>(
     <>
       <div style={{display:"flex",flexDirection:"column",gap:15,marginBottom:20}}>
         <div>
           <label style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:7}}>Email</label>
-          <input type="email" value={email} onChange={e=>{setEmail(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="email" placeholder="you@example.com" style={fieldStyle}/>
+          <input type="email" value={email} onChange={e=>{setEmail(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} onFocus={()=>setFocus("email")} onBlur={()=>setFocus("")} autoComplete="email" placeholder="you@example.com" style={fieldStyle("email")}/>
         </div>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
             <label style={{fontSize:13,fontWeight:600,color:C.text}}>Password</label>
             <button type="button" onClick={()=>setShowP(p=>!p)} style={{background:"none",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{showP?"Hide":"Show"}</button>
           </div>
-          <input type={showP?"text":"password"} value={pass} onChange={e=>{setPass(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="current-password" placeholder="Enter password" style={fieldStyle}/>
+          <input type={showP?"text":"password"} value={pass} onChange={e=>{setPass(e.target.value);if(err)setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()} onFocus={()=>setFocus("password")} onBlur={()=>setFocus("")} autoComplete="current-password" placeholder="Enter password" style={fieldStyle("password")}/>
         </div>
       </div>
       <Btn full size="lg" onClick={submit} disabled={loading} style={{borderRadius:6,padding:isDesktop?"15px 20px":"13px 20px",fontWeight:700,fontSize:isDesktop?15:14}}>{loading?"Signing in...":"Log In"}</Btn>
@@ -811,16 +813,16 @@ function Login({onOwner,onFactory,onBuyer}) {
       <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 60%,#001f3d)`,padding:"0 56px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",minHeight:"100vh",boxSizing:"border-box",textAlign:"center"}}>
         <div style={{marginBottom:58,width:"100%",maxWidth:360}}>
           <div style={{fontSize:34,fontWeight:800,color:C.white,lineHeight:1.1,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
-          <div style={{fontSize:18,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.2px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:18}}>Quality, quantified</div>
+          <div style={{fontSize:18,fontWeight:500,color:"rgba(255,255,255,0.95)",letterSpacing:"1px",fontFamily:FONT_STACK,marginBottom:18}}>Quality, quantified</div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             <div style={{height:1,width:30,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
-            <div style={{fontSize:13,color:"rgba(255,255,255,0.58)"}}>Grade slabs · Track quality · Build trust</div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
           </div>
         </div>
         {["AI-powered slab grading","Supplier scorecards","QR codes per slab","Buyer inquiry management","Per-scan billing","AI assistant"].map(text=>(
           <div key={text} style={{display:"flex",alignItems:"center",gap:14,marginTop:17,width:"100%",maxWidth:290,textAlign:"left"}}>
             <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.82)",flexShrink:0}}>✓</div>
-            <span style={{fontSize:14,color:"rgba(255,255,255,0.78)",fontWeight:400}}>{text}</span>
+            <span style={{fontSize:14,color:"rgba(255,255,255,0.85)",fontWeight:400}}>{text}</span>
           </div>
         ))}
       </div>
@@ -839,10 +841,10 @@ function Login({onOwner,onFactory,onBuyer}) {
       <div style={{background:`linear-gradient(160deg,${C.primary},${C.primaryD} 62%,#001f3d)`,padding:"58px 24px 40px",color:C.white}}>
         <div style={{maxWidth:390,margin:"0 auto",textAlign:"center"}}>
           <div style={{fontSize:26,fontWeight:800,lineHeight:1.15,marginBottom:10}}>Epistable <span style={{color:"#7ec8f0"}}>AI</span></div>
-          <div style={{fontSize:15,fontWeight:400,color:"rgba(255,255,255,0.95)",letterSpacing:"1.1px",fontStyle:"italic",fontFamily:"Georgia, 'Times New Roman', serif",marginBottom:16}}>Quality, quantified</div>
+          <div style={{fontSize:15,fontWeight:500,color:"rgba(255,255,255,0.95)",letterSpacing:"1px",fontFamily:FONT_STACK,marginBottom:16}}>Quality, quantified</div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             <div style={{height:1,width:24,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
-            <div style={{fontSize:12,lineHeight:1.4,color:"rgba(255,255,255,0.62)"}}>Grade slabs · Track quality · Build trust</div>
+            <div style={{fontSize:12,lineHeight:1.4,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
           </div>
         </div>
       </div>
@@ -859,11 +861,7 @@ function Login({onOwner,onFactory,onBuyer}) {
 
         <div style={{width:"100%",marginTop:18,textAlign:"center"}}>
           <div style={{fontSize:12,color:C.textDim,marginBottom:14}}>Need access? Contact your factory administrator.</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8}}>
-            {["Verified slab certificates","Buyer-ready inventory","Factory quality control"].map(text=>(
-              <div key={text} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 10px",fontSize:11,fontWeight:600,color:C.textMid}}>{text}</div>
-            ))}
-          </div>
+          <div style={{fontSize:TYPE.caption.size,lineHeight:TYPE.caption.lineHeight,letterSpacing:TYPE.caption.letterSpacing,color:C.textDim}}>Trusted by stone factories across India</div>
         </div>
       </div>
     </div>
@@ -893,8 +891,9 @@ function InviteAccept({onAccepted}) {
   }
   return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT_STACK,padding:24}}>
-      <Card style={{width:"100%",maxWidth:430,padding:22}}>
-        <div style={{fontSize:22,fontWeight:900,color:C.text,marginBottom:6}}>Accept Epistable Invite</div>
+      <Card style={{width:"100%",maxWidth:430,padding:SPACE.xl}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:14}}><Icon name="verified" size={48} color={C.green}/></div>
+        <div style={{fontSize:TYPE.display.size,lineHeight:TYPE.display.lineHeight,fontWeight:WEIGHT.bold,color:C.text,marginBottom:6,textAlign:"center"}}>Accept Epistable Invite</div>
         <div style={{fontSize:13,color:C.textDim,marginBottom:18}}>Use the same email your admin invited. If an email confirmation link fails, come back to this page and use the same email here.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
           <Btn variant={mode==="signup"?"primary":"secondary"} size="sm" onClick={()=>{setMode("signup");setErr("");}}>Create Login</Btn>
