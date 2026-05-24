@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+﻿import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./lib/supabase";
 import { acceptInviteWithPassword, friendlyAuthError, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
 import { maybeOne, requireData, rows } from "./lib/supabaseSafe";
@@ -8,21 +8,11 @@ import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loa
 import { SlabCertificate } from "./components/SlabCertificate";
 import { Icon } from "./components/Icon";
 import { Pill } from "./components/Pill";
-import { EvidenceUploadModal } from "./components/EvidenceUploadModal";
 import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
-import { EXPORT_MARKETS, marketConf } from "./lib/markets";
-import {
-  EXPORT_CERTS,
-  EXPORT_PRODUCTS,
-  READINESS_SECTIONS,
-  mapRequirement,
-  requirementApplies,
-  readinessStatusConf,
-  scoreRequirements,
-  sectionForRequirement,
-} from "./lib/readiness";
+import { mapRequirement, requirementApplies } from "./lib/readiness";
+import { ExportReadiness } from "./screens/ExportReadiness";
 
-// ── DB (Supabase) ──
+// â”€â”€ DB (Supabase) â”€â”€
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
 const mapInquiry = d => ({
   ...d,
@@ -196,7 +186,7 @@ function SetupChecklist({title,subtitle,items=[],style={}}) {
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {items.map(item=>(
           <button key={item.label} onClick={item.onClick} disabled={!item.onClick} style={{display:"flex",alignItems:"center",gap:14,background:item.done?C.greenBg:C.white,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:10,padding:"14px 16px",cursor:item.onClick?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left"}}>
-            <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:600,flexShrink:0}}>{item.done?"✓":"•"}</span>
+            <span style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:item.done?C.green:C.surface,color:item.done?C.white:C.textDim,fontSize:12,fontWeight:600,flexShrink:0}}>{item.done?"âœ“":"â€¢"}</span>
             <span style={{flex:1,minWidth:0}}>
               <span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{item.label}</span>
               <span style={{display:"block",fontSize:12,lineHeight:1.65,color:C.textDim,marginTop:2}}>{item.detail}</span>
@@ -640,12 +630,12 @@ function SlabQRModal({slab,onClose}) {
         <div style={{fontSize:12,fontFamily:"monospace",color:C.textDim,marginBottom:16,letterSpacing:"1px"}}>{slab.id}</div>
         <div style={{background:g.bg,border:`1px solid ${g.border}`,borderRadius:10,padding:"10px 16px",display:"inline-flex",alignItems:"center",gap:14,marginBottom:16}}>
           <span style={{fontSize:18}}>{g.emoji}</span>
-          <span style={{fontSize:14,fontWeight:700,color:g.color}}>{slab.grade} · {slab.stone}</span>
+          <span style={{fontSize:14,fontWeight:700,color:g.color}}>{slab.grade} Â· {slab.stone}</span>
         </div>
         <div style={{fontSize:12,color:C.textMid,lineHeight:1.7,marginBottom:16}}>Buyers can scan this code to instantly view the full verified inspection record for this slab.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={onClose}>Close</Btn>
-          <Btn onClick={()=>{const a=document.createElement("a");a.href=slabQrUrl(slab.id)+"&download=1";a.download=`QR_${slab.id}.png`;a.click();}}>⬇ Download</Btn>
+          <Btn onClick={()=>{const a=document.createElement("a");a.href=slabQrUrl(slab.id)+"&download=1";a.download=`QR_${slab.id}.png`;a.click();}}>â¬‡ Download</Btn>
         </div>
       </div>
     </Modal>
@@ -694,7 +684,7 @@ function ActivityList({items=[],compact=false}) {
           <div style={{width:32,height:32,borderRadius:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}><Icon name={activityIcon[a.action]||"refresh"} size={15} color={C.primary}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:600,color:C.text}}>{a.actor_name||"Someone"} {labels[a.action]||a.action} for {a.target_name}</div>
-            <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{a.factory_name||"Platform"} · {fmtD(a.ts)} · {fmtT(a.ts)}</div>
+            <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{a.factory_name||"Platform"} Â· {fmtD(a.ts)} Â· {fmtT(a.ts)}</div>
           </div>
         </div>
       ))}
@@ -831,7 +821,7 @@ function ChatBot({role,ctxData}) {
                 <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}><Icon name="bot" size={18} color={C.white}/></div>
                 <div><div style={{fontSize:15,fontWeight:700,color:C.white}}>Epistable Assistant</div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>Ask anything</div></div>
               </div>
-              <button onClick={()=>setOpen(false)} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:"50%",color:C.white,width:30,height:30,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent"}}>×</button>
+              <button onClick={()=>setOpen(false)} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:"50%",color:C.white,width:30,height:30,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent"}}>Ã—</button>
             </div>
             <div style={{flex:1,overflowY:"auto",padding:20,display:"flex",flexDirection:"column",gap:14}}>
               {msgs.map((m,i)=>(
@@ -844,8 +834,8 @@ function ChatBot({role,ctxData}) {
             </div>
             {msgs.length<=1&&<div style={{padding:"0 16px 10px",display:"flex",gap:6,overflowX:"auto",flexShrink:0}}>{sugg.map(s=><button key={s} onClick={()=>setInput(s)} style={{padding:"6px 12px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:20,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",fontFamily:FONT_STACK,WebkitTapHighlightColor:"transparent",flexShrink:0}}>{s}</button>)}</div>}
             <div style={{padding:"14px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:14,flexShrink:0}}>
-              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask anything…" style={{flex:1,padding:"10px 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:24,color:C.text,fontSize:14,outline:"none",fontFamily:FONT_STACK}}/>
-              <button onClick={send} disabled={!input.trim()||loading} style={{width:42,height:42,borderRadius:"50%",background:input.trim()&&!loading?C.primary:C.border,border:"none",cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,WebkitTapHighlightColor:"transparent"}}>➤</button>
+              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask anythingâ€¦" style={{flex:1,padding:"10px 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:24,color:C.text,fontSize:14,outline:"none",fontFamily:FONT_STACK}}/>
+              <button onClick={send} disabled={!input.trim()||loading} style={{width:42,height:42,borderRadius:"50%",background:input.trim()&&!loading?C.primary:C.border,border:"none",cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,WebkitTapHighlightColor:"transparent"}}>âž¤</button>
             </div>
           </div>
         </div>
@@ -911,12 +901,12 @@ function Login({onOwner,onFactory,onBuyer}) {
           <div style={{fontSize:18,fontWeight:500,color:"rgba(255,255,255,0.95)",letterSpacing:"1px",fontFamily:FONT_STACK,marginBottom:18}}>Quality, quantified</div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14}}>
             <div style={{height:1,width:30,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
-            <div style={{fontSize:13,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.85)"}}>Grade slabs Â· Track quality Â· Build trust</div>
           </div>
         </div>
         {["AI-powered slab grading","Supplier scorecards","QR codes per slab","Buyer inquiry management","Per-scan billing","AI assistant"].map(text=>(
           <div key={text} style={{display:"flex",alignItems:"center",gap:14,marginTop:17,width:"100%",maxWidth:290,textAlign:"left"}}>
-            <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.82)",flexShrink:0}}>✓</div>
+            <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.82)",flexShrink:0}}>âœ“</div>
             <span style={{fontSize:14,color:"rgba(255,255,255,0.85)",fontWeight:400}}>{text}</span>
           </div>
         ))}
@@ -939,7 +929,7 @@ function Login({onOwner,onFactory,onBuyer}) {
           <div style={{fontSize:15,fontWeight:500,color:"rgba(255,255,255,0.95)",letterSpacing:"1px",fontFamily:FONT_STACK,marginBottom:16}}>Quality, quantified</div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14}}>
             <div style={{height:1,width:24,background:"rgba(255,255,255,0.25)",borderRadius:1}}/>
-            <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.85)"}}>Grade slabs · Track quality · Build trust</div>
+            <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.85)"}}>Grade slabs Â· Track quality Â· Build trust</div>
           </div>
         </div>
       </div>
@@ -963,7 +953,7 @@ function Login({onOwner,onFactory,onBuyer}) {
   );
 }
 
-// ── OWNER ──
+// â”€â”€ OWNER â”€â”€
 function InviteAccept({onAccepted}) {
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
@@ -1055,7 +1045,7 @@ function Owner({onLogout}) {
 
   return (
     <>
-      <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#4ade80"}}>●</span>{facs.length} factories · {users.length} users</div>}
+      <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#4ade80"}}>â—</span>{facs.length} factories Â· {users.length} users</div>}
         navItems={nav} page={page} onNav={p=>{setPage(p);if(p!=="fac")setSelFac(null);}} onLogout={onLogout} userName="Epistable Owner" userSub="Super Admin">
         {pages[page]||pages.overview}
       </Shell>
@@ -1156,13 +1146,13 @@ function OwnerOverview({facs,users,insps,activity,totalBill,overdue,setPage,pick
       <Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={TEXT.panelTitle}>Factories</div>
-          <Btn size="sm" variant="ghost" onClick={()=>setPage("factories")}>View All →</Btn>
+          <Btn size="sm" variant="ghost" onClick={()=>setPage("factories")}>View All â†’</Btn>
         </div>
         {facs.length===0?<div style={{padding:32,textAlign:"center",color:C.textDim}}>No factories yet</div>:facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);
           return <div key={f.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}} onClick={()=>pickFac(f)}>
             <div style={{width:38,height:38,borderRadius:10,background:C.primaryBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}><Icon name="factory" size={18} color={C.primary}/></div>
-            <div style={{flex:1,minWidth:0}}><div style={{...TEXT.itemTitle,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={TEXT.tinyMeta}>{sc} scans · {fmtMoney(b.total)} due</div></div>
+            <div style={{flex:1,minWidth:0}}><div style={{...TEXT.itemTitle,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div><div style={TEXT.tinyMeta}>{sc} scans Â· {fmtMoney(b.total)} due</div></div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
               <StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/>
             </div>
@@ -1184,17 +1174,17 @@ function OwnerBilling({facs,onRefresh}) {
     <div>
       <KpiGrid items={[{label:"Total Due",value:fmtMoney(totalDue),icon:"billing",color:C.green},{label:"Overdue",value:facs.filter(f=>f.billing_status==="overdue").length,icon:"alert",color:C.red},{label:"Active",value:facs.filter(f=>f.status==="active").length,icon:"factory",color:C.teal},{label:"Paused",value:facs.filter(f=>f.status==="paused").length,icon:"pause",color:C.amber}]}/>
       <Card>
-        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Invoices — {mon}</div>
+        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,...TEXT.panelTitle}}>Invoices â€” {mon}</div>
         {facs.map((f,i)=>{
           const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const paused=f.status==="paused";
           return <div key={f.id} style={{padding:20,borderBottom:i<facs.length-1?`1px solid ${C.border}`:"none",background:paused?C.redBg:C.white}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-              <div><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.plan||"Starter"}{paused&&<span style={{color:C.red,fontWeight:700}}> · 🚫 PAUSED</span>}</div></div>
+              <div><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.plan||"Starter"}{paused&&<span style={{color:C.red,fontWeight:700}}> Â· ðŸš« PAUSED</span>}</div></div>
               <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:700,color:C.green}}>{fmtMoney(b.total)}</div><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <PBar value={sc/b.includedScans*100} color={sc>b.includedScans?C.red:C.primary}/>
             <div style={{display:"flex",gap:14,marginTop:16}}>
-              <Btn variant="ghost" size="sm" style={{flex:1}} onClick={()=>markPaid(f)}>✓ Mark Paid</Btn>
+              <Btn variant="ghost" size="sm" style={{flex:1}} onClick={()=>markPaid(f)}>âœ“ Mark Paid</Btn>
               {!paused?<Btn variant="secondary" size="sm" style={{flex:1,color:C.red,borderColor:C.redBorder}} onClick={()=>pauseF(f)}><Icon name="pause" size={14}/> Pause</Btn>
               :<Btn variant="secondary" size="sm" style={{flex:1,color:C.green,borderColor:C.greenBorder}} onClick={()=>resumeF(f)}><Icon name="play" size={14}/> Resume</Btn>}
             </div>
@@ -1237,7 +1227,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
         {facs.map(f=>{const sc=f.current_month===mon?f.current_month_scans||0:0;const b=calcBill(f.plan||"Starter",sc);const uCount=users.filter(u=>u.factory_id===f.id).length;return(
           <Card key={f.id}><div style={{padding:"14px 16px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-              <div style={{flex:1,minWidth:0,paddingRight:10}}><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.location} · {f.plan||"Starter"}</div></div>
+              <div style={{flex:1,minWidth:0,paddingRight:10}}><div style={TEXT.panelTitle}>{f.name}</div><div style={TEXT.tinyMeta}>{f.location} Â· {f.plan||"Starter"}</div></div>
               <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end",flexShrink:0}}><StatPill status={f.status}/><BillPill status={f.billing_status||"pending"}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
@@ -1245,7 +1235,7 @@ function OwnerFacs({facs,users,pickFac,onRefresh}) {
                 <div key={l} style={{background:C.surface,borderRadius:8,padding:"8px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:700,color:col}}>{v}</div><div style={{fontSize:12,color:C.textDim}}>{l}</div></div>
               ))}
             </div>
-            <Btn full variant="ghost" size="sm" onClick={()=>pickFac(f)}>Manage →</Btn>
+            <Btn full variant="ghost" size="sm" onClick={()=>pickFac(f)}>Manage â†’</Btn>
           </div></Card>
         );})}
       </div>}
@@ -1290,9 +1280,9 @@ function OwnerFacDetail({fac,onBack,onRefresh}) {
 
   return (
     <div>
-      {show&&<UserFormModal title={"Add User — "+fac.name} facs={[fac]} onClose={()=>setShow(false)} onSubmit={createUser}/>}
-      {showBuyer&&<UserFormModal title={"Add Buyer — "+fac.name} isBuyer onClose={()=>setShowBuyer(false)} onSubmit={createBuyer}/>}
-      <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:FONT_STACK}}>← Back</button>
+      {show&&<UserFormModal title={"Add User â€” "+fac.name} facs={[fac]} onClose={()=>setShow(false)} onSubmit={createUser}/>}
+      {showBuyer&&<UserFormModal title={"Add Buyer â€” "+fac.name} isBuyer onClose={()=>setShowBuyer(false)} onSubmit={createBuyer}/>}
+      <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:FONT_STACK}}>â† Back</button>
       {manage&&<UserAccessModal user={manage} facs={[fac]} ownerMode onClose={()=>setManage(null)} onSave={saveUser}/>}
       <Card style={{marginBottom:18,padding:20}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
@@ -1347,7 +1337,7 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
   return (
     <Modal title={title} onClose={busy?()=>{}:onClose} closeOnBackdrop={false}>
       {done?<div>
-        <div style={{textAlign:"center",marginBottom:18}}><div style={{fontSize:48,marginBottom:8}}>✅</div><div style={TEXT.pageHeader}>Created!</div></div>
+        <div style={{textAlign:"center",marginBottom:18}}><div style={{fontSize:48,marginBottom:8}}>âœ…</div><div style={TEXT.pageHeader}>Created!</div></div>
         <div style={{background:C.primaryBg,border:`2px solid ${C.primaryBorder}`,borderRadius:12,padding:20,marginBottom:16}}>
           {[["Name",done.name],["Email",done.email],["Role",isBuyer?"Buyer":done.role],["Auth ID",done.auth_user_id||"Link in Supabase Auth"]].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.primaryBorder}`}}><span style={{fontSize:12,color:C.textDim}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:l==="Auth ID"?"monospace":"inherit",textAlign:"right"}}>{v}</span></div>
@@ -1367,7 +1357,7 @@ function UserFormModal({title,onClose,onSubmit,onDone,facs,isBuyer}) {
         {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"14px 16px",fontSize:12,color:C.red,fontWeight:600}}>{err}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Btn variant="secondary" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn onClick={submit} disabled={busy||!form.name||!form.email}>{busy?"Creating…":"Create Profile"}</Btn>
+          <Btn onClick={submit} disabled={busy||!form.name||!form.email}>{busy?"Creatingâ€¦":"Create Profile"}</Btn>
         </div>
       </div>}
     </Modal>
@@ -1466,12 +1456,12 @@ function OwnerUsers({users,facs,onRefresh}) {
         <div><div style={TEXT.pageHeader}>All Users</div><div style={TEXT.meta}>{users.length} accounts</div></div>
         <Btn size="sm" onClick={()=>setShow(true)}>+ Create</Btn>
       </div>
-      <div style={{marginBottom:16}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factory…" icon="search"/></div>
+      <div style={{marginBottom:16}}><Inp value={search} onChange={setSearch} placeholder="Search name, email, factoryâ€¦" icon="search"/></div>
       {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="user" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No users yet</div></Card>:
       <Card>{filtered.map((u,i)=>(
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||"??"} size={36}/>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.factory_name} · {u.email}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.factory_name} Â· {u.email}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <span style={{fontSize:12,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
             <StatPill status={u.status||"active"}/>
@@ -1495,7 +1485,7 @@ function OwnerDisputes() {
       {disputes.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="users" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No disputes yet</div></Card>:
       <Card>{disputes.map((d,i)=>(
         <div key={d.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",background:d.status==="open"?C.redBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone} <span style={TEXT.tinyMeta}>#{d.slab_id}</span></div><div style={TEXT.tinyMeta}>{d.factory_name} · {d.buyer_name} · {catLabel[d.category]||d.category}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone} <span style={TEXT.tinyMeta}>#{d.slab_id}</span></div><div style={TEXT.tinyMeta}>{d.factory_name} Â· {d.buyer_name} Â· {catLabel[d.category]||d.category}</div></div>
           <DisputeStatusPill status={d.status}/>
         </div>
       ))}</Card>}
@@ -1515,7 +1505,7 @@ function OwnerInquiries() {
       {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="mail" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
         <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",background:q.status==="new"?C.primaryBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyer_name}{q.buyer_company?" · "+q.buyer_company:""}</div><div style={TEXT.tinyMeta}>{q.stone} · {q.factory_name} · {fmtD(q.created_at)}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{q.buyer_name}{q.buyer_company?" Â· "+q.buyer_company:""}</div><div style={TEXT.tinyMeta}>{q.stone} Â· {q.factory_name} Â· {fmtD(q.created_at)}</div></div>
           <InqPill status={q.status}/>
         </div>
       ))}</Card>}
@@ -1528,12 +1518,12 @@ function OwnerSettings() {
     <div>
       <div style={{...TEXT.pageHeader,marginBottom:16}}>Settings</div>
       <Card style={{padding:20,marginBottom:18}}><Inp label="Platform Name" value="Epistable AI" onChange={()=>{}}/></Card>
-      <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:20,fontSize:13,color:C.primary}}>✅ Using Supabase — data syncs across all devices in real time.</div>
+      <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:12,padding:20,fontSize:13,color:C.primary}}>âœ… Using Supabase â€” data syncs across all devices in real time.</div>
     </div>
   );
 }
 
-// ── FACTORY APP ──
+// â”€â”€ FACTORY APP â”€â”€
 function FactoryApp({user,onLogout}) {
   const [page,setPage]=useState("home");
   const [insps,setInsps]=useState([]);
@@ -1601,7 +1591,7 @@ function FactoryApp({user,onLogout}) {
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{export:<FacExportReadiness fac={fac} user={user}/>}:{}),
+    ...(isAdmin?{export:<ExportReadiness fac={fac} user={user} DB={DB}/>}:{}),
     ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage} onChange={load}/>}:{ }),
     ...(isAdmin?{quotes:<FacQuotesPage quotes={quotes} insps={salesInsps} onChange={load}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
@@ -1610,9 +1600,9 @@ function FactoryApp({user,onLogout}) {
 
   return (
     <>
-      <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:paused?"#f87171":"#4ade80"}}>●</span>{paused?"Paused":fac?.name||"Factory"}</div>}
+      <Shell brandSub={<div style={{background:"rgba(255,255,255,0.1)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"rgba(255,255,255,0.8)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:paused?"#f87171":"#4ade80"}}>â—</span>{paused?"Paused":fac?.name||"Factory"}</div>}
         navItems={nav} page={page} onNav={p=>{setPage(p);if(p==="notifs"){DB.readAll(user.id);load();}}} onLogout={onLogout} userName={user.name} userSub={user.role}>
-        {paused&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:18}}>🚫</span><div style={{fontSize:13,fontWeight:600,color:C.red}}>Account Paused — Contact Epistable support to resume.</div></div>}
+        {paused&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:18}}>ðŸš«</span><div style={{fontSize:13,fontWeight:600,color:C.red}}>Account Paused â€” Contact Epistable support to resume.</div></div>}
         <ErrorNotice message={refreshError} onRetry={()=>load({blockAdmin:false})}/>
         {(shellLoading||adminDataLoading)&&isAdmin&&<div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:10,padding:"9px 12px",fontSize:12,fontWeight:600,color:C.primary,marginBottom:16}}>Refreshing dashboard data...</div>}
         {pages[page]||pages.home}
@@ -1725,14 +1715,14 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
           {firstSlabSteps.map((step,i)=>(
             <button key={step.label} onClick={()=>setPage(step.page)} style={{display:"flex",alignItems:"flex-start",gap:12,background:C.white,border:`1px solid ${step.done?C.greenBorder:C.primaryBorder}`,borderRadius:10,padding:"14px 16px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
-              <span style={{width:24,height:24,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:step.done?C.green:C.primaryBg,color:step.done?C.white:C.primary,fontSize:12,fontWeight:700,flexShrink:0}}>{step.done?"✓":i+1}</span>
+              <span style={{width:24,height:24,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:step.done?C.green:C.primaryBg,color:step.done?C.white:C.primary,fontSize:12,fontWeight:700,flexShrink:0}}>{step.done?"âœ“":i+1}</span>
               <span style={{minWidth:0}}><span style={{display:"block",fontSize:13,fontWeight:600,color:C.text,marginBottom:3}}>{step.label}</span><span style={{display:"block",fontSize:12,lineHeight:1.55,color:C.textDim}}>{step.detail}</span></span>
             </button>
           ))}
         </div>
       </Card>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"18px",marginBottom:18,color:C.white}}>
-        <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>👋 {user.role}</div>
+        <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:6,textTransform:"capitalize"}}>ðŸ‘‹ {user.role}</div>
         <div style={{...TEXT.heroTitle,marginBottom:4}}>{user.name}</div>
         <div style={{fontSize:13,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:18}}>{fac?.name||"Factory"}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
@@ -1759,7 +1749,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginTop:16}}>
           {pilotItems.map(item=>(
             <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",alignItems:"center",gap:11,background:item.done?C.greenBg:C.surface,border:`1px solid ${item.done?C.greenBorder:C.border}`,borderRadius:9,padding:"13px 14px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
-              <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{item.done?"✓":"•"}</span>
+              <span style={{width:18,height:18,borderRadius:"50%",background:item.done?C.green:C.white,border:`1px solid ${item.done?C.green:C.border}`,color:item.done?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{item.done?"âœ“":"â€¢"}</span>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:600,color:C.text}}>{item.label}</span><span style={{display:"block",fontSize:12,color:item.done?C.green:C.textDim,fontWeight:500,marginTop:2}}>{item.value}</span></span>
             </button>
           ))}
@@ -1839,16 +1829,16 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
         </button>
         {isAdmin?
           <button onClick={openPortal} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 18px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
-            <div style={{fontSize:28,marginBottom:8}}>🌐</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Public Inventory Preview</div>
+            <div style={{fontSize:28,marginBottom:8}}>ðŸŒ</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Public Inventory Preview</div>
           </button>:
           <button onClick={()=>setPage("history")} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 18px",cursor:"pointer",textAlign:"left",WebkitTapHighlightColor:"transparent"}}>
-            <div style={{fontSize:28,marginBottom:8}}>📋</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Slab Certificates</div>
+            <div style={{fontSize:28,marginBottom:8}}>ðŸ“‹</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Slab Certificates</div>
           </button>}
       </div>
       {today.length>0&&<Card>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={TEXT.itemTitle}>Today's Scans</div>
-          <button onClick={()=>setPage("history")} style={{background:"none",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer"}}>All →</button>
+          <button onClick={()=>setPage("history")} style={{background:"none",border:"none",color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer"}}>All â†’</button>
         </div>
         {today.slice(0,5).map((r,i)=>{const g=gradeConf(r.grade);return(
           <div key={r.id} style={{display:"flex",alignItems:"center",gap:14,padding:"11px 16px",borderBottom:i<Math.min(today.length,5)-1?`1px solid ${C.border}`:"none"}}>
@@ -1861,372 +1851,6 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
     </div>
   );
 }
-
-function FacExportReadiness({fac,user}) {
-  const [profile,setProfile]=useState(null);
-  const [requirements,setRequirements]=useState([]);
-  const [requirementsByMarket,setRequirementsByMarket]=useState({});
-  const [bodiesByReq,setBodiesByReq]=useState({});
-  const [evidence,setEvidence]=useState([]);
-  const [activeMarket,setActiveMarket]=useState("EU");
-  const [showAddMarket,setShowAddMarket]=useState(false);
-  const [uploadReq,setUploadReq]=useState(null);
-  const [naReq,setNaReq]=useState(null);
-  const [naReason,setNaReason]=useState("");
-  const [form,setForm]=useState({
-    sector:"stone",
-    productType:"any",
-    markets:["EU"],
-    exportStatus:"planning",
-    companySize:"",
-    currentCertifications:[],
-  });
-  const [loading,setLoading]=useState(true);
-  const [saving,setSaving]=useState(false);
-  const [err,setErr]=useState("");
-
-  const evidenceByReq=useMemo(()=>{
-    const map={};
-    evidence.forEach(e=>{map[e.requirement_id]=e;});
-    return map;
-  },[evidence]);
-  const markets=form.markets?.length?form.markets:["EU"];
-  const activeRequirements=requirementsByMarket[activeMarket]||requirements;
-  const scored=activeRequirements.map(r=>{
-    const status=evidenceByReq[r.id]?.status || "missing";
-    const conf=readinessStatusConf(status);
-    return {...r,status,score:conf.score};
-  });
-  const missing=scored.filter(r=>["missing","rejected","expired"].includes(r.status));
-  const working=scored.filter(r=>["pending","uploaded","submitted"].includes(r.status));
-  const complete=scored.filter(r=>["verified","not_applicable"].includes(r.status));
-  const activeStats=scoreRequirements(activeRequirements,evidence);
-  const readinessScore=activeStats.score;
-  const marketScores=useMemo(()=>{
-    const out={};
-    markets.forEach(m=>{out[m]=scoreRequirements(requirementsByMarket[m]||[],evidence).score;});
-    return out;
-  },[markets,requirementsByMarket,evidence]);
-  const grouped=useMemo(()=>{
-    const groups=Object.fromEntries(READINESS_SECTIONS.map(s=>[s.id,[]]));
-    scored.forEach(r=>{groups[sectionForRequirement(r)]?.push(r);});
-    return groups;
-  },[scored]);
-
-  async function fetchRequirements(next) {
-    const targetMarkets=next.markets?.length?next.markets:["EU"];
-    const pairs=await Promise.all(targetMarkets.map(async market=>[market,await DB.exportRequirements({sector:next.sector,productType:next.productType,market})]));
-    const byMarket=Object.fromEntries(pairs);
-    setRequirementsByMarket(byMarket);
-    setRequirements(byMarket[targetMarkets[0]] || []);
-    const ids=[...new Set(pairs.flatMap(([,reqs])=>reqs.map(r=>r.id)))];
-    setBodiesByReq(await DB.readinessBodies(ids));
-  }
-
-  async function load(nextForm=form) {
-    if(!fac?.id)return;
-    setLoading(true);setErr("");
-    try {
-      const p=await DB.getExportReadinessProfile(fac.id);
-      const destinationMarkets=p?.destination_markets?.length?p.destination_markets:[nextForm.markets?.[0]||"EU"];
-      const merged=p?{
-        sector:p.sector||"stone",
-        productType:p.product_type||"any",
-        markets:destinationMarkets,
-        exportStatus:p.export_status||"planning",
-        companySize:p.company_size||"",
-        currentCertifications:p.current_certifications||[],
-      }:nextForm;
-      setProfile(p);setForm(merged);setActiveMarket(destinationMarkets[0]||"EU");
-      await fetchRequirements(merged);
-      setEvidence(p?.id?await DB.readinessEvidence(p.id):[]);
-    } catch(e) {
-      console.error("Export readiness load failed",e);
-      setErr(e.message||"Could not load export readiness data.");
-    } finally {
-      setLoading(false);
-    }
-  }
-  useEffect(()=>{load();},[fac?.id]);
-
-  async function saveProfile(next=form) {
-    if(!fac?.id||saving)return null;
-    setSaving(true);setErr("");
-    const destinationMarkets=next.markets?.length?next.markets:[activeMarket||"EU"];
-    try {
-      const saved=await DB.saveExportReadinessProfile(profile,{
-        factoryId:fac.id,
-        userId:user.id,
-        sector:next.sector,
-        productType:next.productType,
-        destinationMarkets,
-        currentCertifications:next.currentCertifications,
-        companySize:next.companySize,
-        exportStatus:next.exportStatus,
-        onboardingInputs:{markets:destinationMarkets,productType:next.productType,exportStatus:next.exportStatus,companySize:next.companySize},
-      });
-      const merged={...next,markets:destinationMarkets};
-      setProfile(saved);setForm(merged);
-      if(!destinationMarkets.includes(activeMarket))setActiveMarket(destinationMarkets[0]);
-      await fetchRequirements(merged);
-      setEvidence(await DB.readinessEvidence(saved.id));
-      return saved;
-    } catch(e) {
-      console.error("Export readiness save failed",e);
-      setErr(e.message||"Could not save readiness profile.");
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function updateForm(patch) {
-    setForm(prev=>({...prev,...patch}));
-  }
-  function toggleCert(id) {
-    const set=new Set(form.currentCertifications);
-    if(set.has(id))set.delete(id);else set.add(id);
-    updateForm({currentCertifications:Array.from(set)});
-  }
-  async function addMarket(code) {
-    const next={...form,markets:[...new Set([...(form.markets||[]),code])]};
-    setForm(next);setActiveMarket(code);setShowAddMarket(false);
-    await saveProfile(next);
-  }
-  async function removeMarket(code) {
-    if(markets.length<=1)return;
-    const nextMarkets=markets.filter(m=>m!==code);
-    const next={...form,markets:nextMarkets};
-    setForm(next);
-    if(activeMarket===code)setActiveMarket(nextMarkets[0]);
-    await saveProfile(next);
-  }
-  async function persistEvidence(req,patch) {
-    let activeProfile=profile;
-    if(!activeProfile?.id)activeProfile=await saveProfile(form);
-    if(!activeProfile?.id)return;
-    setSaving(true);setErr("");
-    try {
-      await DB.setReadinessEvidence({
-        factoryId:fac.id,
-        profileId:activeProfile.id,
-        requirementId:req.id,
-        evidenceType:req.evidenceType,
-        evidenceLifecycleType:req.lifecycleType,
-        userId:user.id,
-        ...patch,
-      });
-      setEvidence(await DB.readinessEvidence(activeProfile.id));
-      setUploadReq(null);setNaReq(null);setNaReason("");
-    } catch(e) {
-      console.error("Readiness evidence update failed",e);
-      setErr(e.message||"Could not update requirement status.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const scoreTone=readinessScore>=75?"success":readinessScore>=45?"warning":"danger";
-  if(loading)return <Loader/>;
-  return (
-    <div>
-      {uploadReq&&<EvidenceUploadModal req={uploadReq} evidence={evidenceByReq[uploadReq.id]} bodies={bodiesByReq[uploadReq.id]||[]} saving={saving} onClose={()=>setUploadReq(null)} onSave={patch=>persistEvidence(uploadReq,patch)}/>}
-      {naReq&&<Modal title="Mark not applicable" onClose={()=>setNaReq(null)}>
-        <div style={{display:"grid",gap:14}}>
-          <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>Use this only when the requirement genuinely does not apply to your product, market, or shipment route.</div>
-          <textarea value={naReason} onChange={e=>setNaReason(e.target.value)} rows={3} placeholder="Why does this not apply?" style={{width:"100%",padding:12,border:`1.5px solid ${C.border}`,borderRadius:10,boxSizing:"border-box",fontFamily:FONT_STACK,fontSize:14,color:C.text,resize:"vertical"}}/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Btn variant="secondary" onClick={()=>setNaReq(null)} disabled={saving}>Cancel</Btn>
-            <Btn onClick={()=>persistEvidence(naReq,{status:"not_applicable",notes:`Not applicable: ${naReason}`})} disabled={saving||!naReason.trim()}>Save reason</Btn>
-          </div>
-        </div>
-      </Modal>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:18,flexWrap:"wrap"}}>
-        <div>
-          <div style={TEXT.pageHeader}>Export Readiness</div>
-          <div style={{...TEXT.tinyMeta,marginTop:4,maxWidth:680}}>Track what each market needs, submit third-party evidence, and build a buyer-audit-ready profile. Epistable organises evidence; it does not issue certifications.</div>
-        </div>
-        <Pill tone={scoreTone} style={{fontSize:13,padding:"6px 12px"}}>{readinessScore}% ready for {marketConf(activeMarket).short}</Pill>
-      </div>
-      {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.red,marginBottom:16}}>{err}</div>}
-      <KpiGrid items={[
-        {label:"Requirements",value:activeStats.total,icon:"Trace",color:C.primary},
-        {label:"Complete",value:activeStats.complete,icon:"Won",color:C.green},
-        {label:"Submitted / Working",value:activeStats.working,icon:"Now",color:C.amber},
-        {label:"Missing",value:activeStats.missing,icon:"Risk",color:C.red},
-      ]}/>
-      <Card style={{padding:20,marginBottom:18}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
-          <div>
-            <div style={TEXT.panelTitle}>Readiness profile</div>
-            <div style={TEXT.tinyMeta}>Pick the markets you are targeting. Each market gets its own readiness score.</div>
-          </div>
-          <Btn size="sm" onClick={()=>saveProfile(form)} disabled={saving}>{profile?"Save":"Create profile"}</Btn>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:16}}>
-          <Sel label="Product" value={form.productType} onChange={v=>updateForm({productType:v})} options={EXPORT_PRODUCTS}/>
-          <Sel label="Current Status" value={form.exportStatus} onChange={v=>updateForm({exportStatus:v})} options={[
-            {value:"planning",label:"Planning first export"},
-            {value:"first_export",label:"Preparing first shipment"},
-            {value:"active_exporter",label:"Already exporting"},
-            {value:"expanding_markets",label:"Expanding markets"},
-          ]}/>
-          <Sel label="Company Size" value={form.companySize} onChange={v=>updateForm({companySize:v})} options={[
-            {value:"",label:"Select size"},
-            {value:"small",label:"Small factory"},
-            {value:"mid",label:"Mid-size exporter"},
-            {value:"large",label:"Large exporter"},
-          ]}/>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
-          {markets.map(code=>{
-            const m=marketConf(code);
-            const active=code===activeMarket;
-            const s=marketScores[code]||0;
-            const tone=s>=75?"success":s>=45?"warning":"danger";
-            return <button key={code} onClick={()=>setActiveMarket(code)} style={{display:"inline-flex",alignItems:"center",gap:8,background:active?C.primaryBg:C.white,border:`1px solid ${active?C.primaryBorder:C.border}`,borderRadius:999,padding:"8px 10px",cursor:"pointer",fontFamily:FONT_STACK,color:active?C.primary:C.textMid,whiteSpace:"nowrap",boxShadow:active?C.shadow:"none"}}>
-              <span style={{fontSize:13,fontWeight:700}}>{m.short}</span><Pill tone={tone} size="sm">{s}%</Pill>
-              {markets.length>1&&<span onClick={e=>{e.stopPropagation();removeMarket(code);}} style={{display:"inline-flex",color:C.textDim}}><Icon name="close" size={13}/></span>}
-            </button>;
-          })}
-          <button onClick={()=>setShowAddMarket(v=>!v)} style={{display:"inline-flex",alignItems:"center",gap:6,background:C.surface,border:`1px dashed ${C.primaryBorder}`,borderRadius:999,padding:"8px 11px",cursor:"pointer",fontFamily:FONT_STACK,color:C.primary,fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}><Icon name="add" size={14}/> Add market</button>
-        </div>
-        {showAddMarket&&<div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"0 0 14px"}}>
-          {EXPORT_MARKETS.filter(m=>!markets.includes(m.value)).map(m=><Btn key={m.value} size="sm" variant="secondary" onClick={()=>addMarket(m.value)}>{m.label}</Btn>)}
-          {EXPORT_MARKETS.filter(m=>!markets.includes(m.value)).length===0&&<div style={TEXT.tinyMeta}>All available markets are already selected.</div>}
-        </div>}
-        <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:8}}>What do you already have?</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {EXPORT_CERTS.map(cert=>{
-            const active=form.currentCertifications.includes(cert.id);
-            return <button key={cert.id} onClick={()=>toggleCert(cert.id)} style={{border:`1px solid ${active?C.greenBorder:C.border}`,background:active?C.greenBg:C.white,color:active?C.green:C.textMid,borderRadius:999,padding:"7px 11px",fontFamily:FONT_STACK,fontSize:12,fontWeight:600,cursor:"pointer"}}>{active?"✓ ":""}{cert.label}</button>;
-          })}
-        </div>
-      </Card>
-      <Card style={{padding:16,marginBottom:18,borderColor:C.primaryBorder,background:C.primaryBg}}>
-        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-          <Pill tone="primary">{marketConf(activeMarket).label}</Pill>
-          <div style={{fontSize:13,lineHeight:1.6,color:C.textMid}}>{form.productType==="any"?"Mixed stone products":EXPORT_PRODUCTS.find(p=>p.value===form.productType)?.label} · {activeStats.complete} of {activeStats.total} items complete · Submitted evidence should be reviewed before it is shown as verified to buyers.</div>
-        </div>
-      </Card>
-      <Card style={{padding:20,marginBottom:18}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
-          <div>
-            <div style={TEXT.panelTitle}>Roadmap sections for {marketConf(activeMarket).label}</div>
-            <div style={TEXT.tinyMeta}>Grouped by buyer-audit theme. Submit evidence against each requirement as you collect it.</div>
-          </div>
-          {!profile&&<Pill tone="warning">Save profile first</Pill>}
-        </div>
-        {activeRequirements.length===0?<div style={{padding:"30px 12px",textAlign:"center",color:C.textDim,fontSize:13}}>No configured requirements found for this selection yet.</div>:
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          {READINESS_SECTIONS.map(section=>{
-            const sectionReqs=grouped[section.id]||[];
-            if(!sectionReqs.length)return null;
-            const sectionStats=scoreRequirements(sectionReqs,evidence);
-            return (
-              <div key={section.id} style={{border:`1px solid ${C.border}`,borderRadius:14,padding:14,background:C.surface}}>
-                <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:10}}>
-                  <div>
-                    <div style={{fontSize:14,fontWeight:700,color:C.text}}>{section.label}</div>
-                    <div style={TEXT.tinyMeta}>{section.hint}</div>
-                  </div>
-                  <Pill tone={sectionStats.complete===sectionStats.total?"success":"neutral"}>{sectionStats.complete} of {sectionStats.total}</Pill>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {sectionReqs.map(req=>{
-                    const conf=readinessStatusConf(req.status);
-                    const ev=evidenceByReq[req.id];
-                    const timeline=req.timelineMin||req.timelineMax?`${req.timelineMin||0}-${req.timelineMax||req.timelineMin} weeks`:"Timeline varies";
-                    const cost=req.costMin||req.costMax?`${fmtMoney(req.costMin||0)}-${fmtMoney(req.costMax||req.costMin||0)}`:"Cost varies";
-                    const bodies=bodiesByReq[req.id]||[];
-                    return (
-                      <div key={req.id} style={{border:`1px solid ${C.border}`,borderRadius:12,padding:14,background:C.white}}>
-                        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:8}}>
-                          <div style={{minWidth:0}}>
-                            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
-                              <div style={{fontSize:14,fontWeight:700,color:C.text}}>{req.requirementName}</div>
-                              <Pill tone={req.is_mandatory===false?"neutral":"primary"} size="sm">{req.is_mandatory===false?"Recommended":"Required"}</Pill>
-                            </div>
-                            <div style={{fontSize:12,lineHeight:1.6,color:C.textMid}}>{req.description}</div>
-                          </div>
-                          <Pill tone={conf.tone}>{conf.label}</Pill>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,margin:"10px 0"}}>
-                          <div style={{fontSize:12,color:C.textDim}}>Evidence: <strong style={{color:C.text}}>{(req.evidence_instructions||req.evidenceType||"Document").slice(0,70)}</strong></div>
-                          <div style={{fontSize:12,color:C.textDim}}>Timeline: <strong style={{color:C.text}}>{timeline}</strong></div>
-                          <div style={{fontSize:12,color:C.textDim}}>Cost: <strong style={{color:C.text}}>{cost}</strong></div>
-                        </div>
-                        {!!bodies.length&&<div style={{fontSize:12,color:C.textDim,marginBottom:10}}>Possible bodies: <strong style={{color:C.text}}>{bodies.slice(0,3).map(b=>b.name).join(", ")}</strong></div>}
-                        {ev&&req.status!=="missing"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:10,fontSize:12,lineHeight:1.6,color:C.textMid}}>
-                          {ev.certificate_number&&<div>Reference: <strong style={{color:C.text}}>{ev.certificate_number}</strong></div>}
-                          {ev.issued_at&&<div>Issued: <strong style={{color:C.text}}>{fmtD(ev.issued_at)}</strong></div>}
-                          {ev.expires_at&&<div>Valid until: <strong style={{color:C.text}}>{fmtD(ev.expires_at)}</strong></div>}
-                          {ev.file_url&&<div><a href={ev.file_url} target="_blank" rel="noreferrer" style={{color:C.primary,fontWeight:600}}>Open evidence file</a></div>}
-                          {ev.notes&&<div>{ev.notes}</div>}
-                        </div>}
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${C.border}`}}>
-                          <Btn size="sm" variant="secondary" disabled={saving} onClick={()=>setUploadReq(req)}>{req.status==="submitted"?"Edit evidence":"Submit evidence"}</Btn>
-                          <Btn size="sm" variant={req.status==="pending"?"ghost":"secondary"} disabled={saving} onClick={()=>persistEvidence(req,{status:"pending",notes:"Work started during readiness assessment."})}>Working on it</Btn>
-                          <Btn size="sm" variant={req.status==="missing"?"red":"secondary"} disabled={saving} onClick={()=>persistEvidence(req,{status:"missing",notes:"Marked missing during readiness assessment."})}>Missing</Btn>
-                          <Btn size="sm" variant="secondary" disabled={saving} onClick={()=>{setNaReq(req);setNaReason(ev?.notes?.replace(/^Not applicable:\s*/,"")||"");}}>Not applicable</Btn>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>}
-      </Card>
-      <Card style={{padding:20,borderColor:C.primaryBorder,background:C.primaryBg}}>
-        <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-          <Icon name="verified" size={22} color={C.primary}/>
-          <div>
-            <div style={{fontSize:14,fontWeight:700,color:C.primary,marginBottom:4}}>Next best action</div>
-            <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>
-              {missing[0]?`Start with ${missing[0].requirementName}. It is the highest-priority missing item for ${marketConf(activeMarket).short}.`:"Keep the evidence fresh and prepare a buyer-ready packet before sending profiles to international buyers."}
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-const PHOTO_SLOTS = [
-  {id:"front",label:"Full slab",hint:"Entire slab in one frame",required:true},
-  {id:"surface",label:"Surface close-up",hint:"Polish, stain, vein, color",required:true},
-  {id:"edge",label:"Edge/corner",hint:"Thickness, chips, corner condition",required:true},
-  {id:"defect",label:"Defect close-up",hint:"Required when defects are selected",required:false},
-];
-
-const defaultMeasurements = () => ({
-  thickness:"",
-  length:"",
-  width:"",
-  polish:3,
-  soundTest:"clear",
-  edgeCondition:"good",
-  surfaceFinish:"polished",
-  traceability:{
-    quarrySource:"",
-    batchNo:"",
-    blockNo:"",
-    productionLine:"",
-    operator:"",
-    containerNo:"",
-    customerRef:"",
-  },
-  audit:{
-    calibrationChecked:false,
-    checklistComplete:false,
-    rootCause:"",
-    correctiveAction:"",
-    actionOwner:"",
-    actionDue:"",
-  },
-});
 
 function FacScan({user,fac,paused,onSaved}) {
   const [step,setStep]=useState(0);
@@ -2245,7 +1869,7 @@ function FacScan({user,fac,paused,onSaved}) {
   const fileRef=useRef();const videoRef=useRef();const canvasRef=useRef();
   const [cameraOpen,setCameraOpen]=useState(false);const [cameraStream,setCameraStream]=useState(null);const [cameraError,setCameraError]=useState("");
   useEffect(()=>{if(fac)DB.facSuppliers(fac.id).then(setSuppliers);},[fac]);
-  if(paused)return <div style={{textAlign:"center",padding:40}}><div style={{fontSize:48,marginBottom:16}}>🚫</div><div style={{fontSize:16,fontWeight:700}}>Account Paused</div></div>;
+  if(paused)return <div style={{textAlign:"center",padding:40}}><div style={{fontSize:48,marginBottom:16}}>ðŸš«</div><div style={{fontSize:16,fontWeight:700}}>Account Paused</div></div>;
 
   const requiredPhotoSlots=PHOTO_SLOTS.filter(s=>s.required||(s.id==="defect"&&form.defects.length>0));
   const completePhotoSlots=requiredPhotoSlots.filter(s=>photos[s.id]?.src).length;
@@ -2319,7 +1943,7 @@ function FacScan({user,fac,paused,onSaved}) {
     setLoading(true);setGrade(null);
     try {
       const trace=form.measurements.traceability||{};
-      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (₹${GRADES[0].price}/sqft), Standard (₹${GRADES[1].price}/sqft), Commercial (₹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName()||"Unknown"}\nSource: ${trace.quarrySource||"Not recorded"}, Batch: ${trace.batchNo||"Not recorded"}, Block: ${trace.blockNo||"Not recorded"}, Line: ${trace.productionLine||"Not recorded"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}×${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
+      const res=await fetch("https://epistable-ai.elston55541.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are Epistable, a stone slab grading expert. Grade as: Premium (â‚¹${GRADES[0].price}/sqft), Standard (â‚¹${GRADES[1].price}/sqft), Commercial (â‚¹${GRADES[2].price}/sqft), or Rejected. Return ONLY JSON: {"grade":"Premium|Standard|Commercial|Rejected","reason":"1-2 sentences","pricePerSqFt":number,"exportReady":boolean,"tips":"1 tip"}`,messages:[{role:"user",content:`Stone: ${STONES.find(s=>s.id===form.stone)?.label||form.stone}\nSupplier: ${supplierName()||"Unknown"}\nSource: ${trace.quarrySource||"Not recorded"}, Batch: ${trace.batchNo||"Not recorded"}, Block: ${trace.blockNo||"Not recorded"}, Line: ${trace.productionLine||"Not recorded"}\nThickness=${form.measurements.thickness}mm, Size=${form.measurements.length}Ã—${form.measurements.width}cm, Polish=${form.measurements.polish}/5\nDefects: ${form.defects.join(", ")||"None"}\nNotes: ${form.notes||"None"}`}]})});
       const data=await res.json();
       let text=data.content?.[0]?.text||"{}";text=text.replace(/```json|```/g,"").trim();
       const parsed=JSON.parse(text);
@@ -2403,7 +2027,7 @@ function FacScan({user,fac,paused,onSaved}) {
       <canvas ref={canvasRef} style={{display:"none"}}/>
       {cameraOpen&&<div style={{position:"fixed",inset:0,background:"#000",zIndex:500,display:"flex",flexDirection:"column"}}>
         <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
-          <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>✕ Cancel</button>
+          <button onClick={stopCamera} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>âœ• Cancel</button>
           <div style={{color:"#fff",fontSize:13,fontWeight:600}}>{PHOTO_SLOTS.find(s=>s.id===photoSlot)?.label}</div>
         </div>
         {cameraError?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24,color:"#fff"}}>{cameraError}</div>:
@@ -2463,10 +2087,10 @@ function FacScan({user,fac,paused,onSaved}) {
               <div key={slot.id} style={{border:`1px solid ${photos[slot.id]?C.greenBorder:C.border}`,borderRadius:12,overflow:"hidden",background:photos[slot.id]?C.greenBg:C.white}}>
                 <div style={{aspectRatio:"4/3",background:C.surface,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {photos[slot.id]?<img src={photos[slot.id].src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{fontSize:12,color:C.textDim,fontWeight:600,textAlign:"center",padding:8}}>{slot.hint}</div>}
-                  {photos[slot.id]&&<button onClick={()=>removeEvidencePhoto(slot.id)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.65)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>}
+                  {photos[slot.id]&&<button onClick={()=>removeEvidencePhoto(slot.id)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.65)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>Ã—</button>}
                 </div>
                 <div style={{padding:9}}>
-                  <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:6}}>{photos[slot.id]?"✓ ":""}{slot.label}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:6}}>{photos[slot.id]?"âœ“ ":""}{slot.label}</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                     <button onClick={()=>openCamera(slot.id)} style={{padding:"7px",background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:8,color:C.primary,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Camera</button>
                     <button onClick={()=>chooseUpload(slot.id)} style={{padding:"7px",background:C.white,border:`1px solid ${C.border}`,borderRadius:8,color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Upload</button>
@@ -2476,7 +2100,7 @@ function FacScan({user,fac,paused,onSaved}) {
             ))}
           </div>
         </div>
-        <Btn full onClick={()=>setStep(1)} disabled={!photoReady||!supplierReady}>Next → Measurements</Btn>
+        <Btn full onClick={()=>setStep(1)} disabled={!photoReady||!supplierReady}>Next â†’ Measurements</Btn>
       </div>}
       {step===1&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Measurements</div>
@@ -2513,14 +2137,14 @@ function FacScan({user,fac,paused,onSaved}) {
             <button onClick={()=>setAudit("checklistComplete",!form.measurements.audit?.checklistComplete)} style={{padding:"10px",background:form.measurements.audit?.checklistComplete?C.greenBg:C.white,border:`1px solid ${form.measurements.audit?.checklistComplete?C.greenBorder:C.border}`,borderRadius:9,color:form.measurements.audit?.checklistComplete?C.green:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{form.measurements.audit?.checklistComplete?"Checklist complete":"Mark checklist"}</button>
           </div>
         </Card>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setStep(0)}>← Back</Btn><Btn onClick={()=>setStep(2)}>Next → Defects</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setStep(0)}>â† Back</Btn><Btn onClick={()=>setStep(2)}>Next â†’ Defects</Btn></div>
       </div>}
       {step===2&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div style={{fontSize:16,fontWeight:700}}>Defects Found</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           {DEFECTS.map(d=>{const sel=form.defects.includes(d.id);return(
             <button key={d.id} onClick={()=>toggleDefect(d.id)} style={{padding:"12px",background:sel?"#fff3e0":C.white,border:`2px solid ${sel?d.color:C.border}`,borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:FONT_STACK}}>
-              <div style={{fontSize:13,fontWeight:600,color:sel?d.color:C.text}}>{sel?"✓ ":""}{d.label}</div>
+              <div style={{fontSize:13,fontWeight:600,color:sel?d.color:C.text}}>{sel?"âœ“ ":""}{d.label}</div>
             </button>
           );})}
         </div>
@@ -2555,11 +2179,11 @@ function FacScan({user,fac,paused,onSaved}) {
           <div style={{marginTop:14}}><Inp label="Due Date" value={form.measurements.audit?.actionDue||""} onChange={v=>setAudit("actionDue",v)} placeholder="2026-05-30"/></div>
         </Card>}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setStep(1)}>← Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}><Icon name="bot" size={15}/> Grade with AI</Btn></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>setStep(1)}>â† Back</Btn><Btn disabled={!photoReady} onClick={()=>{setStep(3);gradeWithAI();}}><Icon name="bot" size={15}/> Grade with AI</Btn></div>
       </div>}
       {step===3&&<div>
         <div style={{fontSize:16,fontWeight:700,marginBottom:18}}>AI Grade Result</div>
-        {loading?<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="bot" size={48} color={C.primary}/></div><div style={{fontSize:16,fontWeight:700}}>Analysing slab…</div></div>
+        {loading?<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="bot" size={48} color={C.primary}/></div><div style={{fontSize:16,fontWeight:700}}>Analysing slabâ€¦</div></div>
         :grade?(()=>{const g=gradeConf(grade.grade);return(
           <div>
             <div style={{background:g.bg,border:`2px solid ${g.border}`,borderRadius:14,padding:"24px",textAlign:"center",marginBottom:18}}>
@@ -2574,7 +2198,7 @@ function FacScan({user,fac,paused,onSaved}) {
             <Card style={{padding:20,marginBottom:16,borderColor:C.amberBorder,background:C.amberBg}}>
               <div style={{fontSize:13,fontWeight:600,color:C.amber,marginBottom:5}}>AI-assisted, inspector-confirmed</div>
               <div style={{fontSize:12,lineHeight:1.65,color:C.textMid}}>Review the evidence photos, measurements, defects, and price before saving. If the AI grade does not match the slab, override it below so the certificate reflects the human inspection.</div>
-              {aiGrade&&<div style={{fontSize:12,color:C.textMid,fontWeight:600,marginTop:8}}>AI suggested: {aiGrade} · Final: {grade.grade}</div>}
+              {aiGrade&&<div style={{fontSize:12,color:C.textMid,fontWeight:600,marginTop:8}}>AI suggested: {aiGrade} Â· Final: {grade.grade}</div>}
             </Card>
             {aiGrade&&grade.grade!==aiGrade&&<Card style={{padding:20,marginBottom:16,borderColor:C.primaryBorder,background:C.primaryBg}}>
               <div style={{fontSize:13,fontWeight:600,color:C.primary,marginBottom:6}}>Override reason</div>
@@ -2606,7 +2230,7 @@ function FacScan({user,fac,paused,onSaved}) {
               ))}
             </div>
             <ErrorNotice title="Could not save slab" message={saveError} onRetry={save}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setAiGrade("");setOverrideReason("");setSaveError("");}}>← Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"✓ Save Slab"}</Btn></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Btn variant="secondary" onClick={()=>{setStep(2);setGrade(null);setAiGrade("");setOverrideReason("");setSaveError("");}}>â† Redo</Btn><Btn variant="green" onClick={save} disabled={saving}>{saving?"Saving...":"âœ“ Save Slab"}</Btn></div>
           </div>
         );})():null}
       </div>}
@@ -2648,7 +2272,7 @@ function FactorySlabDetailModal({slab,onClose,onQr,onStatus}) {
             <div style={{minWidth:0}}>
               <div style={{fontSize:12,fontFamily:"monospace",color:C.textDim,marginBottom:4}}>{slab.id}</div>
               <div style={{fontSize:18,fontWeight:700,color:C.text,marginBottom:3}}>{slab.stone}</div>
-              <div style={{fontSize:12,color:C.textMid}}>{slab.date} · {slab.time}</div>
+              <div style={{fontSize:12,color:C.textMid}}>{slab.date} Â· {slab.time}</div>
             </div>
             <span style={{fontSize:12,fontWeight:600,color:g.color,background:C.white,border:`1px solid ${g.border}`,borderRadius:20,padding:"5px 10px",flexShrink:0}}>{slab.grade}</span>
           </div>
@@ -2749,7 +2373,7 @@ function FacHistory({insps}) {
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {detailSlab&&<FactorySlabDetailModal slab={detailSlab} onClose={()=>setDetailSlab(null)} onStatus={updateStatus} onQr={()=>{setQrSlab(detailSlab);setDetailSlab(null);}}/>}
       <div style={TEXT.pageTitle}>Scan History</div>
-      <div style={{marginBottom:14}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab ID…" icon="search"/></div>
+      <div style={{marginBottom:14}}><Inp value={search} onChange={setSearch} placeholder="Search stone, slab IDâ€¦" icon="search"/></div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:18}}>
         {["All",...GRADES.map(g=>g.id)].map(f=>(
           <button key={f} onClick={()=>setFilterG(f)} style={{padding:"6px 14px",background:filterG===f?C.primary:C.white,border:`1px solid ${filterG===f?C.primary:C.border}`,borderRadius:20,color:filterG===f?C.white:C.textMid,fontSize:12,fontWeight:filterG===f?700:400,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
@@ -2900,7 +2524,7 @@ function FacAnalytics({insps}) {
       @media print{body{margin:16px}.grid{grid-template-columns:repeat(4,1fr)}a{color:#0057a8}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Audit Evidence Packet</h1>
-      <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())} · ${total} inspections</div>
+      <div class="meta">Generated ${esc(fmtD(Date.now()))} Â· Period ${esc(curMon())} Â· ${total} inspections</div>
       <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
       <div class="grid">
         <div class="kpi"><b>${total}</b>Total inspections</div>
@@ -3011,7 +2635,7 @@ function FacAnalytics({insps}) {
       @media print{body{margin:16px}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Factory Pilot Report</h1>
-      <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())}</div>
+      <div class="meta">Generated ${esc(fmtD(Date.now()))} Â· Period ${esc(curMon())}</div>
       <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
       <div class="score"><b>${readyScore}%</b>Pilot readiness signal based on scan volume, traceability, audit completion, CAPA closure, and AI review coverage.</div>
       <div class="note">This is an internal pilot outcome report for buyer-audit readiness and compliance-readiness preparation. It is not a third-party certification.</div>
@@ -3040,7 +2664,7 @@ function FacAnalytics({insps}) {
       @media print{body{margin:16px}.actions{display:none}}
     </style></head><body>
       <h1>Epistable Readiness Gap Report</h1>
-      <div class="meta">Generated ${esc(fmtD(Date.now()))} · Period ${esc(curMon())}</div>
+      <div class="meta">Generated ${esc(fmtD(Date.now()))} Â· Period ${esc(curMon())}</div>
       <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
       <div class="summary"><b>${gapRows.length}</b>Slabs need evidence or compliance-readiness follow-up.</div>
       <table><thead><tr><th>Slab</th><th>Stone</th><th>Grade</th><th>Supplier</th><th>Missing / Needs Work</th><th>Link</th></tr></thead><tbody>${rows||"<tr><td colspan='6'>No readiness gaps found in current inspection data.</td></tr>"}</tbody></table>
@@ -3194,14 +2818,14 @@ function FacTeam({fac,actor,activity=[],onActivity}) {
       {manage&&<UserAccessModal user={manage} facs={[fac]} onClose={()=>setManage(null)} onSave={saveUser}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Team Access</div><div style={TEXT.meta}>{users.length} profiles</div></div>
-        <Btn size="sm" variant="secondary" onClick={load}>↺</Btn>
+        <Btn size="sm" variant="secondary" onClick={load}>â†º</Btn>
       </div>
       <div style={{marginBottom:16}}><Inp value={search} onChange={setSearch} placeholder="Search team, buyers, roles..." icon="search"/></div>
       {filtered.length===0?<Card style={{padding:"40px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="users" size={32} color={C.primary}/></div><div style={{fontWeight:600}}>No profiles found</div></Card>:
       <Card>{filtered.map((u,i)=>(
         <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={u.avatar||u.name?.slice(0,2).toUpperCase()||"??"} size={36}/>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}{u.company?" · "+u.company:""}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{u.name}</div><div style={{...TEXT.tinyMeta,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}{u.company?" Â· "+u.company:""}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <span style={{fontSize:12,fontWeight:600,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,padding:"3px 9px",borderRadius:20,textTransform:"capitalize"}}>{u.role}</span>
             <StatPill status={u.status||"active"}/>
@@ -3359,7 +2983,7 @@ function FacSuppliers({fac}) {
           {st.recent.length===0?<div style={{fontSize:13,color:C.textDim}}>No inspections yet.</div>:st.recent.map((r,i)=>{const g=gradeConf(r.grade);return(
             <div key={r.id} style={{display:"flex",alignItems:"center",gap:14,padding:"9px 0",borderBottom:i<st.recent.length-1?`1px solid ${C.border}`:"none"}}>
               <div style={{width:34,height:34,borderRadius:8,background:g.bg,border:`1px solid ${g.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{g.emoji}</div>
-              <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{r.stone}</div><div style={{fontSize:12,color:C.textDim}}>{r.date} · {r.id}</div></div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{r.stone}</div><div style={{fontSize:12,color:C.textDim}}>{r.date} Â· {r.id}</div></div>
               <span style={{fontSize:12,fontWeight:600,color:g.color,background:g.bg,border:`1px solid ${g.border}`,borderRadius:20,padding:"3px 8px"}}>{r.grade}</span>
             </div>
           );})}
@@ -3386,7 +3010,7 @@ function FacSuppliers({fac}) {
         {ranked.map(s=>{const st=s._stats;return(
           <Card key={s.id} style={{padding:20,cursor:"pointer"}} onClick={()=>setSel(s)}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:14}}>
-              <div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{s.name}</div><div style={{fontSize:12,color:C.textDim}}>{s.location||"—"} · {s.contact||"—"}</div></div>
+              <div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{s.name}</div><div style={{fontSize:12,color:C.textDim}}>{s.location||"â€”"} Â· {s.contact||"â€”"}</div></div>
               <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:st.risk.color}}>{st.score}</div><div style={{fontSize:12,color:C.textDim,fontWeight:600}}>Score</div></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:14}}>
@@ -3397,7 +3021,7 @@ function FacSuppliers({fac}) {
               <span style={{fontSize:12,fontWeight:600,color:C.textDim}}>{st.lastScan?`Last scan ${fmtD(st.lastScan)}`:"No scans yet"}</span>
             </div>
             {st.topDefects.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {st.topDefects.map(([d,c])=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"3px 8px",fontSize:12,fontWeight:600,color:C.amber,textTransform:"capitalize"}}>{d} · {c}</span>)}
+              {st.topDefects.map(([d,c])=><span key={d} style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:20,padding:"3px 8px",fontSize:12,fontWeight:600,color:C.amber,textTransform:"capitalize"}}>{d} Â· {c}</span>)}
             </div>}
           </Card>
         );})}
@@ -3428,16 +3052,16 @@ function FacBuyers({fac,actor,onActivity}) {
   }
   return (
     <div>
-{show&&<UserFormModal title={"Add Buyer — "+fac?.name} isBuyer onClose={()=>setShow(false)} onDone={closeAfterCreate} onSubmit={createBuyer}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+{show&&<UserFormModal title={"Add Buyer â€” "+fac?.name} isBuyer onClose={()=>setShow(false)} onDone={closeAfterCreate} onSubmit={createBuyer}/>}      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><div style={TEXT.pageHeader}>Buyers</div><div style={TEXT.meta}>{buyers.length} accounts</div></div>
-        <Btn size="sm" variant="secondary" onClick={load}>↺</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
+        <Btn size="sm" variant="secondary" onClick={load}>â†º</Btn> <Btn size="sm" onClick={()=>setShow(true)}>+ Add Buyer</Btn>
       </div>
       {manage&&<UserAccessModal user={manage} facs={[fac]} fixedRole="buyer" onClose={()=>setManage(null)} onSave={saveBuyer}/>}
       {buyers.length===0?<EmptyState title="No buyers yet" body="Create buyer access so customers can browse verified inventory, request quotes, and track accepted orders." actionLabel="+ Add First Buyer" onAction={()=>setShow(true)}/>:
       <Card>{buyers.map((b,i)=>(
         <div key={b.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<buyers.length-1?`1px solid ${C.border}`:"none"}}>
           <Avi initials={b.name.slice(0,2).toUpperCase()} size={36} color={C.teal} bg="#e0f7fa" border="#80deea"/>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{b.name}</div><div style={TEXT.tinyMeta}>{b.company?b.company+" · ":""}{b.email}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{b.name}</div><div style={TEXT.tinyMeta}>{b.company?b.company+" Â· ":""}{b.email}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
             <StatPill status={b.status||"active"}/>
             <Btn size="sm" variant="secondary" onClick={()=>setManage(b)}>Manage</Btn>
@@ -3730,7 +3354,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
                   {(q.revisionNumber||q.revision_number)>1&&<span style={{fontSize:12,fontWeight:600,color:C.purple,background:C.purpleBg,border:`1px solid ${C.purpleBorder}`,borderRadius:20,padding:"2px 8px"}}>Rev {q.revisionNumber||q.revision_number}</span>}
                 </div>
                 <div style={{fontSize:14,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-                <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{q.stone} · {q.grade} · {q.slabId||q.slab_id}</div>
+                <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{q.stone} Â· {q.grade} Â· {q.slabId||q.slab_id}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontSize:18,fontWeight:700,color:C.green}}>{fmtMoney(Number(q.totalAmount||0))}</div>
@@ -3741,7 +3365,7 @@ function FacQuotesPage({quotes=[],insps=[],onChange}) {
             {status==="accepted"&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Fulfillment stage</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:6}}>
-                {quoteFulfillmentSteps(activeFulfillment(q)).map(s=><button key={s.id} disabled={!!fulfillBusy||s.id==="sold"} onClick={()=>updateFulfillment(q,s.id)} style={{padding:"8px 6px",background:s.current?s.bg:C.white,border:`1px solid ${s.current?s.border:C.border}`,borderRadius:8,color:s.current?s.color:C.textMid,fontSize:12,fontWeight:600,cursor:fulfillBusy||s.id==="sold"?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:s.id==="sold"?0.65:1}}>{s.done&&!s.current?"Done · ":""}{s.label}</button>)}
+                {quoteFulfillmentSteps(activeFulfillment(q)).map(s=><button key={s.id} disabled={!!fulfillBusy||s.id==="sold"} onClick={()=>updateFulfillment(q,s.id)} style={{padding:"8px 6px",background:s.current?s.bg:C.white,border:`1px solid ${s.current?s.border:C.border}`,borderRadius:8,color:s.current?s.color:C.textMid,fontSize:12,fontWeight:600,cursor:fulfillBusy||s.id==="sold"?"not-allowed":"pointer",fontFamily:FONT_STACK,opacity:s.id==="sold"?0.65:1}}>{s.done&&!s.current?"Done Â· ":""}{s.label}</button>)}
               </div>
             </div>}
             {(q.buyerMessage||q.buyer_message)&&<div style={{background:C.white,border:`1px solid ${canRevise?C.amberBorder:C.border}`,borderRadius:8,padding:"13px 14px",fontSize:12,color:C.textMid,lineHeight:1.65,marginBottom:14}}><span style={{fontWeight:700,color:canRevise?C.amber:C.text}}>Buyer note:</span> {q.buyerMessage||q.buyer_message}</div>}
@@ -3776,8 +3400,8 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
     return acc;
   },{})).sort((a,b)=>b.count-a.count||b.latest-a.latest).slice(0,5);
   const recent=[
-    ...inquiries.slice(0,8).map(q=>({kind:"Inquiry",title:q.buyerName||q.buyer_name||"Buyer",sub:`${q.stone} · ${q.status}`,ts:q.created_at||0,color:q.status==="new"?C.primary:q.status==="reserved"?C.purple:C.textMid})),
-    ...disputes.slice(0,5).map(d=>({kind:"Dispute",title:d.buyerName||d.buyer_name||"Buyer",sub:`${d.stone} · ${d.status}`,ts:d.created_at||0,color:d.status==="open"?C.red:C.textMid})),
+    ...inquiries.slice(0,8).map(q=>({kind:"Inquiry",title:q.buyerName||q.buyer_name||"Buyer",sub:`${q.stone} Â· ${q.status}`,ts:q.created_at||0,color:q.status==="new"?C.primary:q.status==="reserved"?C.purple:C.textMid})),
+    ...disputes.slice(0,5).map(d=>({kind:"Dispute",title:d.buyerName||d.buyer_name||"Buyer",sub:`${d.stone} Â· ${d.status}`,ts:d.created_at||0,color:d.status==="open"?C.red:C.textMid})),
   ].sort((a,b)=>b.ts-a.ts).slice(0,8);
   const soldSlabIds=new Set(insps.filter(i=>(i.inventoryStatus||"available")==="sold").map(i=>i.id));
   const sentQuotes=quotes.filter(q=>q.status==="sent").length;
@@ -3893,7 +3517,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 0",borderTop:i===0?`1px solid ${C.amberBorder}`:"none",borderBottom:i<revisionRequests.length-1?`1px solid ${C.amberBorder}`:"none"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-              <div style={{fontSize:12,color:C.textMid}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
+              <div style={{fontSize:12,color:C.textMid}}>{q.stone} Â· {fmtMoney(Number(q.totalAmount||0))}</div>
               {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:4}}>{q.buyerMessage}</div>}
             </div>
             <Btn size="sm" variant="ghost" onClick={()=>setPage("quotes")}>Review</Btn>
@@ -3909,7 +3533,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 0",borderTop:i===0?`1px solid ${C.greenBorder}`:"none",borderBottom:i<acceptedActionItems.length-1?`1px solid ${C.greenBorder}`:"none"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
-              <div style={{fontSize:12,color:C.textMid}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
+              <div style={{fontSize:12,color:C.textMid}}>{q.stone} Â· {fmtMoney(Number(q.totalAmount||0))}</div>
             </div>
             <Btn size="sm" variant="green" disabled={orderBusy===q.id} onClick={()=>advanceOrder(q)}>{orderBusy===q.id?"Updating...":orderAction(q)}</Btn>
           </div>
@@ -3936,7 +3560,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           {slabInterest.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer interest yet</div>:slabInterest.map((s,i)=>(
             <div key={s.id} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 0",borderBottom:i<slabInterest.length-1?`1px solid ${C.border}`:"none"}}>
               <div style={{width:28,height:28,borderRadius:8,background:C.primaryBg,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600}}>{i+1}</div>
-              <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.stone||s.id}</div><div style={{fontSize:12,color:C.textDim}}>{s.grade||"Grade"} · {s.id}</div></div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.stone||s.id}</div><div style={{fontSize:12,color:C.textDim}}>{s.grade||"Grade"} Â· {s.id}</div></div>
               <div style={{fontSize:13,fontWeight:600,color:C.primary}}>{s.count}</div>
             </div>
           ))}
@@ -3946,7 +3570,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
           {recent.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer activity yet</div>:recent.map((a,i)=>(
             <div key={`${a.kind}-${a.ts}-${i}`} style={{display:"flex",gap:14,padding:"10px 0",borderBottom:i<recent.length-1?`1px solid ${C.border}`:"none"}}>
               <div style={{width:9,height:9,borderRadius:"50%",background:a.color,marginTop:5,flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600}}>{a.kind}: {a.title}</div><div style={{fontSize:12,color:C.textDim}}>{a.sub} · {fmtD(a.ts)}</div></div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600}}>{a.kind}: {a.title}</div><div style={{fontSize:12,color:C.textDim}}>{a.sub} Â· {fmtD(a.ts)}</div></div>
             </div>
           ))}
         </Card>
@@ -3960,7 +3584,7 @@ function FacSalesDashboard({inquiries=[],insps=[],disputes=[],quotes=[],setPage,
                   <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.buyerCompany||q.buyerName||"Buyer"}</div>
                   <span style={{fontSize:12,fontWeight:600,color:accepted?C.green:C.amber,background:accepted?C.greenBg:C.amberBg,border:`1px solid ${accepted?C.greenBorder:C.amberBorder}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{accepted?"Accepted":"Changes requested"}</span>
                 </div>
-                <div style={{fontSize:12,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
+                <div style={{fontSize:12,color:C.textDim,marginBottom:q.buyerMessage?4:0}}>{q.stone} Â· {fmtMoney(Number(q.totalAmount||0))}</div>
                 {q.buyerMessage&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.65}}>{q.buyerMessage}</div>}
               </div>
             );
@@ -3981,20 +3605,20 @@ function FacDisputes({fac}) {
     <div>
       {sel&&<Modal title="Dispute" onClose={()=>{setSel(null);setResponse("");}}>
         <div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:20,marginBottom:18}}>
-          <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.stone} — {catLabel[sel.category]||sel.category}</div>
+          <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.stone} â€” {catLabel[sel.category]||sel.category}</div>
           <div style={{fontSize:13,lineHeight:1.7}}>{sel.details}</div>
         </div>
-        <div style={{marginBottom:16}}><textarea value={response} onChange={e=>setResponse(e.target.value)} rows={3} placeholder="Your response…" style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:16}}><textarea value={response} onChange={e=>setResponse(e.target.value)} rows={3} placeholder="Your responseâ€¦" style={{width:"100%",padding:"12px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          <Btn variant="secondary" size="sm" onClick={()=>update(sel.id,"dismissed")}>✗ Dismiss</Btn>
-          <Btn variant="green" size="sm" onClick={()=>update(sel.id,"resolved")}>✅ Resolve</Btn>
+          <Btn variant="secondary" size="sm" onClick={()=>update(sel.id,"dismissed")}>âœ— Dismiss</Btn>
+          <Btn variant="green" size="sm" onClick={()=>update(sel.id,"resolved")}>âœ… Resolve</Btn>
         </div>
       </Modal>}
       <div style={TEXT.pageTitle}>Disputes</div>
       {disputes.length===0?<EmptyState title="No disputes" body="Buyer certificate disputes and mismatch reports will appear here. For now, your certificate trail is clean."/>:
       <Card>{disputes.map((d,i)=>(
         <div key={d.id} onClick={()=>{setSel(d);setResponse(d.response||"");}} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<disputes.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",background:d.status==="open"?C.redBg:C.white}}>
-          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone}</div><div style={TEXT.tinyMeta}>{catLabel[d.category]||d.category} · {d.buyer_name}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={TEXT.itemTitle}>{d.stone}</div><div style={TEXT.tinyMeta}>{catLabel[d.category]||d.category} Â· {d.buyer_name}</div></div>
           <DisputeStatusPill status={d.status}/>
         </div>
       ))}</Card>}
@@ -4018,7 +3642,7 @@ function FacNotifs({notifs,onRead}) {
   );
 }
 
-// ── BUYER ──
+// â”€â”€ BUYER â”€â”€
 function quoteStatusConf(status) {
   const m={
     sent:{label:"Sent",c:C.primary,bg:C.primaryBg,b:C.primaryBorder},
@@ -4304,8 +3928,8 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
       {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:3}}>{quoteAction.quote.stone} · {fmtMoney(Number(quoteAction.quote.totalAmount||0))}</div>
-            <div style={{fontSize:12,color:C.textDim}}>{quoteAction.quote.grade} · {quoteAction.quote.id}</div>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:3}}>{quoteAction.quote.stone} Â· {fmtMoney(Number(quoteAction.quote.totalAmount||0))}</div>
+            <div style={{fontSize:12,color:C.textDim}}>{quoteAction.quote.grade} Â· {quoteAction.quote.id}</div>
           </div>
           <textarea value={quoteMsg} onChange={e=>setQuoteMsg(e.target.value)} rows={3} placeholder={quoteAction.decision==="accepted"?"Optional note for the factory":"What should the factory change?"} style={{width:"100%",padding:"13px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}}/>
           {quoteError&&<div style={{fontSize:12,color:C.red,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"8px 10px"}}>{quoteError}</div>}
@@ -4318,7 +3942,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"20px 18px 24px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
           <div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.6)",marginBottom:4,textTransform:"uppercase",letterSpacing:"1px"}}>Epistable · Buyer Portal</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.6)",marginBottom:4,textTransform:"uppercase",letterSpacing:"1px"}}>Epistable Â· Buyer Portal</div>
             <div style={{fontSize:20,fontWeight:700,color:C.white}}>Hello, {buyer.name.split(" ")[0]}!</div>
             {buyer.company&&<div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:2}}>{buyer.company}</div>}
           </div>
@@ -4326,7 +3950,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         </div>
         <div style={{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 16px"}}>
           <div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,color:C.white,marginBottom:2}}>{fac?.name||buyer.factory_name}</div>
-          <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:16}}>{fac?.location} · Verified by Epistable</div>
+          <div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)",marginBottom:16}}>{fac?.location} Â· Verified by Epistable</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
             {[["Available",insps.length,"package"],["Inquiries",activeInquiries,"mail"],["Quotes",activeQuotes,"Quote"]].map(([l,v,icon])=>(
               <div key={l} style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:12}}>{icon}</div><div style={{fontSize:18,fontWeight:700,color:C.white,lineHeight:1.1,letterSpacing:0,marginBottom:2}}>{v}</div><div style={{fontSize:12,lineHeight:1.3,color:"rgba(255,255,255,0.65)"}}>{l}</div></div>
@@ -4339,7 +3963,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
         <div onClick={()=>{try{if(buyerFactoryId)localStorage.setItem("epistable_last_buyer_factory_id",buyerFactoryId);}catch{}onViewPortal(buyerFactoryId);}} style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,borderRadius:14,padding:"20px",marginBottom:18,display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
           <div style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="package" size={26} color={C.white}/></div>
           <div style={{flex:1}}><div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,color:C.white,marginBottom:3}}>View Verified Inventory</div><div style={{fontSize:12,lineHeight:1.65,color:"rgba(255,255,255,0.7)"}}>{insps.length} slabs available</div></div>
-          <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>→</span>
+          <span style={{fontSize:22,color:"rgba(255,255,255,0.5)"}}>â†’</span>
         </div>
         <div onClick={onViewQuotes} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 18px",marginBottom:18,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:C.shadow}}>
           <div style={{width:46,height:46,borderRadius:12,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,color:C.primary,flexShrink:0}}>Quote</div>
@@ -4379,8 +4003,8 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
           {visibleQuotes.slice(0,5).map((q,i)=>{const s=quoteStatusConf(q.status);const f=fulfillmentConf(activeFulfillment(q));const expired=q.validityTs&&q.validityTs<Date.now();const canRespond=q.status==="sent"&&!expired;return(
             <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderBottom:i<Math.min(visibleQuotes.length,5)-1?`1px solid ${C.border}`:"none",flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} · {fmtMoney(Number(q.totalAmount||0))}</div>
-                <div style={{fontSize:12,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
+                <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone} Â· {fmtMoney(Number(q.totalAmount||0))}</div>
+                <div style={{fontSize:12,color:C.textDim}}>{q.grade} Â· {fmtD(q.created_at)}</div>
               </div>
               <span style={{background:s.bg,border:`1px solid ${s.b}`,color:s.c,padding:"3px 9px",borderRadius:20,fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>{s.label}</span>
               {q.status==="accepted"&&<span style={{background:f.bg,border:`1px solid ${f.border}`,color:f.color,padding:"3px 9px",borderRadius:20,fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>{f.label}</span>}
@@ -4401,7 +4025,7 @@ function BuyerHome({buyer,onLogout,onViewPortal,onViewQuotes}) {
             <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderBottom:i<Math.min(inquiries.length,4)-1?`1px solid ${C.border}`:"none"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.stone}</div>
-                <div style={{fontSize:12,color:C.textDim}}>{q.grade} · {fmtD(q.created_at)}</div>
+                <div style={{fontSize:12,color:C.textDim}}>{q.grade} Â· {fmtD(q.created_at)}</div>
               </div>
               <InqPill status={q.status}/>
             </div>
@@ -4555,7 +4179,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`}}>
         <div style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{display:"flex",alignItems:"center",gap:14}}>
-            {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:FONT_STACK}}>← Back</button>}
+            {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:"#fff",padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:FONT_STACK}}>â† Back</button>}
             <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>Epistable</div>
           </div>
           <div style={{background:"rgba(255,255,255,0.1)",borderRadius:20,padding:"4px 12px",display:"flex",alignItems:"center",gap:5}}><div style={{width:6,height:6,borderRadius:"50%",background:"#4ade80"}}/><span style={{fontSize:12,color:"rgba(255,255,255,0.8)",fontWeight:600}}>Verified</span></div>
@@ -4567,7 +4191,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
       </div>
       <div style={{padding:"14px 14px 80px"}}>
         <ErrorNotice message={loadError}/>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone type…" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,marginBottom:14}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slab ID or stone typeâ€¦" style={{width:"100%",padding:"11px 14px",background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,marginBottom:14}}/>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:14,marginBottom:14}}>
           {[["Available",availableCount,C.green],["Reserved",reservedCount,C.amber],["Export Ready",exportCount,C.teal],["Premium",premiumCount,C.primary]].map(([label,value,color])=>(
             <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
@@ -4653,7 +4277,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   </div>
                   <div style={{padding:"12px 14px 8px"}}>
                     <div style={{fontSize:14,fontWeight:700,marginBottom:3}}>{slab.stone}</div>
-                    <div style={{fontSize:12,color:C.textDim,marginBottom:8}}>{slab.date} · {slabDims(slab)}</div>
+                    <div style={{fontSize:12,color:C.textDim,marginBottom:8}}>{slab.date} Â· {slabDims(slab)}</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                       {slab.supplier&&<span style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 8px",fontSize:12,fontWeight:600,color:C.textMid}}>{slab.supplier}</span>}
                       {trace.batchNo&&<span style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:20,padding:"3px 8px",fontSize:12,fontWeight:600,color:C.primary}}>Batch {trace.batchNo}</span>}
@@ -4662,7 +4286,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
                   </div>
                 </div>
                 <div style={{padding:"0 14px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${C.border}`,paddingTop:8}}>
-                  <div style={{fontSize:16,lineHeight:1.25,fontWeight:700,letterSpacing:0,color:C.green}}>₹{slab.pricePerSqFt}<span style={{fontSize:12,fontWeight:400,color:C.textDim}}>/sqft</span></div>
+                  <div style={{fontSize:16,lineHeight:1.25,fontWeight:700,letterSpacing:0,color:C.green}}>â‚¹{slab.pricePerSqFt}<span style={{fontSize:12,fontWeight:400,color:C.textDim}}>/sqft</span></div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
                     <button onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",color:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>View</button>
                     <button onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:8,padding:"5px 9px",color:saved?C.white:C.textMid,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{saved?"Saved":"Save"}</button>
@@ -4678,18 +4302,18 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setInquiry(null)}>
           <div style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,padding:"20px"}} onClick={e=>e.stopPropagation()}>
             {inquirySent?<div style={{textAlign:"center",padding:"20px 0"}}>
-              <div style={{fontSize:48,marginBottom:16}}>₹</div>
+              <div style={{fontSize:48,marginBottom:16}}>â‚¹</div>
               <div style={{...TEXT.pageHeader,marginBottom:8}}>Quote Request Sent</div>
               <div style={{fontSize:13,lineHeight:1.55,color:C.textMid,marginBottom:20}}>Your quote request for slab <strong>{inquiry.id}</strong> has been sent to {fac?.name}.</div>
               <button onClick={()=>setInquiry(null)} style={{padding:"12px 28px",background:C.primary,border:"none",borderRadius:10,color:C.white,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Done</button>
             </div>:<div>
-              <div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,marginBottom:14}}>Request Quote — {inquiry.stone}</div>
+              <div style={{fontSize:16,lineHeight:1.3,fontWeight:700,letterSpacing:0,marginBottom:14}}>Request Quote â€” {inquiry.stone}</div>
               <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12,marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:4}}>
                   <div style={{fontSize:13,fontWeight:600}}>{inquiry.grade} slab</div>
                   <div style={{fontSize:14,fontWeight:700,color:C.green}}>Rs {inquiry.pricePerSqFt}/sqft</div>
                 </div>
-                <div style={{fontSize:12,color:C.textDim}}>{inquiry.id} · {slabDims(inquiry)}</div>
+                <div style={{fontSize:12,color:C.textDim}}>{inquiry.id} Â· {slabDims(inquiry)}</div>
               </div>
               <div style={{background:inquiryReadiness>=70?C.greenBg:C.amberBg,border:`1px solid ${inquiryReadiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:12,marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:6}}>
@@ -4719,7 +4343,7 @@ function BuyerPortal({factoryId,onBack,buyer}) {
   );
 }
 
-// ── ROOT ──
+// â”€â”€ ROOT â”€â”€
 function PublicQuotePage({quoteId}) {
   const [quote,setQuote]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -4854,7 +4478,7 @@ function PublicQuotePage({quoteId}) {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
               {quoteTimeline.map((step,i)=>(
                 <div key={step.label} style={{display:"flex",gap:14,alignItems:"flex-start",background:step.current?C.primaryBg:step.done?C.greenBg:C.surface,border:`1px solid ${step.current?C.primaryBorder:step.done?C.greenBorder:C.border}`,borderRadius:10,padding:12,opacity:step.muted?0.72:1}}>
-                  <div style={{width:24,height:24,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{step.done?"✓":i+1}</div>
+                  <div style={{width:24,height:24,borderRadius:"50%",background:step.done?C.green:step.current?C.primary:C.border,color:step.done||step.current?C.white:C.textDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,flexShrink:0}}>{step.done?"âœ“":i+1}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:600,color:step.done?C.green:step.current?C.primary:C.text}}>{step.label}</div>
                     <div style={{fontSize:12,color:C.textMid,lineHeight:1.65,marginTop:3}}>{step.detail}</div>
