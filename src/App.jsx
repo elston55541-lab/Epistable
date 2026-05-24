@@ -4694,7 +4694,8 @@ function BuyerPortal({factoryId,onBack,buyer}) {
         </div>
         <div style={{padding:"0 18px 20px"}}>
           <div style={{fontSize:20,fontWeight:700,color:"#fff",marginBottom:4}}>{fac?.name||"Factory"}</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:18}}>{insps.length} verified slabs available</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:12}}>{insps.length} verified slabs available</div>
+          {portalFactoryId&&<button onClick={()=>window.open(`/exporter/${encodeURIComponent(portalFactoryId)}`,"_blank","noopener,noreferrer")} style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:999,color:C.white,padding:"7px 11px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}><Icon name="verified" size={14}/> Export readiness profile</button>}
         </div>
       </div>
       <div style={{padding:"14px 14px 80px"}}>
@@ -4852,6 +4853,125 @@ function BuyerPortal({factoryId,onBack,buyer}) {
 }
 
 // ── ROOT ──
+function PublicExporterProfile({factoryId}) {
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState("");
+  const [copied,setCopied]=useState(false);
+  useEffect(()=>{
+    let active=true;
+    supabase.rpc("get_public_exporter_readiness",{exporter_factory_id:factoryId}).then(({data,error})=>{
+      if(!active)return;
+      if(error){setError(error.message||"Exporter profile unavailable.");setLoading(false);return;}
+      const row=Array.isArray(data)?data[0]:data;
+      if(!row)setError("Exporter profile not found.");
+      setData(row);setLoading(false);
+    }).catch(e=>{if(active){setError(e.message||"Exporter profile unavailable.");setLoading(false);}});
+    return()=>{active=false;};
+  },[factoryId]);
+  async function copyLink(){try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1400);}catch(e){}}
+  if(loading)return <Loader/>;
+  if(error)return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <Card style={{padding:24,maxWidth:420,textAlign:"center"}}>
+        <div style={{fontSize:18,fontWeight:700,marginBottom:8}}>Exporter profile unavailable</div>
+        <div style={{fontSize:13,color:C.textMid}}>{error}</div>
+      </Card>
+    </div>
+  );
+  const markets=Array.isArray(data.markets)?data.markets:[];
+  const evidence=Array.isArray(data.evidence)?data.evidence:[];
+  const profile=data.profile||{};
+  const bestScore=markets.length?Math.max(...markets.map(m=>Number(m.readinessScore)||0)):0;
+  const bestTone=bestScore>=75?"success":bestScore>=45?"warning":"danger";
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
+      <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,padding:"18px 18px 34px"}}>
+        <div style={{maxWidth:980,margin:"0 auto"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:26}}>
+            <div style={{fontSize:16,fontWeight:700,color:C.white}}>Epistable</div>
+            <button onClick={copyLink} style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:999,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{copied?"Copied":"Share profile"}</button>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:20,flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontSize:28,lineHeight:1.15,fontWeight:700,color:C.white,letterSpacing:0,marginBottom:8}}>{data.factory_name}</div>
+              <div style={{fontSize:13,lineHeight:1.6,color:"rgba(255,255,255,0.76)",maxWidth:640}}>{data.factory_location||"India"} · Buyer-facing export readiness profile for {profile.productType==="any"?"stone products":profile.productType}. This page shows submitted and verified evidence signals only.</div>
+            </div>
+            <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:14,padding:"14px 16px",minWidth:150}}>
+              <div style={{fontSize:30,fontWeight:700,color:C.white,lineHeight:1}}>{bestScore}%</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.72)",fontWeight:600,marginTop:6}}>Best market readiness</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <main style={{maxWidth:980,margin:"-20px auto 0",padding:"0 18px 50px"}}>
+        <Card style={{padding:20,marginBottom:18}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,flexWrap:"wrap",marginBottom:14}}>
+            <div>
+              <div style={TEXT.panelTitle}>Export readiness summary</div>
+              <div style={TEXT.tinyMeta}>Not a certification. Evidence should be confirmed with the issuing body before purchase or audit decisions.</div>
+            </div>
+            <Pill tone={bestTone}>{bestScore}% readiness signal</Pill>
+          </div>
+          {markets.length===0?<div style={{fontSize:13,color:C.textDim}}>No market readiness data has been published yet.</div>:
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
+            {markets.map(m=>{
+              const score=Number(m.readinessScore)||0;
+              const tone=score>=75?"success":score>=45?"warning":"danger";
+              return <div key={m.market} style={{border:`1px solid ${C.border}`,borderRadius:12,padding:14,background:C.surface}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:8}}>
+                  <div style={{fontSize:14,fontWeight:700}}>{marketConf(m.market).label}</div>
+                  <Pill tone={tone} size="sm">{score}%</Pill>
+                </div>
+                <div style={{fontSize:12,lineHeight:1.6,color:C.textMid}}>{m.evidenceCount||0} submitted evidence item{m.evidenceCount===1?"":"s"} · {m.verifiedCount||0} verified · {m.totalRequired||0} required items tracked</div>
+              </div>;
+            })}
+          </div>}
+        </Card>
+        <Card style={{padding:20,marginBottom:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:14}}>
+            <div>
+              <div style={TEXT.panelTitle}>Evidence visible to buyers</div>
+              <div style={TEXT.tinyMeta}>Only submitted, uploaded, or verified records are shown. Missing internal gaps stay private to the factory.</div>
+            </div>
+            <Pill tone="primary">{evidence.length} item{evidence.length===1?"":"s"}</Pill>
+          </div>
+          {evidence.length===0?<div style={{fontSize:13,color:C.textDim}}>No buyer-visible evidence has been submitted yet.</div>:
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {evidence.map((ev,idx)=>{
+              const conf=readinessStatusConf(ev.status);
+              return <div key={`${ev.market}-${ev.requirementName}-${idx}`} style={{border:`1px solid ${C.border}`,borderRadius:12,padding:14,background:C.white}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:C.text}}>{ev.requirementName}</div>
+                    <div style={{fontSize:12,color:C.textDim,marginTop:3}}>{marketConf(ev.market).short} · {ev.requirementType}</div>
+                  </div>
+                  <Pill tone={conf.tone}>{conf.label}</Pill>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8,fontSize:12,lineHeight:1.6,color:C.textMid}}>
+                  {ev.certificateNumber&&<div>Reference: <strong style={{color:C.text}}>{ev.certificateNumber}</strong></div>}
+                  {ev.issuingBody&&<div>Issuing body: <strong style={{color:C.text}}>{ev.issuingBody}</strong></div>}
+                  {ev.issuedAt&&<div>Issued: <strong style={{color:C.text}}>{fmtD(ev.issuedAt)}</strong></div>}
+                  {ev.expiresAt&&<div>Valid until: <strong style={{color:C.text}}>{fmtD(ev.expiresAt)}</strong></div>}
+                  <div>File: <strong style={{color:C.text}}>{ev.hasFile?"Available on request":"Not attached"}</strong></div>
+                </div>
+              </div>;
+            })}
+          </div>}
+        </Card>
+        <Card style={{padding:18,borderColor:C.amberBorder,background:C.amberBg}}>
+          <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+            <Icon name="alert" size={20} color={C.amber}/>
+            <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>
+              This profile is an export-readiness and evidence summary. It does not replace SGS, TÜV, Bureau Veritas, CDOS, IGEP, government, lab, or buyer-specific certification checks.
+            </div>
+          </div>
+        </Card>
+      </main>
+    </div>
+  );
+}
+
 function PublicQuotePage({quoteId}) {
   const [quote,setQuote]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -5068,6 +5188,7 @@ function PublicQuotePage({quoteId}) {
 export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const quoteMatch=window.location.pathname.match(/^\/quote\/([^/?#]+)/);
+  const exporterMatch=window.location.pathname.match(/^\/exporter\/([^/?#]+)/);
   const inviteMatch=window.location.pathname==="/invite";
   function normalizeProfile(profile){
     if(!profile)return profile;
@@ -5111,6 +5232,7 @@ export default function App() {
   async function logout(){try{await signOut();}catch(e){}clearCachedProfile();setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
   if(quoteMatch)return <PublicQuotePage quoteId={decodeURIComponent(quoteMatch[1])}/>;
+  if(exporterMatch)return <PublicExporterProfile factoryId={decodeURIComponent(exporterMatch[1])}/>;
   if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");cacheProfile(profile);setSession(profileSession(profile));}}/>;
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
