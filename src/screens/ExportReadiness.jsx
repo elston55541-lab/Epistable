@@ -13,6 +13,7 @@ import {
 import { EvidenceUploadModal } from "../components/EvidenceUploadModal";
 import { ExportReadinessOnboarding } from "./ExportReadinessOnboarding";
 import { Icon } from "../components/Icon";
+import { OverflowMenu } from "../components/OverflowMenu";
 import { Pill } from "../components/Pill";
 import { Btn, Card, KpiGrid, Loader, Modal, Sel, T } from "../components/ui";
 
@@ -307,6 +308,20 @@ export function ExportReadiness({fac,user,DB}) {
                     const timeline=req.timelineMin||req.timelineMax?`${req.timelineMin||0}-${req.timelineMax||req.timelineMin} weeks`:"Timeline varies";
                     const cost=req.costMin||req.costMax?`${fmtMoney(req.costMin||0)}-${fmtMoney(req.costMax||req.costMin||0)}`:"Cost varies";
                     const bodies=bodiesByReq[req.id]||[];
+                    const primaryAction=req.status==="expired"
+                      ? {label:"Upload renewal",variant:"red",onClick:()=>setUploadReq(req)}
+                      : req.status==="verified"
+                        ? {label:"View evidence",variant:"secondary",onClick:()=>setUploadReq(req)}
+                        : ["submitted","uploaded"].includes(req.status)
+                          ? {label:"Edit evidence",variant:"secondary",onClick:()=>setUploadReq(req)}
+                          : req.status==="not_applicable"
+                            ? {label:"Restore",variant:"secondary",onClick:()=>persistEvidence(req,{status:"missing",notes:"Restored during readiness assessment."})}
+                            : {label:"Submit evidence",variant:"secondary",onClick:()=>setUploadReq(req)};
+                    const overflowItems=[
+                      {label:"Mark as working on it",disabled:saving,onClick:()=>persistEvidence(req,{status:"pending",notes:"Work started during readiness assessment."})},
+                      {label:"Mark as missing",disabled:saving,tone:"danger",onClick:()=>persistEvidence(req,{status:"missing",notes:"Marked missing during readiness assessment."})},
+                      {label:"Mark not applicable",disabled:saving,onClick:()=>{setNaReq(req);setNaReason(ev?.notes?.replace(/^Not applicable:\s*/,"")||"");}},
+                    ];
                     return (
                       <div key={req.id} style={{border:`1px solid ${C.border}`,borderRadius:12,padding:14,background:C.white}}>
                         <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:8}}>
@@ -332,11 +347,9 @@ export function ExportReadiness({fac,user,DB}) {
                           {ev.file_url&&<div><a href={ev.file_url} target="_blank" rel="noreferrer" style={{color:C.primary,fontWeight:600}}>Open evidence file</a></div>}
                           {ev.notes&&<div>{ev.notes}</div>}
                         </div>}
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${C.border}`}}>
-                          <Btn size="sm" variant="secondary" disabled={saving} onClick={()=>setUploadReq(req)}>{req.status==="submitted"?"Edit evidence":"Submit evidence"}</Btn>
-                          <Btn size="sm" variant={req.status==="pending"?"ghost":"secondary"} disabled={saving} onClick={()=>persistEvidence(req,{status:"pending",notes:"Work started during readiness assessment."})}>Working on it</Btn>
-                          <Btn size="sm" variant={req.status==="missing"?"red":"secondary"} disabled={saving} onClick={()=>persistEvidence(req,{status:"missing",notes:"Marked missing during readiness assessment."})}>Missing</Btn>
-                          <Btn size="sm" variant="secondary" disabled={saving} onClick={()=>{setNaReq(req);setNaReason(ev?.notes?.replace(/^Not applicable:\s*/,"")||"");}}>Not applicable</Btn>
+                        <div style={{display:"flex",gap:8,alignItems:"center",paddingTop:8,borderTop:`1px solid ${C.border}`}}>
+                          <Btn size="sm" variant={primaryAction.variant} disabled={saving} onClick={primaryAction.onClick}>{primaryAction.label}</Btn>
+                          <OverflowMenu items={overflowItems}/>
                         </div>
                       </div>
                     );
