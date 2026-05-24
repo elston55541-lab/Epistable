@@ -50,6 +50,7 @@ export function ExportReadiness({fac,user,DB}) {
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [err,setErr]=useState("");
+  const [usageStats,setUsageStats]=useState({inspectionsLast90Days:0,registeredSuppliers:0,inspectionsWithBatchNo:0});
 
   const evidenceByReq=useMemo(()=>{
     const map={};
@@ -106,6 +107,7 @@ export function ExportReadiness({fac,user,DB}) {
       setProfile(p);setForm(merged);setActiveMarket(destinationMarkets[0]||"EU");
       await fetchRequirements(merged);
       setEvidence(p?.id?await DB.readinessEvidence(p.id):[]);
+      setUsageStats(await DB.factoryUsageStats(fac.id));
     } catch(e) {
       console.error("Export readiness load failed",e);
       setErr(e.message||"Could not load export readiness data.");
@@ -302,6 +304,25 @@ export function ExportReadiness({fac,user,DB}) {
                   <Pill tone={sectionStats.complete===sectionStats.total?"success":"neutral"}>{sectionStats.complete} of {sectionStats.total}</Pill>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {section.id==="quality_evidence"&&usageStats.inspectionsLast90Days>10&&(
+                    <Card style={{padding:SPACE.md,background:C.surface,display:"flex",gap:SPACE.sm,alignItems:"flex-start"}}>
+                      <Icon name="check" size={16} color={C.green}/>
+                      <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>
+                        You have <strong style={{color:C.text}}>{usageStats.inspectionsLast90Days} inspections</strong> recorded in the last 90 days. This counts as operational evidence of QC capability - share it alongside formal certifications.
+                      </div>
+                    </Card>
+                  )}
+                  {section.id==="origin_traceability"&&(usageStats.registeredSuppliers>0||usageStats.inspectionsWithBatchNo>5)&&(
+                    <Card style={{padding:SPACE.md,background:C.surface,display:"flex",gap:SPACE.sm,alignItems:"flex-start"}}>
+                      <Icon name="check" size={16} color={C.green}/>
+                      <div style={{fontSize:12,lineHeight:1.5,color:C.textMid}}>
+                        You're tracking {usageStats.registeredSuppliers>0?`${usageStats.registeredSuppliers} registered suppliers`:""}
+                        {usageStats.registeredSuppliers>0&&usageStats.inspectionsWithBatchNo>5?" and ":""}
+                        {usageStats.inspectionsWithBatchNo>5?`batch numbers on ${usageStats.inspectionsWithBatchNo} scans`:""}.
+                        This strengthens your origin and traceability story.
+                      </div>
+                    </Card>
+                  )}
                   {sectionReqs.map(req=>{
                     const conf=readinessStatusConf(req.status);
                     const ev=evidenceByReq[req.id];

@@ -553,6 +553,18 @@ const DB = {
       return {};
     }
   },
+  async factoryUsageStats(factoryId) {
+    const cutoff=Date.now() - 90 * 86400000;
+    const [insps,suppliers]=await Promise.all([
+      rows(await supabase.from("inspections").select("id,ts,measurements").eq("factory_id",factoryId).gte("ts",cutoff)),
+      rows(await supabase.from("suppliers").select("id").eq("factory_id",factoryId)),
+    ]);
+    return {
+      inspectionsLast90Days:insps.length,
+      registeredSuppliers:suppliers.length,
+      inspectionsWithBatchNo:insps.filter(i=>i.measurements?.traceability?.batchNo).length,
+    };
+  },
 
   // Notifications
   async addNotif(uid,n) {
