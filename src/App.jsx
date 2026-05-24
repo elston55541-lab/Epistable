@@ -4963,11 +4963,6 @@ function PublicExporterProfile({factoryId}) {
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [copied,setCopied]=useState(false);
-  const [leadOpen,setLeadOpen]=useState(false);
-  const [leadSent,setLeadSent]=useState(false);
-  const [leadBusy,setLeadBusy]=useState(false);
-  const [leadError,setLeadError]=useState("");
-  const [lead,setLead]=useState({name:"",email:"",company:"",message:""});
   useEffect(()=>{
     let active=true;
     supabase.rpc("get_public_exporter_readiness",{exporter_factory_id:factoryId}).then(({data,error})=>{
@@ -4980,27 +4975,6 @@ function PublicExporterProfile({factoryId}) {
     return()=>{active=false;};
   },[factoryId]);
   async function copyLink(){try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1400);}catch(e){}}
-  async function submitLead(){
-    if(!lead.email.trim()){setLeadError("Buyer email is required.");return;}
-    setLeadBusy(true);setLeadError("");
-    try {
-      const marketCodes=(Array.isArray(data?.markets)?data.markets:[]).map(m=>m.market).filter(Boolean);
-      const {error}=await supabase.rpc("create_public_exporter_profile_lead",{
-        target_factory_id:factoryId,
-        buyer_name:lead.name,
-        buyer_email:lead.email,
-        buyer_company:lead.company,
-        requested_markets:marketCodes,
-        message:lead.message,
-      });
-      if(error)throw error;
-      setLeadSent(true);
-    } catch(e) {
-      setLeadError(e.message||"Could not send this request. Please retry.");
-    } finally {
-      setLeadBusy(false);
-    }
-  }
   if(loading)return <Loader/>;
   if(error)return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -5017,36 +4991,11 @@ function PublicExporterProfile({factoryId}) {
   const bestTone=bestScore>=75?"success":bestScore>=45?"warning":"danger";
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
-      {leadOpen&&<Modal title="Request evidence packet" onClose={()=>setLeadOpen(false)}>
-        {leadSent?<div style={{textAlign:"center",padding:"14px 0"}}>
-          <Icon name="check" size={44} color={C.green}/>
-          <div style={{fontSize:18,fontWeight:700,margin:"12px 0 6px"}}>Request sent</div>
-          <div style={{fontSize:13,lineHeight:1.65,color:C.textMid,marginBottom:18}}>The factory has received your request for a fuller evidence packet.</div>
-          <Btn onClick={()=>setLeadOpen(false)}>Done</Btn>
-        </div>:<div style={{display:"grid",gap:14}}>
-          <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>Ask the factory to share the full evidence packet privately. Public profiles do not expose private files or missing internal gaps.</div>
-          {leadError&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.red}}>{leadError}</div>}
-          <Inp label="Your name" value={lead.name} onChange={v=>setLead(p=>({...p,name:v}))} placeholder="Buyer contact name"/>
-          <Inp label="Email" value={lead.email} onChange={v=>setLead(p=>({...p,email:v}))} placeholder="buyer@company.com"/>
-          <Inp label="Company" value={lead.company} onChange={v=>setLead(p=>({...p,company:v}))} placeholder="Company name"/>
-          <div>
-            <label style={{display:"block",color:C.text,marginBottom:SPACE.sm,...T.label}}>Message</label>
-            <textarea value={lead.message} onChange={e=>setLead(p=>({...p,message:e.target.value}))} rows={3} placeholder="Tell the factory what you want to verify..." style={{width:"100%",padding:12,border:`1.5px solid ${C.border}`,borderRadius:10,boxSizing:"border-box",fontFamily:FONT_STACK,fontSize:14,color:C.text,resize:"vertical"}}/>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Btn variant="secondary" onClick={()=>setLeadOpen(false)} disabled={leadBusy}>Cancel</Btn>
-            <Btn onClick={submitLead} disabled={leadBusy}>{leadBusy?"Sending...":"Send request"}</Btn>
-          </div>
-        </div>}
-      </Modal>}
       <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary})`,padding:"18px 18px 34px"}}>
         <div style={{maxWidth:980,margin:"0 auto"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:26}}>
             <div style={{fontSize:16,fontWeight:700,color:C.white}}>Epistable</div>
-            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-              <button onClick={()=>setLeadOpen(true)} style={{background:C.white,border:"none",borderRadius:999,color:C.primary,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Request evidence packet</button>
-              <button onClick={copyLink} style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:999,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{copied?"Copied":"Share profile"}</button>
-            </div>
+            <button onClick={copyLink} style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:999,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{copied?"Copied":"Share profile"}</button>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:20,flexWrap:"wrap"}}>
             <div>
