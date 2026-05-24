@@ -687,14 +687,6 @@ const DB = {
   async reviewReadinessEvidence(id,status,reason="") {
     return requireData(await supabase.from("readiness_evidence").update({status,verification_reason:reason,updated_at:Date.now(),metadata:{reviewedFrom:"owner_readiness_review"}}).eq("id",id).select().single());
   },
-  async exporterProfileLeads(factoryId=null) {
-    let q=supabase.from("exporter_profile_leads").select("*").order("created_at",{ascending:false}).limit(200);
-    if(factoryId)q=q.eq("factory_id",factoryId);
-    return rows(await q);
-  },
-  async updExporterProfileLead(id,u) {
-    return requireData(await supabase.from("exporter_profile_leads").update({...u,updated_at:Date.now()}).eq("id",id).select().single());
-  },
 
   // Notifications
   async addNotif(uid,n) {
@@ -1715,43 +1707,13 @@ function OwnerDisputes() {
 
 function OwnerInquiries() {
   const [inquiries,setInquiries]=useState([]);
-  const [leads,setLeads]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [busy,setBusy]=useState("");
-  async function load(){
-    setLoading(true);
-    const [i,l]=await Promise.all([DB.allInquiries(),DB.exporterProfileLeads()]);
-    setInquiries(i);setLeads(l);setLoading(false);
-  }
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{DB.allInquiries().then(i=>{setInquiries(i);setLoading(false);});},[]);
   async function updStatus(id,status){await DB.updInquiry(id,{status});const i=await DB.allInquiries();setInquiries(i);}
-  async function updLead(id,status){setBusy(id);await DB.updExporterProfileLead(id,{status});await load();setBusy("");}
   if(loading)return <Loader/>;
   return (
     <div>
       <div style={TEXT.pageTitle}>All Buyer Inquiries</div>
-      {leads.length>0&&<Card style={{padding:18,marginBottom:18,borderColor:C.primaryBorder}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:12}}>
-          <div><div style={TEXT.panelTitle}>Evidence packet requests</div><div style={TEXT.tinyMeta}>Leads captured from public exporter readiness profiles.</div></div>
-          <Pill tone="primary">{leads.filter(l=>l.status==="new").length} new</Pill>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {leads.slice(0,12).map(l=><div key={l.id} style={{border:`1px solid ${C.border}`,borderRadius:10,padding:12,background:l.status==="new"?C.primaryBg:C.white}}>
-            <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start"}}>
-              <div style={{minWidth:0}}>
-                <div style={TEXT.itemTitle}>{l.buyer_name||"Buyer"}{l.buyer_company?` - ${l.buyer_company}`:""}</div>
-                <div style={TEXT.tinyMeta}>{l.buyer_email} · {l.factory_id} · {fmtD(l.created_at)}</div>
-                {l.message&&<div style={{fontSize:12,lineHeight:1.55,color:C.textMid,marginTop:6}}>{l.message}</div>}
-              </div>
-              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-                <Pill tone={l.status==="new"?"warning":l.status==="packet_sent"?"success":"neutral"}>{l.status.replace("_"," ")}</Pill>
-                <Btn size="sm" variant="secondary" disabled={busy===l.id} onClick={()=>updLead(l.id,"contacted")}>Contacted</Btn>
-                <Btn size="sm" variant="green" disabled={busy===l.id} onClick={()=>updLead(l.id,"packet_sent")}>Packet sent</Btn>
-              </div>
-            </div>
-          </div>)}
-        </div>
-      </Card>}
       {inquiries.length===0?<Card style={{padding:"48px",textAlign:"center"}}><div style={{marginBottom:16,display:"flex",justifyContent:"center"}}><Icon name="mail" size={48} color={C.primary}/></div><div style={TEXT.emptyTitle}>No inquiries yet</div></Card>:
       <Card>{inquiries.map((q,i)=>(
         <div key={q.id} style={{display:"flex",alignItems:"center",gap:14,padding:"15px 18px",borderBottom:i<inquiries.length-1?`1px solid ${C.border}`:"none",background:q.status==="new"?C.primaryBg:C.white}}>
