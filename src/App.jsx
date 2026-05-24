@@ -10,6 +10,16 @@ import { Icon } from "./components/Icon";
 import { Pill } from "./components/Pill";
 import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
 import { EXPORT_MARKETS, marketConf } from "./lib/markets";
+import {
+  EXPORT_CERTS,
+  EXPORT_PRODUCTS,
+  READINESS_SECTIONS,
+  mapRequirement,
+  requirementApplies,
+  readinessStatusConf,
+  scoreRequirements,
+  sectionForRequirement,
+} from "./lib/readiness";
 
 // ── DB (Supabase) ──
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
@@ -57,104 +67,6 @@ const QUOTE_FULFILLMENT = [
 ];
 const fulfillmentConf = status => QUOTE_FULFILLMENT.find(x=>x.id===status)||QUOTE_FULFILLMENT[0];
 const activeFulfillment = q => q.fulfillmentStatus||q.fulfillment_status||(q.status==="accepted"?"payment_pending":"not_started");
-const EXPORT_PRODUCTS = [
-  {value:"any",label:"Mixed stone products"},
-  {value:"granite",label:"Granite"},
-  {value:"marble",label:"Marble"},
-  {value:"sandstone",label:"Sandstone"},
-];
-const EXPORT_CERTS = [
-  {id:"iec",label:"IEC"},
-  {id:"iso_9001",label:"ISO 9001"},
-  {id:"lab_report",label:"Lab test reports"},
-  {id:"social_audit",label:"Social / responsible sourcing audit"},
-  {id:"origin_docs",label:"Origin / shipment documents"},
-];
-const EVIDENCE_STATUS = {
-  missing: { tone:"danger", label:"Missing", score:0 },
-  pending: { tone:"warning", label:"Working on it", score:45 },
-  uploaded: { tone:"info", label:"Uploaded", score:70 },
-  submitted: { tone:"info", label:"Submitted", score:75 },
-  verified: { tone:"success", label:"Verified", score:100 },
-  expired: { tone:"danger", label:"Expired", score:20 },
-  rejected: { tone:"danger", label:"Rejected", score:10 },
-  not_applicable: { tone:"neutral", label:"Not applicable", score:100 },
-};
-const readinessStatusConf = status => EVIDENCE_STATUS[status] || EVIDENCE_STATUS.missing;
-const READINESS_SECTIONS = [
-  {id:"market_entry",label:"Market Entry",hint:"Registrations and baseline documents needed before a shipment can move."},
-  {id:"product_standards",label:"Product Standards",hint:"Market-specific test reports, standards, and technical documentation."},
-  {id:"quality_evidence",label:"Quality Evidence",hint:"Operational records that show consistent inspection and quality control."},
-  {id:"origin_traceability",label:"Origin & Traceability",hint:"Source, supplier, batch, and origin documents buyers may ask to review."},
-  {id:"packaging_shipment",label:"Packaging & Shipment",hint:"Shipment documents, packaging proof, and labelling evidence."},
-  {id:"responsible_sourcing",label:"Responsible Sourcing",hint:"Social, safety, environmental, and due-diligence evidence."},
-];
-const evidenceTypeFallback = type => {
-  const map = {
-    government_registration:"certificate_number",
-    management_system_cert:"certificate_number",
-    product_test_report:"lab_report",
-    responsible_sourcing_audit:"external_verification",
-    shipment_document:"document_upload",
-    operational_record:"checklist_confirmation",
-    training_record:"checklist_confirmation",
-    policy_document:"document_upload",
-  };
-  return map[type] || "document_upload";
-};
-const marketsForRequirement = r => {
-  const list = Array.isArray(r.destination_markets) ? r.destination_markets : [];
-  if(list.length)return list;
-  return [r.destination_market || "GLOBAL"];
-};
-const requirementApplies = (r,{sector,productType,market}) => {
-  const reqSector = r.sector || "stone";
-  const reqProduct = r.product_type || r.productCategory || r.product_category || "any";
-  const reqMarkets = marketsForRequirement(r);
-  return reqSector === sector
-    && (reqProduct === "any" || reqProduct === productType || productType === "any")
-    && (reqMarkets.includes("GLOBAL") || reqMarkets.includes("any") || reqMarkets.includes(market));
-};
-const mapRequirement = r => ({
-  ...r,
-  requirementName:r.certification_name || r.requirement_name || r.name || r.id,
-  shortName:r.certification_code || r.requirement_name || r.id,
-  timelineMin:r.timeline_min_weeks ?? r.estimated_timeline_weeks_min,
-  timelineMax:r.timeline_max_weeks ?? r.estimated_timeline_weeks_max,
-  costMin:r.estimated_cost_min_inr,
-  costMax:r.estimated_cost_max_inr,
-  evidenceType:r.evidence_type || evidenceTypeFallback(r.evidence_lifecycle_type || r.certification_evidence_type),
-  lifecycleType:r.evidence_lifecycle_type || r.certification_evidence_type || r.evidence_type,
-});
-const sectionForRequirement = r => {
-  const t=(r.requirement_type||"").toLowerCase();
-  const name=(r.requirementName||r.requirement_name||"").toLowerCase();
-  const evidence=(r.evidenceType||r.evidence_type||"").toLowerCase();
-  const lifecycle=(r.lifecycleType||r.evidence_lifecycle_type||"").toLowerCase();
-  if(t==="registration" || lifecycle==="government_registration")return "market_entry";
-  if(t==="testing" || t==="standard" || evidence==="lab_report" || lifecycle==="product_test_report")return "product_standards";
-  if(t==="packaging" || name.includes("packaging") || name.includes("origin") || lifecycle==="shipment_document")return "packaging_shipment";
-  if(name.includes("origin") || name.includes("trace") || name.includes("quarry") || name.includes("supplier"))return "origin_traceability";
-  if(t==="compliance" || lifecycle==="responsible_sourcing_audit" || name.includes("sourcing") || name.includes("silica") || name.includes("environment"))return "responsible_sourcing";
-  if(t==="certification" || lifecycle==="management_system_cert")return "quality_evidence";
-  return "market_entry";
-};
-const scoreRequirements = (requirements,evidenceRows) => {
-  const evidenceMap={};
-  evidenceRows.forEach(e=>{evidenceMap[e.requirement_id]=e;});
-  const mandatory=requirements.filter(r=>r.is_mandatory!==false);
-  const applicable=mandatory.filter(r=>evidenceMap[r.id]?.status!=="not_applicable");
-  if(!applicable.length)return {score:requirements.length?100:0,complete:0,working:0,missing:requirements.length,total:requirements.length};
-  const total=applicable.reduce((sum,r)=>sum+(r.priority||50),0);
-  const earned=applicable.reduce((sum,r)=>{
-    const status=evidenceMap[r.id]?.status || "missing";
-    return sum + ((r.priority||50) * (readinessStatusConf(status).score/100));
-  },0);
-  const complete=requirements.filter(r=>["verified","not_applicable"].includes(evidenceMap[r.id]?.status)).length;
-  const working=requirements.filter(r=>["pending","uploaded","submitted"].includes(evidenceMap[r.id]?.status)).length;
-  const missing=requirements.filter(r=>["missing","rejected","expired",undefined].includes(evidenceMap[r.id]?.status)).length;
-  return {score:Math.round(earned/total*100),complete,working,missing,total:requirements.length};
-};
 const TEXT = {
   pageTitle: {...T.title,marginBottom:18,fontWeight:700},
   pageHeader: {...T.title,fontWeight:700},
