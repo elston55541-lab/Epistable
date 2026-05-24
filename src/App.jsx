@@ -9,6 +9,7 @@ import { SlabCertificate } from "./components/SlabCertificate";
 import { Icon } from "./components/Icon";
 import { Pill } from "./components/Pill";
 import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
+import { EXPORT_MARKETS, marketConf } from "./lib/markets";
 
 // ── DB (Supabase) ──
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
@@ -56,16 +57,6 @@ const QUOTE_FULFILLMENT = [
 ];
 const fulfillmentConf = status => QUOTE_FULFILLMENT.find(x=>x.id===status)||QUOTE_FULFILLMENT[0];
 const activeFulfillment = q => q.fulfillmentStatus||q.fulfillment_status||(q.status==="accepted"?"payment_pending":"not_started");
-const EXPORT_MARKETS = [
-  {value:"EU",label:"European Union",short:"EU"},
-  {value:"US",label:"United States",short:"US"},
-  {value:"GB",label:"United Kingdom",short:"UK"},
-  {value:"AE",label:"UAE / Gulf",short:"UAE"},
-  {value:"CN",label:"China",short:"China"},
-  {value:"JP",label:"Japan",short:"Japan"},
-  {value:"BD",label:"Bangladesh",short:"BD"},
-  {value:"MV",label:"Maldives",short:"MV"},
-];
 const EXPORT_PRODUCTS = [
   {value:"any",label:"Mixed stone products"},
   {value:"granite",label:"Granite"},
@@ -135,7 +126,6 @@ const mapRequirement = r => ({
   evidenceType:r.evidence_type || evidenceTypeFallback(r.evidence_lifecycle_type || r.certification_evidence_type),
   lifecycleType:r.evidence_lifecycle_type || r.certification_evidence_type || r.evidence_type,
 });
-const marketConf = code => EXPORT_MARKETS.find(m=>m.value===code) || {value:code,label:code,short:code};
 const sectionForRequirement = r => {
   const t=(r.requirement_type||"").toLowerCase();
   const name=(r.requirementName||r.requirement_name||"").toLowerCase();
