@@ -20,6 +20,18 @@ Epistable is an industrial quality and buyer-audit-readiness platform for stone 
 
 6. **Ask before destructive operations.** Force-push, hard reset, file deletion outside the modified set, dependency downgrades, or anything that could lose work — stop and ask first.
 
+## PR scope contract (hardest rule)
+
+Every brief includes a "What this PR does NOT do" section or an equivalent OUT-of-scope list. **Treat every item in that list as forbidden for this PR.** Not "out of scope but defensible to add" — forbidden.
+
+If you discover something that seems missing or related, add it to the PR description under "Suggested follow-up PRs" and stop. The architect chose what's in scope deliberately; expanding scope without permission is a contract violation, not initiative.
+
+The same rule applies to file structure: if a brief says to create `src/screens/Foo.jsx`, do not add the function to `src/App.jsx` instead, even if the existing codebase pattern would suggest otherwise. Brief overrides convention.
+
+If a brief and the existing codebase conflict, stop and ask. Do not silently pick.
+
+The same rule applies to schema: if a brief specifies column names, status enum values, or table names, use exactly those. Do not substitute "improved" names. If the specified shape is impossible against the existing schema, stop and report — do not silently use a different shape.
+
 ## Design system (post-PR-1 state)
 
 ### Tokens are the source of truth
