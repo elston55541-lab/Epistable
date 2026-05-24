@@ -660,33 +660,6 @@ const DB = {
       return {};
     }
   },
-  async readinessEvidenceForReview() {
-    const evidence=await rows(await supabase.from("readiness_evidence").select("*").in("status",["submitted","uploaded","rejected","verified"]).order("updated_at",{ascending:false}).limit(200));
-    if(!evidence.length)return [];
-    const profileIds=[...new Set(evidence.map(e=>e.profile_id).filter(Boolean))];
-    const factoryIds=[...new Set(evidence.map(e=>e.factory_id).filter(Boolean))];
-    const reqIds=[...new Set(evidence.map(e=>e.requirement_id).filter(Boolean))];
-    const [profiles,factories,requirements,bodies]=await Promise.all([
-      profileIds.length?rows(await supabase.from("export_readiness_profiles").select("id,factory_id,destination_markets,product_type,sector").in("id",profileIds)):[],
-      factoryIds.length?rows(await supabase.from("factories").select("id,name,location").in("id",factoryIds)):[],
-      reqIds.length?rows(await supabase.from("export_requirement_catalog").select("*").in("id",reqIds)):[],
-      rows(await supabase.from("certification_bodies").select("id,name")),
-    ]);
-    const profileMap=Object.fromEntries(profiles.map(p=>[p.id,p]));
-    const factoryMap=Object.fromEntries(factories.map(f=>[f.id,f]));
-    const reqMap=Object.fromEntries(requirements.map(r=>[r.id,mapRequirement(r)]));
-    const bodyMap=Object.fromEntries(bodies.map(b=>[b.id,b]));
-    return evidence.map(e=>({
-      ...e,
-      profile:profileMap[e.profile_id]||null,
-      factory:factoryMap[e.factory_id]||null,
-      requirement:reqMap[e.requirement_id]||null,
-      issuingBody:bodyMap[e.issuing_body_id]||null,
-    }));
-  },
-  async reviewReadinessEvidence(id,status,reason="") {
-    return requireData(await supabase.from("readiness_evidence").update({status,verification_reason:reason,updated_at:Date.now(),metadata:{reviewedFrom:"owner_readiness_review"}}).eq("id",id).select().single());
-  },
 
   // Notifications
   async addNotif(uid,n) {
@@ -1162,7 +1135,6 @@ function Owner({onLogout}) {
     {id:"billing",label:"Billing",icon:"billing",badge:overdue||undefined},
     {id:"factories",label:"Factories",icon:"factory"},
     {id:"users",label:"Users",icon:"user"},
-    {id:"evidence",label:"Evidence",icon:"verified"},
     {id:"disputes",label:"Disputes",icon:"alert"},
     {id:"inquiries",label:"Inquiries",icon:"mail"},
     {id:"settings",label:"Settings",icon:"settings"},
@@ -1173,7 +1145,6 @@ function Owner({onLogout}) {
     factories:<OwnerFacs facs={facs} users={users} pickFac={f=>{setSelFac(f);setPage("fac");}} onRefresh={load}/>,
     fac:selFac?<OwnerFacDetail fac={selFac} onBack={()=>setPage("factories")} onRefresh={load}/>:null,
     users:<OwnerUsers users={users} facs={facs} onRefresh={load}/>,
-    evidence:<OwnerReadinessEvidence/>,
     disputes:<OwnerDisputes/>,
     inquiries:<OwnerInquiries/>,
     settings:<OwnerSettings/>,
@@ -1605,82 +1576,6 @@ function OwnerUsers({users,facs,onRefresh}) {
           </div>
         </div>
       ))}</Card>}
-    </div>
-  );
-}
-
-function OwnerReadinessEvidence() {
-  const [items,setItems]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [filter,setFilter]=useState("submitted");
-  const [busy,setBusy]=useState("");
-  const [err,setErr]=useState("");
-  const [reason,setReason]=useState("");
-  async function load(){
-    setLoading(true);setErr("");
-    try{setItems(await DB.readinessEvidenceForReview());}
-    catch(e){console.error("Readiness evidence review load failed",e);setErr(e.message||"Could not load evidence review queue.");}
-    finally{setLoading(false);}
-  }
-  useEffect(()=>{load();},[]);
-  async function review(item,status){
-    const defaultReason=status==="verified"?"Reviewed and accepted for buyer-visible readiness profile.":reason||"Reviewed by platform owner.";
-    setBusy(item.id);setErr("");
-    try{await DB.reviewReadinessEvidence(item.id,status,defaultReason);setReason("");await load();}
-    catch(e){setErr(e.message||"Could not update evidence status.");}
-    finally{setBusy("");}
-  }
-  const shown=filter==="all"?items:items.filter(i=>i.status===filter);
-  const counts=items.reduce((acc,i)=>{acc[i.status]=(acc[i.status]||0)+1;return acc;},{});
-  if(loading)return <Loader/>;
-  return (
-    <div>
-      <div style={TEXT.pageTitle}>Evidence Review</div>
-      <div style={{fontSize:13,lineHeight:1.65,color:C.textMid,marginBottom:18,maxWidth:760}}>Review submitted export-readiness evidence before it appears as verified to buyers. This confirms the record was reviewed in Epistable; it does not replace the issuing body's certification.</div>
-      {err&&<div style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.red,marginBottom:16}}>{err}</div>}
-      <KpiGrid items={[
-        {label:"Submitted",value:counts.submitted||0,icon:"upload",color:C.primary},
-        {label:"Verified",value:counts.verified||0,icon:"verified",color:C.green},
-        {label:"Rejected",value:counts.rejected||0,icon:"alert",color:C.red},
-        {label:"Uploaded",value:counts.uploaded||0,icon:"file",color:C.blue2},
-      ]}/>
-      <Card style={{padding:16,marginBottom:18}}>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {[["submitted","Submitted"],["uploaded","Uploaded"],["verified","Verified"],["rejected","Rejected"],["all","All"]].map(([id,label])=><button key={id} onClick={()=>setFilter(id)} style={{background:filter===id?C.primary:C.white,border:`1px solid ${filter===id?C.primary:C.border}`,borderRadius:999,color:filter===id?C.white:C.textMid,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>{label}</button>)}
-        </div>
-      </Card>
-      {shown.length===0?<EmptyState title="No evidence in this queue" body="Submitted evidence will appear here for owner review."/>:
-      <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        {shown.map(item=>{
-          const req=item.requirement||{};
-          const fac=item.factory||{};
-          const conf=readinessStatusConf(item.status);
-          return (
-            <Card key={item.id} style={{padding:18}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"flex-start",marginBottom:12}}>
-                <div>
-                  <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:4}}>{req.requirementName||item.requirement_id}</div>
-                  <div style={{fontSize:12,color:C.textDim,lineHeight:1.55}}>{fac.name||item.factory_id} · {req.requirement_type||"readiness evidence"} · updated {fmtD(item.updated_at||item.created_at)}</div>
-                </div>
-                <Pill tone={conf.tone}>{conf.label}</Pill>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10,marginBottom:12,fontSize:12,lineHeight:1.6,color:C.textMid}}>
-                {item.certificate_number&&<div>Reference: <strong style={{color:C.text}}>{item.certificate_number}</strong></div>}
-                {item.issuingBody?.name&&<div>Issuing body: <strong style={{color:C.text}}>{item.issuingBody.name}</strong></div>}
-                {item.issued_at&&<div>Issued: <strong style={{color:C.text}}>{fmtD(item.issued_at)}</strong></div>}
-                {item.expires_at&&<div>Valid until: <strong style={{color:C.text}}>{fmtD(item.expires_at)}</strong></div>}
-                {item.file_url&&<div><a href={item.file_url} target="_blank" rel="noreferrer" style={{color:C.primary,fontWeight:600}}>Open file</a></div>}
-              </div>
-              {item.notes&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:10,fontSize:12,lineHeight:1.6,color:C.textMid,marginBottom:12}}>{item.notes}</div>}
-              <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,alignItems:"center"}}>
-                <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Optional review note / rejection reason" style={{minWidth:0,padding:"10px 12px",border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:FONT_STACK}}/>
-                <Btn size="sm" variant="red" disabled={busy===item.id||!reason.trim()} onClick={()=>review(item,"rejected")}>Reject</Btn>
-                <Btn size="sm" variant="green" disabled={busy===item.id} onClick={()=>review(item,"verified")}>Mark verified</Btn>
-              </div>
-            </Card>
-          );
-        })}
-      </div>}
     </div>
   );
 }
