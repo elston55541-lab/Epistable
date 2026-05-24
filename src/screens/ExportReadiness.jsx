@@ -11,6 +11,7 @@ import {
   sectionForRequirement,
 } from "../lib/readiness";
 import { EvidenceUploadModal } from "../components/EvidenceUploadModal";
+import { ExportReadinessOnboarding } from "./ExportReadinessOnboarding";
 import { Icon } from "../components/Icon";
 import { Pill } from "../components/Pill";
 import { Btn, Card, KpiGrid, Loader, Modal, Sel, T } from "../components/ui";
@@ -192,6 +193,9 @@ export function ExportReadiness({fac,user,DB}) {
 
   const scoreTone=readinessScore>=75?"success":readinessScore>=45?"warning":"danger";
   if(loading)return <Loader/>;
+  if(!profile || !profile.onboarding_completed_at) {
+    return <ExportReadinessOnboarding profile={profile} onSave={saveProfile} onComplete={()=>load()} saving={saving}/>;
+  }
   return (
     <div>
       {uploadReq&&<EvidenceUploadModal req={uploadReq} evidence={evidenceByReq[uploadReq.id]} bodies={bodiesByReq[uploadReq.id]||[]} saving={saving} onClose={()=>setUploadReq(null)} onSave={patch=>persistEvidence(uploadReq,patch)}/>}
