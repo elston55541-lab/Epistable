@@ -362,37 +362,3 @@ export function ExportReadiness({fac,user,DB}) {
   );
 }
 
-const PHOTO_SLOTS = [
-  {id:"front",label:"Full slab",hint:"Entire slab in one frame",required:true},
-  {id:"surface",label:"Surface close-up",hint:"Polish, stain, vein, color",required:true},
-  {id:"edge",label:"Edge/corner",hint:"Thickness, chips, corner condition",required:true},
-  {id:"defect",label:"Defect close-up",hint:"Required when defects are selected",required:false},
-];
-
-const defaultMeasurements = () => ({
-  thickness:"",
-  length:"",
-  width:"",
-  polish:3,
-  soundTest:"clear",
-  edgeCondition:"good",
-  surfaceFinish:"polished",
-  traceability:{
-    quarrySource:"",
-    batchNo:"",
-    blockNo:"",
-    productionLine:"",
-    operator:"",
-    containerNo:"",
-    customerRef:"",
-  },
-  audit:{
-    calibrationChecked:false,
-    checklistComplete:false,
-    rootCause:"",
-    correctiveAction:"",
-    actionOwner:"",
-    actionDue:"",
-  },
-});
-
