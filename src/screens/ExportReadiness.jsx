@@ -201,7 +201,7 @@ export function ExportReadiness({fac,user,DB}) {
   }
   return (
     <div>
-      {uploadReq&&<EvidenceUploadModal req={uploadReq} evidence={evidenceByReq[uploadReq.id]} bodies={bodiesByReq[uploadReq.id]||[]} saving={saving} onClose={()=>setUploadReq(null)} onSave={patch=>persistEvidence(uploadReq,patch)}/>}
+      {uploadReq&&<EvidenceUploadModal req={uploadReq} evidence={evidenceByReq[uploadReq.id]} bodies={bodiesByReq[uploadReq.id]||[]} factoryId={fac?.id} saving={saving} onClose={()=>setUploadReq(null)} onSave={patch=>persistEvidence(uploadReq,patch)}/>}
       {naReq&&<Modal title="Mark not applicable" onClose={()=>setNaReq(null)}>
         <div style={{display:"grid",gap:14}}>
           <div style={{fontSize:13,lineHeight:1.65,color:C.textMid}}>Use this only when the requirement genuinely does not apply to your product, market, or shipment route.</div>
@@ -365,7 +365,7 @@ export function ExportReadiness({fac,user,DB}) {
                           {ev.certificate_number&&<div>Reference: <strong style={{color:C.text}}>{ev.certificate_number}</strong></div>}
                           {ev.issued_at&&<div>Issued: <strong style={{color:C.text}}>{fmtD(ev.issued_at)}</strong></div>}
                           {ev.expires_at&&<div>Valid until: <strong style={{color:C.text}}>{fmtD(ev.expires_at)}</strong></div>}
-                          {ev.file_url&&<div><a href={ev.file_url} target="_blank" rel="noreferrer" style={{color:C.primary,fontWeight:600}}>Open evidence file</a></div>}
+                          {ev.file_url&&<div><button type="button" onClick={async()=>{const url=await DB.evidenceFileUrl(ev.file_url);if(url)window.open(url,"_blank","noopener,noreferrer");}} style={{background:"transparent",border:"none",color:C.primary,fontWeight:600,fontFamily:FONT_STACK,cursor:"pointer",padding:0,fontSize:12}}>Open evidence file</button></div>}
                           {ev.notes&&<div>{ev.notes}</div>}
                         </div>}
                         <div style={{display:"flex",gap:8,alignItems:"center",paddingTop:8,borderTop:`1px solid ${C.border}`}}>
