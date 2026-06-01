@@ -4234,34 +4234,37 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const factoryName=fac?.name||buyer?.factory_name||"Verified factory";
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
-  const portalMetrics=[
-    {label:"Available",value:availableCount,icon:"package",color:C.green,detail:"ready to quote"},
-    {label:"Export ready",value:exportCount,icon:"verified",color:C.teal,detail:"documented slabs"},
-    {label:"Premium",value:premiumCount,icon:"trend",color:C.primary,detail:"top grade stock"},
-    {label:"Shortlist",value:savedIds.length,icon:"list",color:C.amber,detail:"saved locally"},
-  ];
   const sidebarItems=[
-    {label:"Epistable AI",icon:"bot",action:null},
+    {label:"Trade GPT",icon:"bot",action:null},
     {label:"Catalog",icon:"package",active:true,action:()=>setViewMode("all")},
     {label:"My Quotes",icon:"message",action:onViewQuotes},
     {label:"My Orders",icon:"truck",action:onViewQuotes},
     {label:"My Requirements",icon:"list",action:null},
     {label:"Profile",icon:"user",action:null},
   ];
+  const heroSlab=filtered[0]||insps[0]||null;
+  const heroName=heroSlab?.stone||"Verified Stone";
+  const heroImage=heroSlab?.photo||"";
+  const heroStyle=heroImage
+    ? {backgroundImage:`linear-gradient(90deg,rgba(8,12,24,0.86) 0%,rgba(8,12,24,0.62) 42%,rgba(8,12,24,0.18) 100%),url("${heroImage}")`}
+    : {backgroundImage:"linear-gradient(90deg,rgba(8,12,24,0.92),rgba(17,24,95,0.74)),linear-gradient(135deg,#1c2743,#4d5d73)"};
+  const seasonLabel=slab=>{
+    const inv=slab.inventoryStatus||"available";
+    if(inv==="available")return "AVAILABLE NOW";
+    if(inv==="reserved")return "RESERVED";
+    if(inv==="sold")return "SOLD";
+    return String(inv).toUpperCase();
+  };
   return (
-    <div className="buyer-app" style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"260px minmax(0,1fr)"}}>
+    <div className="buyer-app" style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
-      {!isMobile&&<aside className="buyer-sidebar" style={{position:"sticky",top:0,height:"100vh",padding:"26px 18px",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:22}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:34,height:34,borderRadius:12,background:C.primary,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>E</div>
-          <div>
-            <div style={{fontSize:18,fontWeight:800,letterSpacing:0,color:C.primary}}>Epistable</div>
-            <div style={{fontSize:11,color:C.textDim,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7}}>Buyer portal</div>
-          </div>
+      {!isMobile&&<aside className="buyer-sidebar" style={{position:"sticky",top:0,height:"100vh",padding:"28px 14px 16px",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:24}}>
+        <div style={{padding:"0 16px 2px"}}>
+          <div style={{fontSize:25,fontWeight:800,letterSpacing:-0.6,color:"#10185f",lineHeight:1}}>EPISTABLE.AI</div>
         </div>
         <nav style={{display:"flex",flexDirection:"column",gap:8}}>
           {sidebarItems.map(item=>(
-            <button key={item.label} className="buyer-button" onClick={item.action||undefined} disabled={!item.action&&!item.active} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 13px",borderRadius:12,border:"none",background:item.active?C.primaryBg:"transparent",color:item.active?C.primary:C.textMid,fontSize:15,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left",opacity:1}}>
+            <button key={item.label} className="buyer-button" onClick={item.action||undefined} disabled={!item.action&&!item.active} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:10,border:"none",background:item.active?"#eef3ff":"transparent",color:item.active?"#10185f":"#5c6678",fontSize:15,fontWeight:item.active?700:600,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left",opacity:1}}>
               <Icon name={item.icon} size={18}/>
               <span>{item.label}</span>
             </button>
@@ -4276,102 +4279,89 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             </div>
           </div>
           {onBack&&<button className="buyer-button" onClick={onBack} style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 12px",color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Back to home</button>}
-          {onLogout&&<button className="buyer-button" onClick={onLogout} style={{width:"100%",marginTop:10,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 12px",color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Log out</button>}
+          {onLogout&&<button className="buyer-button" onClick={onLogout} style={{width:"100%",marginTop:10,background:"#f9fafc",border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 14px",color:C.textMid,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}><Icon name="close" size={17}/> Log out</button>}
         </div>
       </aside>}
       <main style={{minWidth:0}}>
-      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"rgba(255,255,255,0.86)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",borderBottom:`1px solid ${C.border}`,padding:isMobile?"12px 14px":"14px 30px",display:"flex",alignItems:"center",gap:14}}>
+      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:"none",padding:isMobile?"14px 16px":"15px 30px",display:"flex",alignItems:"center",gap:18,flexWrap:isMobile?"wrap":"nowrap"}}>
         {isMobile&&onBack&&<button className="buyer-button" onClick={onBack} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,padding:"9px 11px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Back</button>}
-        <div style={{flex:1,position:"relative"}}>
+        <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>Catalog</h1>
+        <div style={{flex:1}}/>
+        <div style={{width:isMobile?"100%":380,maxWidth:isMobile?"100%":"48vw",position:"relative"}}>
           <Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slabs, batch, supplier, certificate" style={{width:"100%",padding:"12px 14px 12px 42px",background:C.white,border:`1px solid ${C.border}`,borderRadius:999,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Ask anything ..." style={{width:"100%",padding:"13px 14px 13px 42px",background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:999,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
         </div>
-        <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${activeFilterCount?C.primaryBorder:C.border}`,borderRadius:999,color:activeFilterCount?C.primary:C.textMid,padding:"11px 15px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{activeFilterCount?`Clear ${activeFilterCount}`:"Clear"}</button>
+        <button className="buyer-button" onClick={()=>setSortBy("newest")} style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Refresh catalog"><Icon name="refresh" size={19}/></button>
+        <button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>
       </div>
-      <div style={{padding:isMobile?"16px 14px 80px":"30px 30px 90px",maxWidth:1520,margin:"0 auto"}}>
+      <div style={{padding:isMobile?"16px 14px 80px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
         <ErrorNotice message={loadError}/>
-        <section className="buyer-hero buyer-enter" style={{borderRadius:24,padding:isMobile?"24px 20px":"34px 38px",marginBottom:22,color:C.white}}>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.1fr) minmax(280px,0.65fr)",gap:24,alignItems:"end"}}>
-            <div>
-              <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 11px",borderRadius:999,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.22)",fontSize:12,fontWeight:800,marginBottom:18}}>
-                <Icon name="verified" size={15} color={C.white}/>
-                <span>Verified inventory</span>
-              </div>
-              <h1 style={{fontSize:isMobile?30:46,lineHeight:1.05,letterSpacing:0,margin:"0 0 12px",maxWidth:700}}>Source inspected stone with certificate-level confidence.</h1>
-              <div style={{fontSize:15,lineHeight:1.7,color:"rgba(255,255,255,0.76)",maxWidth:640}}>{factoryName} has {insps.length} visible Premium and Standard slabs. Shortlist, compare evidence, and request commercial terms from one workspace.</div>
+        <section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:20,minHeight:isMobile?300:376,padding:isMobile?"26px 20px":"42px 50px",marginBottom:30,color:C.white,display:"flex",alignItems:"center"}}>
+          <div style={{maxWidth:560}}>
+            <div style={{display:"inline-flex",alignItems:"center",padding:"7px 20px",borderRadius:999,background:"rgba(255,255,255,0.18)",border:"1px solid rgba(255,255,255,0.55)",fontSize:14,fontWeight:700,marginBottom:14}}>
+              Featured Inventory
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {portalMetrics.map((m,i)=>(
-                <div key={m.label} style={{background:"rgba(255,255,255,0.13)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:16,padding:16,backdropFilter:"blur(12px)"}}>
-                  <Icon name={m.icon} size={18} color={C.white}/>
-                  <div style={{fontSize:28,fontWeight:800,lineHeight:1,marginTop:16}}>{m.value}</div>
-                  <div style={{fontSize:12,color:"rgba(255,255,255,0.72)",fontWeight:700,marginTop:4}}>{m.label}</div>
-                </div>
-              ))}
+            <h2 style={{fontSize:isMobile?40:48,lineHeight:1.02,letterSpacing:-0.4,margin:"0 0 18px",fontWeight:700}}>
+              Premium<br/><span style={{color:"#c9dcff"}}>{heroName}</span>
+            </h2>
+            <div style={{fontSize:17,lineHeight:1.55,color:"rgba(255,255,255,0.86)",maxWidth:580,marginBottom:28}}>Direct from {factoryName}. Verified photos, inspection evidence, and quote workflow ready for serious buyers.</div>
+            <div style={{display:"flex",gap:18,flexWrap:"wrap"}}>
+              <button className="buyer-button" onClick={onViewQuotes} style={{background:C.white,border:"none",borderRadius:14,padding:"16px 30px",color:"#11185f",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View Quotes →</button>
+              <button className="buyer-button" onClick={()=>setSortBy("evidence")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.75)",borderRadius:14,padding:"15px 30px",color:C.white,fontSize:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Market Report</button>
             </div>
           </div>
+          <div style={{position:"absolute",left:"50%",bottom:20,transform:"translateX(-50%)",display:"flex",gap:8}}>
+            {[0,1,2].map(i=><span key={i} style={{width:i===1?13:10,height:i===1?13:10,borderRadius:999,background:i===1?C.white:"rgba(255,255,255,0.48)",display:"block"}}/> )}
+          </div>
         </section>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1fr) 300px",gap:18,alignItems:"start",marginBottom:22}}>
-          <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:20,padding:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16}}>
-              <div>
-                <div style={{fontSize:18,fontWeight:800}}>Catalog</div>
-                <div style={{fontSize:12,color:C.textDim,fontWeight:700}}>{filtered.length} of {insps.length} slabs shown</div>
-              </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
-                  <button key={v.id} className="buyer-chip" onClick={()=>setViewMode(v.id)} style={{padding:"9px 12px",background:viewMode===v.id?C.primary:C.surface,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:999,color:viewMode===v.id?C.white:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>
-                    {v.label} <span style={{opacity:0.72}}>({v.count})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:16,paddingBottom:2}}>
-              {["All","Premium","Standard"].map(f=>(
-                <button key={f} className="buyer-chip" onClick={()=>setFilter(f)} style={{padding:"8px 14px",background:filter===f?C.primaryBg:C.white,border:`1px solid ${filter===f?C.primaryBorder:C.border}`,borderRadius:999,color:filter===f?C.primary:C.textMid,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flexShrink:0}}>{f}</button>
-              ))}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:10}}>
-              <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"11px 10px",border:`1px solid ${C.border}`,borderRadius:12,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
-                {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All stones":o}</option>)}
-              </select>
-              <select value={supplierFilter} onChange={e=>setSupplierFilter(e.target.value)} style={{padding:"11px 10px",border:`1px solid ${C.border}`,borderRadius:12,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
-                {supplierOptions.map(o=><option key={o} value={o}>{o==="All"?"All suppliers":o}</option>)}
-              </select>
-              <select value={exportFilter} onChange={e=>setExportFilter(e.target.value)} style={{padding:"11px 10px",border:`1px solid ${C.border}`,borderRadius:12,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
-                <option value="All">Export + domestic</option>
-                <option value="Export">Export ready</option>
-                <option value="Domestic">Domestic only</option>
-              </select>
-              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"11px 10px",border:`1px solid ${C.border}`,borderRadius:12,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
-                <option value="available">Available only</option>
+        <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:16,padding:isMobile?18:30,marginBottom:60}}>
+          <div style={{position:"relative",marginBottom:28}}>
+            <Icon name="search" size={24} color="#8da0bf" style={{position:"absolute",left:20,top:"50%",transform:"translateY(-50%)"}}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by stone name, origin, batch, supplier" style={{width:"100%",padding:"18px 22px 18px 60px",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:999,fontSize:18,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
+          </div>
+          <div style={{height:1,background:"#edf1f6",marginBottom:28}}/>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(220px,1fr) minmax(220px,1fr) minmax(180px,0.8fr) 106px",gap:20,alignItems:"end"}}>
+            <label style={{display:"grid",gap:10}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",letterSpacing:0.4}}>Seller Availability</span>
+              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"17px 18px",border:`1px solid ${C.border}`,borderRadius:14,background:"#fbfcff",fontSize:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
+                <option value="available">All Articles</option>
                 <option value="reserved">Reserved</option>
                 <option value="sold">Sold</option>
-                <option value="All">All statuses</option>
+                <option value="All">All Statuses</option>
               </select>
-              <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="Max Rs/sqft" style={{padding:"11px 10px",border:`1px solid ${C.border}`,borderRadius:12,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}/>
-              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"11px 10px",border:`1px solid ${C.border}`,borderRadius:12,background:C.white,fontSize:12,fontFamily:FONT_STACK,minWidth:0}}>
-                <option value="newest">Newest first</option>
+            </label>
+            <label style={{display:"grid",gap:10}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",letterSpacing:0.4}}>Category</span>
+              <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"17px 18px",border:`1px solid ${C.border}`,borderRadius:14,background:"#fbfcff",fontSize:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
+                {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All Categories":o}</option>)}
+              </select>
+            </label>
+            <label style={{display:"grid",gap:10}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",letterSpacing:0.4}}>Sort By</span>
+              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"17px 18px",border:`1px solid ${C.border}`,borderRadius:14,background:"#fbfcff",fontSize:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
+                <option value="newest">Newest</option>
                 <option value="priceLow">Price low-high</option>
                 <option value="priceHigh">Price high-low</option>
                 <option value="grade">Premium first</option>
                 <option value="evidence">Evidence first</option>
               </select>
-            </div>
-          </section>
-          <aside className="buyer-surface-card buyer-enter" style={{"--i":2,background:C.white,borderRadius:20,padding:18}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
-              <div style={{width:44,height:44,borderRadius:14,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="list" size={21} color={C.primary}/></div>
-              <div>
-                <div style={{fontSize:14,fontWeight:800}}>Shortlist</div>
-                <div style={{fontSize:12,color:C.textDim}}>{savedIds.length} saved in this browser</div>
-              </div>
-            </div>
-            <button className="buyer-button" onClick={copyShortlist} style={{width:"100%",background:savedIds.length?C.primary:C.surface,border:`1px solid ${savedIds.length?C.primary:C.border}`,borderRadius:12,color:savedIds.length?C.white:C.textDim,padding:"11px 12px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>{shortlistCopied?"Copied shortlist":"Copy shortlist"}</button>
-          </aside>
+            </label>
+            <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,color:C.textMid,padding:"17px 18px",fontSize:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Clear</button>
+          </div>
+        </section>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:18,marginBottom:26}}>
+          <h2 style={{margin:0,fontSize:24,lineHeight:1.25,fontWeight:700,color:C.text}}>Available Inventory <span style={{fontWeight:500,color:C.textMid}}>({filtered.length} results)</span></h2>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
+              <button key={v.id} className="buyer-chip" onClick={()=>setViewMode(v.id)} style={{padding:"10px 14px",background:viewMode===v.id?"#11185f":C.white,border:`1px solid ${viewMode===v.id?"#11185f":C.border}`,borderRadius:999,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>
+                {v.label} <span style={{opacity:0.72}}>({v.count})</span>
+              </button>
+            ))}
+            <button className="buyer-chip" onClick={copyShortlist} style={{padding:"10px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
+          </div>
         </div>
         {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to build a shortlist for comparison.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(310px,1fr))",gap:18}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:28}}>
           {filtered.map((slab,index)=>{
             const g=gradeConf(slab.grade);
             const inv=slab.inventoryStatus||"available";
@@ -4381,41 +4371,42 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             const trace=evidence.trace;
             const readiness=evidence.score;
             return (
-              <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+3,background:"#fff",borderRadius:20,overflow:"hidden"}}>
+              <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+3,background:"#fff",borderRadius:16,overflow:"hidden",minHeight:520,display:"flex",flexDirection:"column"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
-                  <div style={{aspectRatio:"16/9",background:`linear-gradient(135deg,${g.bg},#f8fafc)`,position:"relative",overflow:"hidden"}}>
+                  <div style={{height:238,background:"#fff",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
                     {slab.photo?<img className="buyer-image" src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:
-                    <div className="buyer-image" style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf6f8)"}}><Icon name="package" size={40} color={g.color}/></div>}
-                    <div style={{position:"absolute",top:12,right:12,background:g.bg,border:`1px solid ${g.border}`,borderRadius:999,padding:"5px 10px",fontSize:12,fontWeight:800,color:g.color}}>{slab.grade}</div>
-                    <button className="buyer-button" onClick={e=>{e.stopPropagation();setQrSlab(slab);}} style={{position:"absolute",top:12,left:12,background:"rgba(255,255,255,0.92)",border:"none",borderRadius:10,padding:"6px 9px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",gap:5}}><Icon name="qr" size={13}/> QR</button>
-                    <button className="buyer-button" onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{position:"absolute",top:12,left:72,background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:10,padding:"6px 9px",fontSize:12,fontWeight:800,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK}}>{saved?"Saved":"Save"}</button>
-                    <div style={{position:"absolute",bottom:12,left:12,right:12,display:"flex",gap:6,flexWrap:"wrap"}}>
-                      <InventoryPill status={inv}/>
-                      <span style={{background:readiness>=70?C.greenBg:C.amberBg,border:`1px solid ${readiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:999,padding:"4px 9px",fontSize:12,fontWeight:800,color:readiness>=70?C.green:C.amber}}>Evidence {readiness}%</span>
-                      {slab.exportReady&&<span style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:999,padding:"4px 9px",fontSize:12,fontWeight:800,color:C.green}}>Export ready</span>}
-                    </div>
+                    <div className="buyer-image" style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={50} color="#9aa8bb"/></div>}
+                    <div style={{position:"absolute",top:16,left:16,background:"#fff7e8",border:"1px solid #faedcf",borderRadius:6,padding:"7px 10px",fontSize:12,fontWeight:800,color:"#b65a00",letterSpacing:0.2}}>{seasonLabel(slab)}</div>
+                    <div style={{position:"absolute",top:16,right:16,background:g.bg,border:`1px solid ${g.border}`,borderRadius:6,padding:"6px 10px",fontSize:12,fontWeight:800,color:g.color}}>{slab.grade}</div>
                   </div>
-                  <div style={{padding:"16px 18px 12px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"flex-start",marginBottom:7}}>
+                  <div style={{padding:"24px 20px 10px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"flex-start",marginBottom:18}}>
                       <div style={{minWidth:0}}>
-                        <div style={{fontSize:18,fontWeight:800,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
-                        <div style={{fontSize:12,color:C.textDim,fontWeight:700}}>{slab.date} | {slabDims(slab)}</div>
+                        <div style={{fontSize:23,fontWeight:700,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.text}}>{slab.stone}</div>
+                        <div style={{fontSize:13,color:C.textDim,fontWeight:600}}>{slab.supplier||factoryName}</div>
                       </div>
-                      <div style={{fontSize:20,lineHeight:1.15,fontWeight:800,color:C.green,whiteSpace:"nowrap"}}>Rs {slab.pricePerSqFt}<span style={{fontSize:12,fontWeight:600,color:C.textDim}}>/sqft</span></div>
+                      <button className="buyer-button" onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{background:saved?"#11185f":C.white,border:`1px solid ${saved?"#11185f":C.border}`,borderRadius:999,width:36,height:36,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label={saved?"Remove from shortlist":"Save to shortlist"}><Icon name={saved?"check":"add"} size={16}/></button>
                     </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {slab.supplier&&<span style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:999,padding:"4px 9px",fontSize:12,fontWeight:700,color:C.textMid}}>{slab.supplier}</span>}
-                      {trace.batchNo&&<span style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,padding:"4px 9px",fontSize:12,fontWeight:700,color:C.primary}}>Batch {trace.batchNo}</span>}
-                      {(slab.defects||[]).length===0?<span style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:999,padding:"4px 9px",fontSize:12,fontWeight:700,color:C.green}}>No defects</span>:<span style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:999,padding:"4px 9px",fontSize:12,fontWeight:700,color:C.amber}}>{slab.defects.length} defects</span>}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:"13px 16px"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",marginBottom:8}}>Size</div>
+                        <div style={{fontSize:17,fontWeight:700,color:"#26364f"}}>{slabDims(slab)}</div>
+                      </div>
+                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:"13px 16px"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",marginBottom:8}}>Rate</div>
+                        <div style={{fontSize:17,fontWeight:700,color:"#26364f"}}>{fmtMoney(slab.pricePerSqFt)}/sqft</div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+                      <div style={{fontSize:12,color:C.textDim,fontWeight:600}}>Evidence {readiness}%</div>
+                      <div style={{fontSize:12,color:C.textDim,fontWeight:600,textAlign:"right"}}>{trace.batchNo?`Batch ${trace.batchNo}`:"Batch pending"}</div>
                     </div>
                   </div>
                 </div>
-                <div style={{padding:"14px 18px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${C.border}`,gap:10}}>
-                  <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:"9px 11px",color:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>View certificate</button>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                    <button className="buyer-button" onClick={()=>toggleSaved(slab.id)} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:12,padding:"9px 11px",color:saved?C.white:C.textMid,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>{saved?"Saved":"Save"}</button>
-                    <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{background:canInquire?C.primary:C.surface,border:`1px solid ${canInquire?C.primary:C.border}`,borderRadius:12,padding:"9px 12px",color:canInquire?C.white:C.textDim,fontSize:12,fontWeight:800,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK}}>{canInquire?"Request quote":invConf(inv).label}</button>
-                  </div>
+                <div style={{padding:"12px 20px 22px",marginTop:"auto"}}>
+                  <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{width:"100%",background:canInquire?"#211953":C.surface,border:`1px solid ${canInquire?"#211953":C.border}`,borderRadius:9,padding:"17px 12px",color:canInquire?C.white:C.textDim,fontSize:15,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:10}}>{canInquire?"Request Quote":invConf(inv).label}</button>
+                  <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{width:"100%",background:C.white,border:"1px solid #cfe0ff",borderRadius:9,padding:"14px 12px",color:"#1267e8",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View certificate</button>
+                  <button className="buyer-button" onClick={()=>setQrSlab(slab)} style={{width:"100%",background:"transparent",border:"none",padding:"12px 12px 0",color:C.textMid,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="qr" size={15}/> QR label</button>
                 </div>
               </div>
             );
