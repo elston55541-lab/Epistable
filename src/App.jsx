@@ -4255,6 +4255,10 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     if(inv==="sold")return "SOLD";
     return String(inv).toUpperCase();
   };
+  const mobileNavItems=[
+    ...sidebarItems,
+    ...(onLogout?[{label:"Log out",icon:"close",action:onLogout}]:[])
+  ];
   return (
     <div className="buyer-app" style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
@@ -4294,7 +4298,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         <button className="buyer-button" onClick={()=>setSortBy("newest")} style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Refresh catalog"><Icon name="refresh" size={19}/></button>
         <button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>
       </div>
-      <div style={{padding:isMobile?"16px 14px 80px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
+      <div style={{padding:isMobile?"16px 14px 176px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
         <ErrorNotice message={loadError}/>
         <section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:20,minHeight:isMobile?300:376,padding:isMobile?"26px 20px":"42px 50px",marginBottom:30,color:C.white,display:"flex",alignItems:"center"}}>
           <div style={{maxWidth:560}}>
@@ -4414,6 +4418,20 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>}
       </div>
       </main>
+      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:12,right:12,bottom:12,zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 18px 44px rgba(16,24,40,0.18)",padding:10,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8}}>
+        {mobileNavItems.map(item=>(
+          <button
+            key={item.label}
+            className="buyer-button"
+            onClick={item.action||undefined}
+            disabled={!item.action&&!item.active}
+            style={{minHeight:58,background:item.active?"#eef3ff":"#f9fbfe",border:`1px solid ${item.active?"#d9e5ff":"#eef2f7"}`,borderRadius:14,color:item.active?"#10185f":"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,opacity:1,padding:"7px 4px"}}
+          >
+            <Icon name={item.icon} size={17}/>
+            <span style={{whiteSpace:"nowrap",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label==="My Requirements"?"Reqs":item.label==="Trade GPT"?"GPT":item.label.replace("My ","")}</span>
+          </button>
+        ))}
+      </nav>}
       {inquiry&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setInquiry(null)}>
           <div className="buyer-sheet" style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,padding:"20px"}} onClick={e=>e.stopPropagation()}>
