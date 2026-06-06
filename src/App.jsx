@@ -4246,6 +4246,10 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     setMobileFiltersOpen(false);
     setTradeOpen(false);
   }
+  function openTradeWithPrompt(prompt=""){
+    if(prompt)setTradePrompt(prompt);
+    setTradeOpen(true);
+  }
   function openQuoteRequest(slab){
     setInquiry(slab);
     setInquiryMsg("");
@@ -4286,7 +4290,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
   const sidebarItems=[
-    {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>setTradeOpen(true)},
+    {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>openTradeWithPrompt()},
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
     {label:"My Quotes",mobileLabel:"Quotes",icon:"message",action:onViewQuotes},
     {label:"My Orders",mobileLabel:"Orders",icon:"truck",action:onViewQuotes},
@@ -4308,13 +4312,14 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   };
   const mobileNavItems=[
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
-    {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",active:tradeOpen,action:()=>setTradeOpen(true)},
+    {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",active:tradeOpen,action:()=>openTradeWithPrompt()},
     {label:"Saved",mobileLabel:"Saved",icon:"check",active:viewMode==="saved"&&!tradeOpen,action:()=>{setViewMode("saved");setTradeOpen(false);}},
     {label:"Quotes",mobileLabel:"Quotes",icon:"message",action:onViewQuotes},
   ];
   const statTiles=[
     {label:"Available",value:availableCount,icon:"package"},
     {label:"Export ready",value:exportCount,icon:"verified"},
+    {label:"Premium",value:premiumCount,icon:"trend"},
     {label:"Saved",value:savedIds.length,icon:"check"},
   ];
   return (
@@ -4377,7 +4382,39 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
       </div>
       <div style={{padding:isMobile?"12px 12px 184px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
         <ErrorNotice message={loadError}/>
-        <section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:isMobile?16:20,minHeight:isMobile?188:376,padding:isMobile?"18px 16px":"42px 50px",marginBottom:isMobile?14:30,color:C.white,display:"flex",alignItems:"center"}}>
+        {isMobile?<>
+          <section className="buyer-command-card buyer-enter" style={{"--i":0,background:"linear-gradient(135deg,#003d7a 0%,#0057a8 52%,#0c76d8 100%)",borderRadius:18,padding:"16px 15px",marginBottom:10,color:C.white,boxShadow:"0 16px 40px rgba(0,87,168,0.22)",overflow:"hidden",position:"relative"}}>
+            <div style={{position:"absolute",inset:"auto -42px -70px auto",width:150,height:150,borderRadius:999,background:"rgba(255,255,255,0.14)"}}/>
+            <div style={{position:"relative",zIndex:1}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:12}}>
+                <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"6px 9px",fontSize:11,fontWeight:800}}>
+                  <Icon name="bot" size={14}/> Trade GPT
+                </div>
+                <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.78)"}}>{filtered.length} matches</div>
+              </div>
+              <h2 style={{margin:"0 0 6px",fontSize:24,lineHeight:1.12,fontWeight:750,letterSpacing:0}}>Find the right slab in one ask.</h2>
+              <div style={{fontSize:13,lineHeight:1.55,color:"rgba(255,255,255,0.84)",marginBottom:13}}>Ask by stone, budget, export need, and evidence quality. Then compare only the slabs worth calling about.</div>
+              <button className="buyer-button buyer-command-input" onClick={()=>openTradeWithPrompt()} style={{width:"100%",background:C.white,border:"1px solid rgba(255,255,255,0.72)",borderRadius:14,padding:"12px 13px",color:C.primaryD,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",gap:9,textAlign:"left",boxShadow:"0 10px 26px rgba(0,26,64,0.18)"}}>
+                <Icon name="search" size={16}/>
+                <span style={{flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Ask: export-ready under Rs 500 with strong proof</span>
+                <Icon name="arrow" size={15}/>
+              </button>
+              <div style={{display:"flex",gap:8,overflowX:"auto",paddingTop:10}}>
+                {["Best evidence first","Premium lobby slabs","Export-ready now"].map(prompt=>(
+                  <button key={prompt} className="buyer-chip" onClick={()=>openTradeWithPrompt(prompt)} style={{flex:"0 0 auto",background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:999,color:C.white,padding:"7px 9px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>{prompt}</button>
+                ))}
+              </div>
+            </div>
+          </section>
+          <section className="buyer-trust-rail buyer-enter" style={{"--i":1,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:14}}>
+            {statTiles.map(tile=>(
+              <button key={tile.label} className="buyer-action-card" onClick={tile.label==="Export ready"?()=>setExportFilter("Export"):tile.label==="Premium"?()=>setFilter("Premium"):tile.label==="Saved"?()=>setViewMode("saved"):undefined} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"10px 7px",minWidth:0,textAlign:"left",cursor:["Export ready","Premium","Saved"].includes(tile.label)?"pointer":"default",fontFamily:FONT_STACK,boxShadow:"0 8px 22px rgba(16,24,40,0.05)"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:4,color:C.primaryD,marginBottom:6}}><Icon name={tile.icon} size={14}/><span style={{fontSize:16,lineHeight:1,fontWeight:800}}>{tile.value}</span></div>
+                <div style={{fontSize:10,lineHeight:1.2,fontWeight:700,color:C.textMid,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tile.label}</div>
+              </button>
+            ))}
+          </section>
+        </>:<section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:20,minHeight:376,padding:"42px 50px",marginBottom:30,color:C.white,display:"flex",alignItems:"center"}}>
           <div style={{maxWidth:isMobile?420:560,width:"100%"}}>
             <div style={{display:"inline-flex",alignItems:"center",padding:isMobile?"5px 10px":"7px 20px",borderRadius:999,background:"rgba(255,255,255,0.18)",border:"1px solid rgba(255,255,255,0.55)",fontSize:isMobile?11:14,fontWeight:700,marginBottom:isMobile?10:14}}>
               Buyer-ready inventory
@@ -4402,7 +4439,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
           {!isMobile&&<div style={{position:"absolute",left:"50%",bottom:20,transform:"translateX(-50%)",display:"flex",gap:8}}>
             {[0,1,2].map(i=><span key={i} style={{width:i===1?13:10,height:i===1?13:10,borderRadius:999,background:i===1?C.white:"rgba(255,255,255,0.48)",display:"block"}}/> )}
           </div>}
-        </section>
+        </section>}
         <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:isMobile?14:16,padding:isMobile?14:30,marginBottom:isMobile?18:60,display:isMobile&&!mobileFiltersOpen?"none":"block"}}>
           {!isMobile&&<div style={{position:"relative",marginBottom:28}}>
             <Icon name="search" size={24} color="#8da0bf" style={{position:"absolute",left:20,top:"50%",transform:"translateY(-50%)"}}/>
@@ -4470,40 +4507,49 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             const trace=evidence.trace;
             const readiness=evidence.score;
             return (
-              <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+3,background:"#fff",borderRadius:isMobile?14:16,overflow:"hidden",minHeight:isMobile?"auto":520,display:"flex",flexDirection:"column"}}>
+              <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+2,background:"#fff",border:`1px solid ${C.border}`,borderRadius:isMobile?18:16,overflow:"hidden",minHeight:isMobile?"auto":520,display:"flex",flexDirection:"column"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
-                  <div style={{height:isMobile?206:238,background:"#fff",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <div style={{height:isMobile?190:238,background:"#fff",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
                     {slab.photo?<img className="buyer-image" src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:
                     <div className="buyer-image" style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={50} color="#9aa8bb"/></div>}
                     <div style={{position:"absolute",top:isMobile?12:16,left:isMobile?12:16,background:"#fff7e8",border:"1px solid #faedcf",borderRadius:6,padding:isMobile?"6px 8px":"7px 10px",fontSize:11,fontWeight:800,color:"#8a4300",letterSpacing:0}}>{seasonLabel(slab)}</div>
                     <div style={{position:"absolute",top:isMobile?12:16,right:isMobile?12:16,background:g.bg,border:`1px solid ${g.border}`,borderRadius:6,padding:isMobile?"6px 8px":"6px 10px",fontSize:11,fontWeight:800,color:g.color}}>{slab.grade}</div>
                   </div>
-                  <div style={{padding:isMobile?"16px 14px 8px":"24px 20px 10px"}}>
+                  <div style={{padding:isMobile?"15px 14px 9px":"24px 20px 10px"}}>
                     <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:isMobile?12:18}}>
                       <div style={{minWidth:0}}>
-                        <div style={{fontSize:isMobile?20:23,fontWeight:700,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.text}}>{slab.stone}</div>
+                        <div style={{fontSize:isMobile?19:23,fontWeight:750,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.text}}>{slab.stone}</div>
                         <div style={{fontSize:13,color:C.textDim,fontWeight:600}}>{slab.supplier||factoryName}</div>
                       </div>
                       <button className="buyer-button" onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:999,width:isMobile?40:36,height:isMobile?40:36,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label={saved?"Remove from saved slabs":"Save slab"}><Icon name={saved?"check":"add"} size={16}/></button>
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:isMobile?8:14,marginBottom:14}}>
-                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:isMobile?"10px 11px":"13px 16px"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:isMobile?8:14,marginBottom:12}}>
+                      <div style={{background:isMobile?"#f8fbff":"#eef5ff",border:"1px solid #dce8f8",borderRadius:isMobile?12:8,padding:isMobile?"10px 11px":"13px 16px"}}>
                         <div style={{fontSize:11,fontWeight:700,color:"#5f7392",marginBottom:6}}>Size</div>
                         <div style={{fontSize:isMobile?14:17,fontWeight:700,color:"#26364f",lineHeight:1.25}}>{slabDims(slab)}</div>
                       </div>
-                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:isMobile?"10px 11px":"13px 16px"}}>
+                      <div style={{background:isMobile?"#f8fbff":"#eef5ff",border:"1px solid #dce8f8",borderRadius:isMobile?12:8,padding:isMobile?"10px 11px":"13px 16px"}}>
                         <div style={{fontSize:11,fontWeight:700,color:"#5f7392",marginBottom:6}}>Rate</div>
                         <div style={{fontSize:isMobile?14:17,fontWeight:700,color:"#26364f",lineHeight:1.25}}>{fmtMoney(slab.pricePerSqFt)}/sqft</div>
                       </div>
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
-                      <div style={{fontSize:12,color:C.textDim,fontWeight:600}}>Evidence {readiness}%</div>
-                      <div style={{fontSize:12,color:C.textDim,fontWeight:600,textAlign:"right"}}>{trace.batchNo?`Batch ${trace.batchNo}`:"Batch pending"}</div>
+                    <div style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 11px",marginBottom:6}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:8,alignItems:"center"}}>
+                        <div style={{fontSize:12,color:C.textMid,fontWeight:700}}>Evidence readiness</div>
+                        <div style={{fontSize:12,color:readiness>=70?C.green:C.amber,fontWeight:800}}>{readiness}%</div>
+                      </div>
+                      <div style={{height:6,background:"#edf2f8",borderRadius:999,overflow:"hidden",marginBottom:8}}>
+                        <span className="buyer-evidence-fill" style={{display:"block",height:"100%",width:`${Math.max(8,Math.min(100,readiness))}%`,background:readiness>=70?C.green:C.primary,borderRadius:999}}/>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:C.textDim,fontWeight:600}}>
+                        <span>{trace.batchNo?`Batch ${trace.batchNo}`:"Batch pending"}</span>
+                        <span>{slab.exportReady?"Export ready":"Domestic ready"}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
                 <div style={{padding:isMobile?"8px 14px 16px":"12px 20px 22px",marginTop:"auto"}}>
-                  <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{width:"100%",background:canInquire?C.primary:C.surface,border:`1px solid ${canInquire?C.primary:C.border}`,borderRadius:isMobile?10:9,padding:isMobile?"14px 12px":"17px 12px",color:canInquire?C.white:C.textDim,fontSize:15,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:10}}>{canInquire?"Request Quote":invConf(inv).label}</button>
+                  <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{width:"100%",background:canInquire?C.primary:C.surface,border:`1px solid ${canInquire?C.primary:C.border}`,borderRadius:isMobile?12:9,padding:isMobile?"14px 12px":"17px 12px",color:canInquire?C.white:C.textDim,fontSize:15,fontWeight:750,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:10,boxShadow:canInquire&&isMobile?"0 10px 24px rgba(0,87,168,0.18)":"none"}}>{canInquire?"Request Quote":invConf(inv).label}</button>
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr",gap:isMobile?8:0}}>
                     <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{width:"100%",background:C.white,border:"1px solid #cfe0ff",borderRadius:isMobile?10:9,padding:isMobile?"12px 10px":"14px 12px",color:"#1267e8",fontSize:isMobile?13:15,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
                     <button className="buyer-button" onClick={()=>setQrSlab(slab)} style={{width:"100%",background:isMobile?C.white:"transparent",border:isMobile?`1px solid ${C.border}`:"none",borderRadius:isMobile?10:0,padding:isMobile?"12px 10px":"12px 12px 0",color:C.textMid,fontSize:isMobile?13:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="qr" size={15}/> QR label</button>
