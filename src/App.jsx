@@ -4350,25 +4350,13 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>
       </aside>}
       <main style={{minWidth:0}}>
-      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,0.05)":"none",padding:isMobile?"12px 14px 14px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18,flexWrap:isMobile?"wrap":"nowrap"}}>
+      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,0.04)":"none",padding:isMobile?"22px 32px 22px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18,flexWrap:isMobile?"wrap":"nowrap"}}>
         {isMobile?<>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
             {onBack&&<button className="buyer-button" onClick={onBack} style={{width:38,height:38,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Back"><Icon name="prev" size={18}/></button>}
-            <Avi initials={buyerInitials} size={38}/>
-            <div style={{minWidth:0}}>
-              <h1 style={{margin:0,fontSize:18,lineHeight:1.2,fontWeight:700,letterSpacing:0,color:C.text}}>Catalog</h1>
-              <div style={{fontSize:12,color:C.textMid,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"58vw"}}>{factoryName}</div>
-            </div>
+            <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>Catalog</h1>
           </div>
-          <button className="buyer-button" onClick={onViewQuotes} style={{height:38,background:C.primary,border:`1px solid ${C.primary}`,borderRadius:12,color:C.white,padding:"0 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",gap:7}}><Icon name="message" size={15}/> Quotes</button>
           {onLogout&&<button className="buyer-button" onClick={onLogout} style={{width:38,height:38,background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Log out"><Icon name="close" size={16}/></button>}
-          <div style={{width:"100%",display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8}}>
-            <div style={{position:"relative",minWidth:0}}>
-              <Icon name="search" size={17} color={C.textDim} style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)"}}/>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search stone, batch, source" style={{width:"100%",padding:"12px 14px 12px 38px",background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:12,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
-            </div>
-            <button className="buyer-button" onClick={()=>setMobileFiltersOpen(v=>!v)} style={{height:45,background:activeFilterCount?C.primaryBg:C.white,border:`1px solid ${activeFilterCount?C.primaryBorder:C.border}`,borderRadius:12,color:activeFilterCount?C.primaryD:C.textMid,padding:"0 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",gap:7}} aria-expanded={mobileFiltersOpen} aria-label="Toggle filters"><Icon name="filter" size={16}/> {activeFilterCount||"Filter"}</button>
-          </div>
         </>:<>
           <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>Catalog</h1>
           <div style={{flex:1}}/>
@@ -4380,36 +4368,26 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
           <button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>
         </>}
       </div>
-      <div style={{padding:isMobile?"12px 12px 184px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
+      <div style={{padding:isMobile?"0 0 184px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
         <ErrorNotice message={loadError}/>
         {isMobile?<>
-          <section className="buyer-featured-card buyer-enter" style={{"--i":0,marginBottom:16}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:11}}>
-              <div>
-                <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,color:C.primaryD,padding:"5px 8px",fontSize:10,fontWeight:800,marginBottom:7}}>
-                  <Icon name="trend" size={13}/> Featured
-                </div>
-                <div style={{fontSize:18,lineHeight:1.2,fontWeight:800,color:C.text}}>Curated slabs worth opening first</div>
-              </div>
-              <button className="buyer-button" onClick={()=>{setViewMode("featured");setSortBy("evidence");}} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:999,color:C.primaryD,padding:"8px 10px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>View all</button>
-            </div>
-            <div style={{display:"flex",gap:12,overflowX:"auto",padding:"1px 2px 6px",scrollSnapType:"x mandatory"}}>
+          <section className="buyer-featured-card buyer-enter" style={{"--i":0,marginBottom:32}}>
+            <div style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory"}}>
               {(featuredSlabs.length?featuredSlabs:[{slab:heroSlab,evidence:heroSlab?evidenceReadiness(heroSlab):{score:0}}].filter(x=>x.slab)).map(({slab,evidence})=>(
-                <article key={slab.id} className="buyer-featured-hero" style={{flex:"0 0 88%",scrollSnapAlign:"start",background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 14px 34px rgba(16,24,40,0.08)"}}>
-                  <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{height:224,background:"#edf3fa",position:"relative",cursor:"pointer",overflow:"hidden"}}>
+                <article key={slab.id} className="buyer-featured-hero" style={{flex:"0 0 100%",scrollSnapAlign:"start",background:C.white,overflow:"hidden"}}>
+                  <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{height:430,background:"#edf3fa",position:"relative",cursor:"pointer",overflow:"hidden"}}>
                     {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={42} color="#8da0bf"/></div>}
-                    <div style={{position:"absolute",inset:"auto 0 0",padding:"44px 14px 13px",background:"linear-gradient(180deg,rgba(6,18,45,0),rgba(6,18,45,0.78))",color:C.white}}>
-                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:6}}>
-                        <span style={{background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"5px 8px",fontSize:10,fontWeight:800}}>{slab.exportReady?"EXPORT READY":"AVAILABLE NOW"}</span>
-                        <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.82)"}}>Evidence {evidence.score}%</span>
+                    <div style={{position:"absolute",inset:"auto 0 0",padding:"110px 26px 34px",background:"linear-gradient(180deg,rgba(6,18,45,0),rgba(6,18,45,0.82))",color:C.white}}>
+                      <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.34)",borderRadius:999,padding:"7px 14px",fontSize:12,fontWeight:800,marginBottom:14}}>
+                        <Icon name="trend" size={14}/> Featured
                       </div>
-                      <div style={{fontSize:22,lineHeight:1.08,fontWeight:800,letterSpacing:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
-                      <div style={{fontSize:12,fontWeight:650,color:"rgba(255,255,255,0.84)",marginTop:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · {slab.supplier||factoryName}</div>
+                      <div style={{fontSize:42,lineHeight:1.03,fontWeight:850,letterSpacing:0,maxWidth:320}}>{slab.stone}</div>
+                      <div style={{fontSize:17,lineHeight:1.45,fontWeight:600,color:"rgba(255,255,255,0.86)",marginTop:16,maxWidth:340}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Evidence {evidence.score}%</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:28}}>
+                        <button className="buyer-button" onClick={e=>{e.stopPropagation();openQuoteRequest(slab);}} style={{background:C.white,border:`1px solid ${C.white}`,borderRadius:12,color:C.primaryD,padding:"16px 12px",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Request Quote</button>
+                        <button className="buyer-button" onClick={e=>{e.stopPropagation();window.location.assign(`/slab/${encodeURIComponent(slab.id)}`);}} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.76)",borderRadius:12,color:C.white,padding:"16px 12px",fontSize:15,fontWeight:750,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:10}}>
-                    <button className="buyer-button" onClick={()=>openQuoteRequest(slab)} style={{background:C.primary,border:`1px solid ${C.primary}`,borderRadius:12,color:C.white,padding:"12px 10px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Request Quote</button>
-                    <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:12,color:C.primaryD,padding:"12px 10px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
                   </div>
                 </article>
               ))}
@@ -4433,20 +4411,13 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             {[0,1,2].map(i=><span key={i} style={{width:i===1?13:10,height:i===1?13:10,borderRadius:999,background:i===1?C.white:"rgba(255,255,255,0.48)",display:"block"}}/> )}
           </div>}
         </section>}
-        <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:isMobile?14:16,padding:isMobile?14:30,marginBottom:isMobile?18:60,display:isMobile&&!mobileFiltersOpen?"none":"block"}}>
-          {!isMobile&&<div style={{position:"relative",marginBottom:28}}>
+        <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:isMobile?14:16,padding:isMobile?32:30,margin:isMobile?"0 32px 32px":undefined,marginBottom:isMobile?32:60,display:"block",boxShadow:isMobile?"0 18px 42px rgba(16,24,40,0.08)":undefined}}>
+          <div style={{position:"relative",marginBottom:isMobile?26:28}}>
             <Icon name="search" size={24} color="#8da0bf" style={{position:"absolute",left:20,top:"50%",transform:"translateY(-50%)"}}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by stone name, origin, batch, supplier" style={{width:"100%",padding:"18px 22px 18px 60px",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:999,fontSize:18,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
-          </div>}
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by stone name, origin, batch, supplier" style={{width:"100%",padding:isMobile?"17px 18px 17px 58px":"18px 22px 18px 60px",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:999,fontSize:isMobile?16:18,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
+          </div>
           {!isMobile&&<div style={{height:1,background:"#edf1f6",marginBottom:28}}/>}
-          {isMobile&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
-            <div>
-              <div style={{fontSize:15,fontWeight:700,color:C.text}}>Refine catalog</div>
-              <div style={{fontSize:12,color:C.textMid,marginTop:2}}>{filtered.length} matching slabs</div>
-            </div>
-            <button className="buyer-button" onClick={()=>setMobileFiltersOpen(false)} style={{background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"8px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Done</button>
-          </div>}
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"minmax(220px,1fr) minmax(220px,1fr) minmax(180px,0.8fr) 106px",gap:isMobile?10:20,alignItems:"end"}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"minmax(220px,1fr) minmax(220px,1fr) minmax(180px,0.8fr) 106px",gap:isMobile?18:20,alignItems:"end"}}>
             <label style={{display:"grid",gap:10}}>
               <span style={{fontSize:12,fontWeight:700,color:"#667085",letterSpacing:0}}>Availability</span>
               <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:isMobile?"12px 11px":"17px 18px",border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,background:"#fbfcff",fontSize:isMobile?13:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
@@ -4472,10 +4443,10 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                 <option value="evidence">Evidence first</option>
               </select>
             </label>
-            <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,color:C.textMid,padding:isMobile?"12px 11px":"17px 18px",fontSize:isMobile?13:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,alignSelf:"end"}}>Clear</button>
+            <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,color:C.textMid,padding:isMobile?"12px 11px":"17px 18px",fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,alignSelf:"end"}}>Clear</button>
           </div>
         </section>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:isMobile?"stretch":"center",gap:isMobile?12:18,marginBottom:isMobile?14:26,flexDirection:isMobile?"column":"row"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:isMobile?"stretch":"center",gap:isMobile?12:18,margin:isMobile?"0 32px 24px":undefined,marginBottom:isMobile?24:26,flexDirection:isMobile?"column":"row"}}>
           <div>
             <h2 style={{margin:0,fontSize:isMobile?20:24,lineHeight:1.25,fontWeight:700,color:C.text}}>Available Inventory {!isMobile&&<span style={{fontWeight:500,color:C.textMid}}>({filtered.length} results)</span>}</h2>
             {isMobile&&<div style={{fontSize:12,color:C.textMid,marginTop:3}}>{filtered.length} results, {availableCount} available now</div>}
@@ -4490,7 +4461,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
           </div>
         </div>
         {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to compare and request quotes later.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?14:28}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?26:28,margin:isMobile?"0 32px":undefined}}>
           {filtered.map((slab,index)=>{
             const g=gradeConf(slab.grade);
             const inv=slab.inventoryStatus||"available";
@@ -4554,14 +4525,14 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>}
       </div>
       </main>
-      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:8,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7}}>
+      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
         {mobileNavItems.map(item=>(
           <button
             key={item.label}
             className="buyer-button"
             onClick={item.action||undefined}
             disabled={!item.action&&!item.active}
-            style={{minHeight:52,background:item.active?C.primaryBg:"#f9fbfe",border:`1px solid ${item.active?C.primaryBorder:"#eef2f7"}`,borderRadius:12,color:item.active?C.primaryD:"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:item.action||item.active?1:0.62,padding:"6px 4px"}}
+            style={{minHeight:item.active?58:52,background:item.active?C.primary:"#f9fbfe",border:`1px solid ${item.active?C.primary:"#eef2f7"}`,borderRadius:item.active?999:12,color:item.active?C.white:"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:item.action||item.active?1:0.62,padding:"6px 4px",transform:item.active?"translateY(-18px)":"none",boxShadow:item.active?"0 12px 26px rgba(0,87,168,0.28)":"none"}}
           >
             <Icon name={item.icon} size={17}/>
             <span style={{whiteSpace:"nowrap",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{item.mobileLabel||item.label}</span>
