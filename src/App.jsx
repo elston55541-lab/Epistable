@@ -4111,6 +4111,9 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const [loadError,setLoadError]=useState("");const [inquiryBusy,setInquiryBusy]=useState(false);const [inquiryError,setInquiryError]=useState("");
   const [qrSlab,setQrSlab]=useState(null);
   const [shortlistCopied,setShortlistCopied]=useState(false);
+  const [mobileFiltersOpen,setMobileFiltersOpen]=useState(false);
+  const [tradeOpen,setTradeOpen]=useState(false);
+  const [tradePrompt,setTradePrompt]=useState("");
   const {isMobile}=useBP();
   const shortlistKey=`epistable_shortlist_${buyer?.id||buyer?.email||factoryId||"guest"}`;
   useEffect(()=>{
@@ -4195,6 +4198,54 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     });
   },[insps,filter,viewMode,savedSet,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,search,sortBy]);
   const clearFilters=()=>{setViewMode("all");setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setStatusFilter("available");setMaxPrice("");setSortBy("newest");setSearch("");};
+  const tradeBudget=useMemo(()=>{
+    const text=tradePrompt.toLowerCase();
+    const m=text.match(/(?:under|below|upto|up to|less than|<=?)\s*(?:rs|inr|₹)?\s*([0-9,]+)/i)||text.match(/(?:rs|inr|₹)\s*([0-9,]+)/i);
+    return m?Number(String(m[1]).replace(/,/g,"")):0;
+  },[tradePrompt]);
+  const tradeStone=useMemo(()=>{
+    const text=tradePrompt.toLowerCase();
+    return stoneOptions.find(o=>o!=="All"&&text.includes(String(o).toLowerCase()))||"All";
+  },[tradePrompt,stoneOptions]);
+  const tradeRecommendations=useMemo(()=>{
+    const text=tradePrompt.toLowerCase();
+    const wantsExport=/export|overseas|dubai|uae|qatar|oman|saudi|international|shipment/.test(text);
+    const wantsPremium=/premium|best|luxury|hotel|lobby|top/.test(text);
+    const wantsEvidence=/evidence|trace|batch|certificate|verified|readiness|proof/.test(text);
+    const wantsBudget=/budget|cheap|affordable|under|below|price|rate|cost/.test(text);
+    const words=text.split(/[^a-z0-9]+/).filter(w=>w.length>2);
+    return insps.map(s=>{
+      const e=evidenceReadiness(s);
+      const hay=[s.stone,s.supplier,s.grade,slabDims(s),s.measurements?.traceability?.batchNo,s.measurements?.traceability?.quarrySource,...(s.defects||[])].filter(Boolean).join(" ").toLowerCase();
+      let score=0;
+      if((s.inventoryStatus||"available")==="available")score+=24;
+      if(s.exportReady)score+=wantsExport?26:8;
+      if(s.grade==="Premium")score+=wantsPremium?24:10;
+      if(s.grade==="Standard")score+=6;
+      score+=Math.round(e.score/5);
+      if(wantsEvidence)score+=Math.round(e.score/3);
+      if(tradeStone!=="All"&&s.stone===tradeStone)score+=32;
+      if(tradeBudget&&Number(s.pricePerSqFt||0)<=tradeBudget)score+=26;
+      if(wantsBudget&&Number(s.pricePerSqFt||0)>0)score+=Math.max(0,16-Math.round(Number(s.pricePerSqFt||0)/80));
+      words.forEach(w=>{if(hay.includes(w))score+=5;});
+      return {slab:s,score,evidence:e};
+    }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||Number(b.slab.ts||0)-Number(a.slab.ts||0)).slice(0,4);
+  },[insps,tradePrompt,tradeBudget,tradeStone]);
+  function applyTradePrompt(prompt=tradePrompt){
+    const text=prompt.toLowerCase();
+    const matchedStone=stoneOptions.find(o=>o!=="All"&&text.includes(String(o).toLowerCase()))||"All";
+    const m=text.match(/(?:under|below|upto|up to|less than|<=?)\s*(?:rs|inr|₹)?\s*([0-9,]+)/i)||text.match(/(?:rs|inr|₹)\s*([0-9,]+)/i);
+    setViewMode("all");
+    setStatusFilter("available");
+    setStoneFilter(matchedStone);
+    setExportFilter(/export|overseas|dubai|uae|qatar|oman|saudi|international|shipment/.test(text)?"Export":"All");
+    setFilter(/premium|best|luxury|hotel|lobby|top/.test(text)?"Premium":"All");
+    setMaxPrice(m?String(Number(String(m[1]).replace(/,/g,""))):"");
+    setSortBy(/evidence|trace|batch|certificate|verified|readiness|proof/.test(text)?"evidence":/budget|cheap|affordable|under|below|price|rate|cost/.test(text)?"priceLow":"newest");
+    setSearch(matchedStone==="All"?"":matchedStone);
+    setMobileFiltersOpen(false);
+    setTradeOpen(false);
+  }
   function openQuoteRequest(slab){
     setInquiry(slab);
     setInquiryMsg("");
@@ -4235,12 +4286,12 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
   const sidebarItems=[
-    {label:"Trade GPT",icon:"bot",action:null},
-    {label:"Catalog",icon:"package",active:true,action:()=>setViewMode("all")},
-    {label:"My Quotes",icon:"message",action:onViewQuotes},
-    {label:"My Orders",icon:"truck",action:onViewQuotes},
-    {label:"My Requirements",icon:"list",action:null},
-    {label:"Profile",icon:"user",action:null},
+    {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>setTradeOpen(true)},
+    {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
+    {label:"My Quotes",mobileLabel:"Quotes",icon:"message",action:onViewQuotes},
+    {label:"My Orders",mobileLabel:"Orders",icon:"truck",action:onViewQuotes},
+    {label:"My Requirements",mobileLabel:"Needs",icon:"list",action:null},
+    {label:"Profile",mobileLabel:"Profile",icon:"user",action:null},
   ];
   const heroSlab=filtered[0]||insps[0]||null;
   const heroName=heroSlab?.stone||"Verified Stone";
@@ -4256,19 +4307,26 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     return String(inv).toUpperCase();
   };
   const mobileNavItems=[
-    ...sidebarItems,
-    ...(onLogout?[{label:"Log out",icon:"close",action:onLogout}]:[])
+    {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
+    {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",active:tradeOpen,action:()=>setTradeOpen(true)},
+    {label:"Saved",mobileLabel:"Saved",icon:"check",active:viewMode==="saved"&&!tradeOpen,action:()=>{setViewMode("saved");setTradeOpen(false);}},
+    {label:"Quotes",mobileLabel:"Quotes",icon:"message",action:onViewQuotes},
+  ];
+  const statTiles=[
+    {label:"Available",value:availableCount,icon:"package"},
+    {label:"Export ready",value:exportCount,icon:"verified"},
+    {label:"Saved",value:savedIds.length,icon:"check"},
   ];
   return (
     <div className="buyer-app" style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {!isMobile&&<aside className="buyer-sidebar" style={{position:"sticky",top:0,height:"100vh",padding:"28px 14px 16px",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:24}}>
         <div style={{padding:"0 16px 2px"}}>
-          <div style={{fontSize:25,fontWeight:800,letterSpacing:-0.6,color:"#10185f",lineHeight:1}}>EPISTABLE.AI</div>
+              <div style={{fontSize:25,fontWeight:800,letterSpacing:-0.6,color:C.primaryD,lineHeight:1}}>EPISTABLE.AI</div>
         </div>
         <nav style={{display:"flex",flexDirection:"column",gap:8}}>
           {sidebarItems.map(item=>(
-            <button key={item.label} className="buyer-button" onClick={item.action||undefined} disabled={!item.action&&!item.active} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:10,border:"none",background:item.active?"#eef3ff":"transparent",color:item.active?"#10185f":"#5c6678",fontSize:15,fontWeight:item.active?700:600,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left",opacity:1}}>
+            <button key={item.label} className="buyer-button" onClick={item.action||undefined} disabled={!item.action&&!item.active} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:10,border:"none",background:item.active?C.primaryBg:"transparent",color:item.active?C.primaryD:"#5c6678",fontSize:15,fontWeight:item.active?700:600,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,textAlign:"left",opacity:1}}>
               <Icon name={item.icon} size={18}/>
               <span>{item.label}</span>
             </button>
@@ -4287,47 +4345,81 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>
       </aside>}
       <main style={{minWidth:0}}>
-      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:"none",padding:isMobile?"14px 16px":"15px 30px",display:"flex",alignItems:"center",gap:18,flexWrap:isMobile?"wrap":"nowrap"}}>
-        {isMobile&&onBack&&<button className="buyer-button" onClick={onBack} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,padding:"9px 11px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Back</button>}
-        <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>Catalog</h1>
-        <div style={{flex:1}}/>
-        <div style={{width:isMobile?"100%":380,maxWidth:isMobile?"100%":"48vw",position:"relative"}}>
-          <Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Ask anything ..." style={{width:"100%",padding:"13px 14px 13px 42px",background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:999,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
-        </div>
-        <button className="buyer-button" onClick={()=>setSortBy("newest")} style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Refresh catalog"><Icon name="refresh" size={19}/></button>
-        <button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>
-      </div>
-      <div style={{padding:isMobile?"16px 14px 176px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
-        <ErrorNotice message={loadError}/>
-        <section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:20,minHeight:isMobile?300:376,padding:isMobile?"26px 20px":"42px 50px",marginBottom:30,color:C.white,display:"flex",alignItems:"center"}}>
-          <div style={{maxWidth:560}}>
-            <div style={{display:"inline-flex",alignItems:"center",padding:"7px 20px",borderRadius:999,background:"rgba(255,255,255,0.18)",border:"1px solid rgba(255,255,255,0.55)",fontSize:14,fontWeight:700,marginBottom:14}}>
-              Featured Inventory
+      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,0.05)":"none",padding:isMobile?"12px 14px 14px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18,flexWrap:isMobile?"wrap":"nowrap"}}>
+        {isMobile?<>
+          <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
+            {onBack&&<button className="buyer-button" onClick={onBack} style={{width:38,height:38,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Back"><Icon name="prev" size={18}/></button>}
+            <Avi initials={buyerInitials} size={38}/>
+            <div style={{minWidth:0}}>
+              <h1 style={{margin:0,fontSize:18,lineHeight:1.2,fontWeight:700,letterSpacing:0,color:C.text}}>Catalog</h1>
+              <div style={{fontSize:12,color:C.textMid,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"58vw"}}>{factoryName}</div>
             </div>
-            <h2 style={{fontSize:isMobile?40:48,lineHeight:1.02,letterSpacing:-0.4,margin:"0 0 18px",fontWeight:700}}>
+          </div>
+          <button className="buyer-button" onClick={onViewQuotes} style={{height:38,background:C.primary,border:`1px solid ${C.primary}`,borderRadius:12,color:C.white,padding:"0 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",gap:7}}><Icon name="message" size={15}/> Quotes</button>
+          {onLogout&&<button className="buyer-button" onClick={onLogout} style={{width:38,height:38,background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Log out"><Icon name="close" size={16}/></button>}
+          <div style={{width:"100%",display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8}}>
+            <div style={{position:"relative",minWidth:0}}>
+              <Icon name="search" size={17} color={C.textDim} style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)"}}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search stone, batch, source" style={{width:"100%",padding:"12px 14px 12px 38px",background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:12,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
+            </div>
+            <button className="buyer-button" onClick={()=>setMobileFiltersOpen(v=>!v)} style={{height:45,background:activeFilterCount?C.primaryBg:C.white,border:`1px solid ${activeFilterCount?C.primaryBorder:C.border}`,borderRadius:12,color:activeFilterCount?C.primaryD:C.textMid,padding:"0 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",gap:7}} aria-expanded={mobileFiltersOpen} aria-label="Toggle filters"><Icon name="filter" size={16}/> {activeFilterCount||"Filter"}</button>
+          </div>
+        </>:<>
+          <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>Catalog</h1>
+          <div style={{flex:1}}/>
+          <div style={{width:380,maxWidth:"48vw",position:"relative"}}>
+            <Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search stone, batch, source" style={{width:"100%",padding:"13px 14px 13px 42px",background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:999,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
+          </div>
+          <button className="buyer-button" onClick={()=>setSortBy("newest")} style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Refresh catalog"><Icon name="refresh" size={19}/></button>
+          <button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>
+        </>}
+      </div>
+      <div style={{padding:isMobile?"12px 12px 184px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
+        <ErrorNotice message={loadError}/>
+        <section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:isMobile?16:20,minHeight:isMobile?188:376,padding:isMobile?"18px 16px":"42px 50px",marginBottom:isMobile?14:30,color:C.white,display:"flex",alignItems:"center"}}>
+          <div style={{maxWidth:isMobile?420:560,width:"100%"}}>
+            <div style={{display:"inline-flex",alignItems:"center",padding:isMobile?"5px 10px":"7px 20px",borderRadius:999,background:"rgba(255,255,255,0.18)",border:"1px solid rgba(255,255,255,0.55)",fontSize:isMobile?11:14,fontWeight:700,marginBottom:isMobile?10:14}}>
+              Buyer-ready inventory
+            </div>
+            <h2 style={{fontSize:isMobile?27:48,lineHeight:isMobile?1.12:1.02,letterSpacing:0,margin:isMobile?"0 0 10px":"0 0 18px",fontWeight:700}}>
               Premium<br/><span style={{color:"#c9dcff"}}>{heroName}</span>
             </h2>
-            <div style={{fontSize:17,lineHeight:1.55,color:"rgba(255,255,255,0.86)",maxWidth:580,marginBottom:28}}>Direct from {factoryName}. Verified photos, inspection evidence, and quote workflow ready for serious buyers.</div>
-            <div style={{display:"flex",gap:18,flexWrap:"wrap"}}>
-              <button className="buyer-button" onClick={onViewQuotes} style={{background:C.white,border:"none",borderRadius:14,padding:"16px 30px",color:"#11185f",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View Quotes →</button>
-              <button className="buyer-button" onClick={()=>setSortBy("evidence")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.75)",borderRadius:14,padding:"15px 30px",color:C.white,fontSize:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Market Report</button>
+            <div style={{fontSize:isMobile?13:17,lineHeight:1.55,color:"rgba(255,255,255,0.86)",maxWidth:580,marginBottom:isMobile?14:28}}>Verified photos, inspection evidence, and quote workflow from {factoryName}.</div>
+            {isMobile&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:14}}>
+              {statTiles.map(tile=>(
+                <div key={tile.label} style={{background:"rgba(255,255,255,0.13)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:12,padding:"9px 8px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.82)",fontSize:10,fontWeight:700,marginBottom:4}}><Icon name={tile.icon} size={12}/>{tile.label}</div>
+                  <div style={{fontSize:18,lineHeight:1,fontWeight:700}}>{tile.value}</div>
+                </div>
+              ))}
+            </div>}
+            <div style={{display:"flex",gap:isMobile?8:18,flexWrap:"wrap"}}>
+              <button className="buyer-button" onClick={onViewQuotes} style={{background:C.white,border:"none",borderRadius:isMobile?12:14,padding:isMobile?"11px 14px":"16px 30px",color:C.primaryD,fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View quotes</button>
+              <button className="buyer-button" onClick={()=>setSortBy("evidence")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.75)",borderRadius:isMobile?12:14,padding:isMobile?"10px 14px":"15px 30px",color:C.white,fontSize:isMobile?13:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Evidence first</button>
             </div>
           </div>
-          <div style={{position:"absolute",left:"50%",bottom:20,transform:"translateX(-50%)",display:"flex",gap:8}}>
+          {!isMobile&&<div style={{position:"absolute",left:"50%",bottom:20,transform:"translateX(-50%)",display:"flex",gap:8}}>
             {[0,1,2].map(i=><span key={i} style={{width:i===1?13:10,height:i===1?13:10,borderRadius:999,background:i===1?C.white:"rgba(255,255,255,0.48)",display:"block"}}/> )}
-          </div>
+          </div>}
         </section>
-        <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:16,padding:isMobile?18:30,marginBottom:60}}>
-          <div style={{position:"relative",marginBottom:28}}>
+        <section className="buyer-filter-panel buyer-enter" style={{"--i":1,background:C.white,borderRadius:isMobile?14:16,padding:isMobile?14:30,marginBottom:isMobile?18:60,display:isMobile&&!mobileFiltersOpen?"none":"block"}}>
+          {!isMobile&&<div style={{position:"relative",marginBottom:28}}>
             <Icon name="search" size={24} color="#8da0bf" style={{position:"absolute",left:20,top:"50%",transform:"translateY(-50%)"}}/>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by stone name, origin, batch, supplier" style={{width:"100%",padding:"18px 22px 18px 60px",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:999,fontSize:18,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
-          </div>
-          <div style={{height:1,background:"#edf1f6",marginBottom:28}}/>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(220px,1fr) minmax(220px,1fr) minmax(180px,0.8fr) 106px",gap:20,alignItems:"end"}}>
+          </div>}
+          {!isMobile&&<div style={{height:1,background:"#edf1f6",marginBottom:28}}/>}
+          {isMobile&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:12}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:C.text}}>Refine catalog</div>
+              <div style={{fontSize:12,color:C.textMid,marginTop:2}}>{filtered.length} matching slabs</div>
+            </div>
+            <button className="buyer-button" onClick={()=>setMobileFiltersOpen(false)} style={{background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:10,color:C.textMid,padding:"8px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Done</button>
+          </div>}
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"minmax(220px,1fr) minmax(220px,1fr) minmax(180px,0.8fr) 106px",gap:isMobile?10:20,alignItems:"end"}}>
             <label style={{display:"grid",gap:10}}>
-              <span style={{fontSize:12,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",letterSpacing:0.4}}>Seller Availability</span>
-              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"17px 18px",border:`1px solid ${C.border}`,borderRadius:14,background:"#fbfcff",fontSize:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#667085",letterSpacing:0}}>Availability</span>
+              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:isMobile?"12px 11px":"17px 18px",border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,background:"#fbfcff",fontSize:isMobile?13:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
                 <option value="available">All Articles</option>
                 <option value="reserved">Reserved</option>
                 <option value="sold">Sold</option>
@@ -4335,14 +4427,14 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
               </select>
             </label>
             <label style={{display:"grid",gap:10}}>
-              <span style={{fontSize:12,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",letterSpacing:0.4}}>Category</span>
-              <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:"17px 18px",border:`1px solid ${C.border}`,borderRadius:14,background:"#fbfcff",fontSize:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#667085",letterSpacing:0}}>Stone</span>
+              <select value={stoneFilter} onChange={e=>setStoneFilter(e.target.value)} style={{padding:isMobile?"12px 11px":"17px 18px",border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,background:"#fbfcff",fontSize:isMobile?13:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
                 {stoneOptions.map(o=><option key={o} value={o}>{o==="All"?"All Categories":o}</option>)}
               </select>
             </label>
             <label style={{display:"grid",gap:10}}>
-              <span style={{fontSize:12,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",letterSpacing:0.4}}>Sort By</span>
-              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"17px 18px",border:`1px solid ${C.border}`,borderRadius:14,background:"#fbfcff",fontSize:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#667085",letterSpacing:0}}>Sort by</span>
+              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:isMobile?"12px 11px":"17px 18px",border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,background:"#fbfcff",fontSize:isMobile?13:17,fontWeight:600,fontFamily:FONT_STACK,minWidth:0,color:C.text}}>
                 <option value="newest">Newest</option>
                 <option value="priceLow">Price low-high</option>
                 <option value="priceHigh">Price high-low</option>
@@ -4350,22 +4442,25 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                 <option value="evidence">Evidence first</option>
               </select>
             </label>
-            <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,color:C.textMid,padding:"17px 18px",fontSize:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Clear</button>
+            <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,color:C.textMid,padding:isMobile?"12px 11px":"17px 18px",fontSize:isMobile?13:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,alignSelf:"end"}}>Clear</button>
           </div>
         </section>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:18,marginBottom:26}}>
-          <h2 style={{margin:0,fontSize:24,lineHeight:1.25,fontWeight:700,color:C.text}}>Available Inventory <span style={{fontWeight:500,color:C.textMid}}>({filtered.length} results)</span></h2>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"flex-end"}}>
-            {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Shortlist",count:savedIds.length}].map(v=>(
-              <button key={v.id} className="buyer-chip" onClick={()=>setViewMode(v.id)} style={{padding:"10px 14px",background:viewMode===v.id?"#11185f":C.white,border:`1px solid ${viewMode===v.id?"#11185f":C.border}`,borderRadius:999,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:isMobile?"stretch":"center",gap:isMobile?12:18,marginBottom:isMobile?14:26,flexDirection:isMobile?"column":"row"}}>
+          <div>
+            <h2 style={{margin:0,fontSize:isMobile?20:24,lineHeight:1.25,fontWeight:700,color:C.text}}>Available Inventory {!isMobile&&<span style={{fontWeight:500,color:C.textMid}}>({filtered.length} results)</span>}</h2>
+            {isMobile&&<div style={{fontSize:12,color:C.textMid,marginTop:3}}>{filtered.length} results, {availableCount} available now</div>}
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:isMobile?"nowrap":"wrap",justifyContent:isMobile?"flex-start":"flex-end",overflowX:isMobile?"auto":"visible",paddingBottom:isMobile?2:0}}>
+            {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Saved",count:savedIds.length}].map(v=>(
+              <button key={v.id} className="buyer-chip" onClick={()=>setViewMode(v.id)} style={{padding:isMobile?"9px 12px":"10px 14px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:999,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flex:"0 0 auto"}}>
                 {v.label} <span style={{opacity:0.72}}>({v.count})</span>
               </button>
             ))}
-            <button className="buyer-chip" onClick={copyShortlist} style={{padding:"10px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
+            <button className="buyer-chip" onClick={copyShortlist} style={{padding:isMobile?"9px 12px":"10px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flex:"0 0 auto"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
           </div>
         </div>
-        {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to build a shortlist for comparison.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:28}}>
+        {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to compare and request quotes later.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?14:28}}>
           {filtered.map((slab,index)=>{
             const g=gradeConf(slab.grade);
             const inv=slab.inventoryStatus||"available";
@@ -4375,30 +4470,30 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             const trace=evidence.trace;
             const readiness=evidence.score;
             return (
-              <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+3,background:"#fff",borderRadius:16,overflow:"hidden",minHeight:520,display:"flex",flexDirection:"column"}}>
+              <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+3,background:"#fff",borderRadius:isMobile?14:16,overflow:"hidden",minHeight:isMobile?"auto":520,display:"flex",flexDirection:"column"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
-                  <div style={{height:238,background:"#fff",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <div style={{height:isMobile?206:238,background:"#fff",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
                     {slab.photo?<img className="buyer-image" src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:
                     <div className="buyer-image" style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={50} color="#9aa8bb"/></div>}
-                    <div style={{position:"absolute",top:16,left:16,background:"#fff7e8",border:"1px solid #faedcf",borderRadius:6,padding:"7px 10px",fontSize:12,fontWeight:800,color:"#b65a00",letterSpacing:0.2}}>{seasonLabel(slab)}</div>
-                    <div style={{position:"absolute",top:16,right:16,background:g.bg,border:`1px solid ${g.border}`,borderRadius:6,padding:"6px 10px",fontSize:12,fontWeight:800,color:g.color}}>{slab.grade}</div>
+                    <div style={{position:"absolute",top:isMobile?12:16,left:isMobile?12:16,background:"#fff7e8",border:"1px solid #faedcf",borderRadius:6,padding:isMobile?"6px 8px":"7px 10px",fontSize:11,fontWeight:800,color:"#8a4300",letterSpacing:0}}>{seasonLabel(slab)}</div>
+                    <div style={{position:"absolute",top:isMobile?12:16,right:isMobile?12:16,background:g.bg,border:`1px solid ${g.border}`,borderRadius:6,padding:isMobile?"6px 8px":"6px 10px",fontSize:11,fontWeight:800,color:g.color}}>{slab.grade}</div>
                   </div>
-                  <div style={{padding:"24px 20px 10px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"flex-start",marginBottom:18}}>
+                  <div style={{padding:isMobile?"16px 14px 8px":"24px 20px 10px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",marginBottom:isMobile?12:18}}>
                       <div style={{minWidth:0}}>
-                        <div style={{fontSize:23,fontWeight:700,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.text}}>{slab.stone}</div>
+                        <div style={{fontSize:isMobile?20:23,fontWeight:700,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.text}}>{slab.stone}</div>
                         <div style={{fontSize:13,color:C.textDim,fontWeight:600}}>{slab.supplier||factoryName}</div>
                       </div>
-                      <button className="buyer-button" onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{background:saved?"#11185f":C.white,border:`1px solid ${saved?"#11185f":C.border}`,borderRadius:999,width:36,height:36,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label={saved?"Remove from shortlist":"Save to shortlist"}><Icon name={saved?"check":"add"} size={16}/></button>
+                      <button className="buyer-button" onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:999,width:isMobile?40:36,height:isMobile?40:36,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label={saved?"Remove from saved slabs":"Save slab"}><Icon name={saved?"check":"add"} size={16}/></button>
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
-                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:"13px 16px"}}>
-                        <div style={{fontSize:11,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",marginBottom:8}}>Size</div>
-                        <div style={{fontSize:17,fontWeight:700,color:"#26364f"}}>{slabDims(slab)}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:isMobile?8:14,marginBottom:14}}>
+                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:isMobile?"10px 11px":"13px 16px"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:"#5f7392",marginBottom:6}}>Size</div>
+                        <div style={{fontSize:isMobile?14:17,fontWeight:700,color:"#26364f",lineHeight:1.25}}>{slabDims(slab)}</div>
                       </div>
-                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:"13px 16px"}}>
-                        <div style={{fontSize:11,fontWeight:700,color:"#8da0bf",textTransform:"uppercase",marginBottom:8}}>Rate</div>
-                        <div style={{fontSize:17,fontWeight:700,color:"#26364f"}}>{fmtMoney(slab.pricePerSqFt)}/sqft</div>
+                      <div style={{background:"#eef5ff",border:"1px solid #d8e8ff",borderRadius:8,padding:isMobile?"10px 11px":"13px 16px"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:"#5f7392",marginBottom:6}}>Rate</div>
+                        <div style={{fontSize:isMobile?14:17,fontWeight:700,color:"#26364f",lineHeight:1.25}}>{fmtMoney(slab.pricePerSqFt)}/sqft</div>
                       </div>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
@@ -4407,10 +4502,12 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                     </div>
                   </div>
                 </div>
-                <div style={{padding:"12px 20px 22px",marginTop:"auto"}}>
-                  <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{width:"100%",background:canInquire?"#211953":C.surface,border:`1px solid ${canInquire?"#211953":C.border}`,borderRadius:9,padding:"17px 12px",color:canInquire?C.white:C.textDim,fontSize:15,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:10}}>{canInquire?"Request Quote":invConf(inv).label}</button>
-                  <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{width:"100%",background:C.white,border:"1px solid #cfe0ff",borderRadius:9,padding:"14px 12px",color:"#1267e8",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View certificate</button>
-                  <button className="buyer-button" onClick={()=>setQrSlab(slab)} style={{width:"100%",background:"transparent",border:"none",padding:"12px 12px 0",color:C.textMid,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="qr" size={15}/> QR label</button>
+                <div style={{padding:isMobile?"8px 14px 16px":"12px 20px 22px",marginTop:"auto"}}>
+                  <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{width:"100%",background:canInquire?C.primary:C.surface,border:`1px solid ${canInquire?C.primary:C.border}`,borderRadius:isMobile?10:9,padding:isMobile?"14px 12px":"17px 12px",color:canInquire?C.white:C.textDim,fontSize:15,fontWeight:700,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:10}}>{canInquire?"Request Quote":invConf(inv).label}</button>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr",gap:isMobile?8:0}}>
+                    <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{width:"100%",background:C.white,border:"1px solid #cfe0ff",borderRadius:isMobile?10:9,padding:isMobile?"12px 10px":"14px 12px",color:"#1267e8",fontSize:isMobile?13:15,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
+                    <button className="buyer-button" onClick={()=>setQrSlab(slab)} style={{width:"100%",background:isMobile?C.white:"transparent",border:isMobile?`1px solid ${C.border}`:"none",borderRadius:isMobile?10:0,padding:isMobile?"12px 10px":"12px 12px 0",color:C.textMid,fontSize:isMobile?13:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="qr" size={15}/> QR label</button>
+                  </div>
                 </div>
               </div>
             );
@@ -4418,20 +4515,54 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>}
       </div>
       </main>
-      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:12,right:12,bottom:12,zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 18px 44px rgba(16,24,40,0.18)",padding:10,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8}}>
+      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:8,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7}}>
         {mobileNavItems.map(item=>(
           <button
             key={item.label}
             className="buyer-button"
             onClick={item.action||undefined}
             disabled={!item.action&&!item.active}
-            style={{minHeight:58,background:item.active?"#eef3ff":"#f9fbfe",border:`1px solid ${item.active?"#d9e5ff":"#eef2f7"}`,borderRadius:14,color:item.active?"#10185f":"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,opacity:1,padding:"7px 4px"}}
+            style={{minHeight:52,background:item.active?C.primaryBg:"#f9fbfe",border:`1px solid ${item.active?C.primaryBorder:"#eef2f7"}`,borderRadius:12,color:item.active?C.primaryD:"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:item.action||item.active?1:0.62,padding:"6px 4px"}}
           >
             <Icon name={item.icon} size={17}/>
-            <span style={{whiteSpace:"nowrap",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label==="My Requirements"?"Reqs":item.label==="Trade GPT"?"GPT":item.label.replace("My ","")}</span>
+            <span style={{whiteSpace:"nowrap",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{item.mobileLabel||item.label}</span>
           </button>
         ))}
       </nav>}
+      {tradeOpen&&(
+        <div className="buyer-trade-overlay" style={{position:"fixed",inset:0,background:"rgba(6,18,45,0.42)",zIndex:190,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:isMobile?"0 10px calc(84px + env(safe-area-inset-bottom))":"24px"}} onClick={()=>setTradeOpen(false)}>
+          <div className="buyer-trade-sheet" style={{width:"100%",maxWidth:620,background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?"18px 18px 14px 14px":18,boxShadow:"0 20px 54px rgba(6,18,45,0.22)",padding:isMobile?16:22,boxSizing:"border-box"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,marginBottom:14}}>
+              <div>
+                <div style={{display:"inline-flex",alignItems:"center",gap:7,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,color:C.primaryD,borderRadius:999,padding:"5px 9px",fontSize:11,fontWeight:700,marginBottom:8}}><Icon name="bot" size={14}/> Trade GPT</div>
+                <div style={{fontSize:20,lineHeight:1.25,fontWeight:700,color:C.text}}>Describe what you need</div>
+                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid,marginTop:3}}>I’ll filter the catalog by stone, budget, export-readiness, and evidence.</div>
+              </div>
+              <button className="buyer-button" onClick={()=>setTradeOpen(false)} style={{width:38,height:38,borderRadius:12,border:`1px solid ${C.border}`,background:"#f9fbfe",color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label="Close Trade GPT"><Icon name="close" size={16}/></button>
+            </div>
+            <textarea value={tradePrompt} onChange={e=>setTradePrompt(e.target.value)} rows={3} placeholder="Example: Need export-ready Makrana White under ₹500/sqft with strong evidence for a hotel lobby" style={{width:"100%",padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:12,background:"#f9fbfe",fontSize:14,lineHeight:1.55,color:C.text,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:3,marginBottom:12}}>
+              {["Export-ready under ₹500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"].map(example=>(
+                <button key={example} className="buyer-chip" onClick={()=>{setTradePrompt(example);applyTradePrompt(example);}} style={{flex:"0 0 auto",border:`1px solid ${C.primaryBorder}`,background:C.primaryBg,color:C.primaryD,borderRadius:999,padding:"8px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>{example}</button>
+              ))}
+            </div>
+            <button className="buyer-button" onClick={()=>applyTradePrompt()} disabled={!tradePrompt.trim()} style={{width:"100%",background:tradePrompt.trim()?C.primary:C.surface,border:`1px solid ${tradePrompt.trim()?C.primary:C.border}`,borderRadius:12,padding:"13px 14px",color:tradePrompt.trim()?C.white:C.textDim,fontSize:14,fontWeight:700,cursor:tradePrompt.trim()?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:14}}>Apply to catalog</button>
+            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12}}>
+              <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:8}}>Best current matches</div>
+              {tradeRecommendations.length?tradeRecommendations.map(({slab,evidence},idx)=>(
+                <button key={slab.id} className="buyer-button" onClick={()=>{setTradePrompt(slab.stone);applyTradePrompt(slab.stone);}} style={{width:"100%",display:"grid",gridTemplateColumns:"auto minmax(0,1fr) auto",gap:10,alignItems:"center",background:idx===0?C.primaryBg:"#fff",border:`1px solid ${idx===0?C.primaryBorder:C.border}`,borderRadius:12,padding:"10px 11px",marginTop:8,textAlign:"left",cursor:"pointer",fontFamily:FONT_STACK}}>
+                  <div style={{width:32,height:32,borderRadius:10,background:idx===0?C.primary:C.surface,color:idx===0?C.white:C.textMid,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800}}>{idx+1}</div>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
+                    <div style={{fontSize:11,color:C.textMid,marginTop:2}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Evidence {evidence.score}%</div>
+                  </div>
+                  <Icon name="filter" size={15} color={C.primary}/>
+                </button>
+              )):<div style={{fontSize:12,lineHeight:1.55,color:C.textMid,background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:12}}>Ask for budget, stone type, export-readiness, or evidence quality to get recommendations.</div>}
+            </div>
+          </div>
+        </div>
+      )}
       {inquiry&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setInquiry(null)}>
           <div className="buyer-sheet" style={{background:C.white,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,padding:"20px"}} onClick={e=>e.stopPropagation()}>

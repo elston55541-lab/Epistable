@@ -38,13 +38,20 @@ select {
 }
 
 .buyer-app {
-  --buyer-accent: #11185f;
+  --buyer-accent: #0057a8;
   --buyer-ink: #06122d;
   --buyer-muted: #667085;
   --buyer-panel: #ffffff;
   --buyer-line: #e3e8f1;
   --buyer-soft: #f6f8fc;
   background: #f6f8fc;
+}
+
+.buyer-button,
+.buyer-chip,
+.buyer-product-card,
+.buyer-trade-sheet {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .buyer-sidebar {
@@ -97,10 +104,13 @@ select {
     background 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.buyer-product-card:hover,
-.buyer-action-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 44px rgba(16, 24, 40, 0.12);
+.buyer-button:focus-visible,
+.buyer-chip:focus-visible,
+.buyer-product-card:focus-visible,
+.buyer-topbar input:focus-visible,
+.buyer-filter-panel select:focus-visible {
+  outline: 2px solid rgba(17, 24, 95, 0.45);
+  outline-offset: 2px;
 }
 
 .buyer-button:active,
@@ -113,12 +123,17 @@ select {
   transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.buyer-product-card:hover .buyer-image {
-  transform: scale(1.035);
-}
-
 .buyer-sheet {
   animation: buyer-sheet 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.buyer-trade-overlay {
+  animation: buyer-overlay-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.buyer-trade-sheet {
+  transform-origin: bottom center;
+  animation: buyer-trade-sheet-in 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes buyer-sheet {
@@ -134,15 +149,55 @@ select {
   }
 }
 
+@keyframes buyer-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes buyer-trade-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
 @media (max-width: 900px) {
   .buyer-sidebar {
     display: none !important;
+  }
+
+  .buyer-topbar {
+    padding-top: calc(12px + env(safe-area-inset-top)) !important;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .buyer-product-card:hover,
+  .buyer-action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 44px rgba(16, 24, 40, 0.12);
+  }
+
+  .buyer-product-card:hover .buyer-image {
+    transform: scale(1.035);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .buyer-enter,
-  .buyer-sheet {
+  .buyer-sheet,
+  .buyer-trade-overlay,
+  .buyer-trade-sheet {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
   }
