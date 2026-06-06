@@ -81,6 +81,12 @@ select {
   animation-delay: calc(var(--i, 0) * 28ms);
 }
 
+.buyer-skeleton {
+  background: linear-gradient(90deg, #f4f7fb 0%, #e9eef6 42%, #f4f7fb 84%);
+  background-size: 220% 100%;
+  animation: buyer-skeleton 1100ms ease-in-out infinite;
+}
+
 @keyframes buyer-enter {
   from {
     opacity: 0;
@@ -91,6 +97,15 @@ select {
     opacity: 1;
     transform: translateY(0);
     filter: blur(0);
+  }
+}
+
+@keyframes buyer-skeleton {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -80% 0;
   }
 }
 
@@ -199,11 +214,13 @@ select {
 
 @media (prefers-reduced-motion: reduce) {
   .buyer-enter,
+  .buyer-skeleton,
   .buyer-sheet,
   .buyer-trade-overlay,
   .buyer-trade-sheet {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
   }
 
   .buyer-product-card,

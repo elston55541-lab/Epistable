@@ -14,6 +14,7 @@ import { ExportReadiness } from "./screens/ExportReadiness";
 
 // â”€â”€ DB (Supabase) â”€â”€
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
+const BUYER_INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,price_per_sq_ft,export_ready,inventory_status,measurements,ts,date,time";
 const mapInquiry = d => ({
   ...d,
   factoryId:d.factory_id,
@@ -317,6 +318,14 @@ const DB = {
   async facInsps(fid) {
     const data=await rows(await supabase.from("inspections").select(INSP_LIST_SELECT).eq("factory_id",fid).order("ts",{ascending:false}).limit(300));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready,inventoryStatus:d.inventory_status||"available"}));
+  },
+  async facBuyerInsps(fid) {
+    const data=await rows(await supabase.from("inspections").select(BUYER_INSP_LIST_SELECT).eq("factory_id",fid).in("grade",["Premium","Standard"]).order("ts",{ascending:false}).limit(300));
+    return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready,inventoryStatus:d.inventory_status||"available"}));
+  },
+  async facBuyerPhotos(fid,ids) {
+    if(!ids?.length)return [];
+    return rows(await supabase.from("inspections").select("id,photo").eq("factory_id",fid).in("id",ids).not("photo","is",null));
   },
   async facStoneOptions(fid) {
     const data=await rows(await supabase.from("inspections").select("stone,grade").eq("factory_id",fid).in("grade",["Premium","Standard"]).not("stone","is",null).order("stone",{ascending:true}).limit(1000));
@@ -4105,6 +4114,7 @@ function slabDims(slab) {
 
 function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
+  const [inventoryLoading,setInventoryLoading]=useState(true);
   const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");const [statusFilter,setStatusFilter]=useState("available");
   const [fastStoneOptions,setFastStoneOptions]=useState([]);
   const [maxPrice,setMaxPrice]=useState("");const [sortBy,setSortBy]=useState("newest");
@@ -4133,16 +4143,22 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         const namedFac=await DB.getFacByName(buyer.factory_name);
         fid=namedFac?.id||"";
       }
-      if(!fid){if(active)setLoadError("No factory inventory is linked to this buyer yet.");return;}
+      if(!fid){if(active){setLoadError("No factory inventory is linked to this buyer yet.");setInventoryLoading(false);}return;}
       if(active)setPortalFactoryId(fid);
       try {
         setLoadError("");
+        setInventoryLoading(true);
         setFastStoneOptions([]);
         DB.facStoneOptions(fid).then(options=>{if(active)setFastStoneOptions(options);}).catch(()=>{});
-        const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
-        if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));}
+        const [f,i]=await Promise.all([DB.getFac(fid),DB.facBuyerInsps(fid)]);
+        if(active){setFac(f);setInsps(i);setInventoryLoading(false);}
+        DB.facBuyerPhotos(fid,i.slice(0,36).map(x=>x.id)).then(photos=>{
+          if(!active||!photos.length)return;
+          const byId=new Map(photos.map(p=>[p.id,p.photo]));
+          setInsps(prev=>prev.map(s=>byId.has(s.id)?{...s,photo:byId.get(s.id)}:s));
+        }).catch(()=>{});
       } catch(e) {
-        if(active)setLoadError(e.message||"Could not load buyer inventory.");
+        if(active){setLoadError(e.message||"Could not load buyer inventory.");setInventoryLoading(false);}
       }
     }
     load();
@@ -4302,6 +4318,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const factoryName=fac?.name||buyer?.factory_name||"Verified factory";
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
+  const showInventorySkeleton=inventoryLoading&&insps.length===0;
   const sidebarItems=[
     {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>openTradeWithPrompt()},
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
@@ -4453,7 +4470,25 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,color:C.textMid,padding:isMobile?"12px 11px":"17px 18px",fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,alignSelf:"end"}}>Clear</button>
           </div>
         </section>
-        {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to compare and request quotes later.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
+        {showInventorySkeleton?
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?26:28,margin:isMobile?"0 32px":undefined}}>
+          {[0,1,2].map(i=>(
+            <div key={i} className="buyer-product-card buyer-enter" style={{"--i":i+2,background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?18:16,overflow:"hidden",minHeight:isMobile?"auto":520,display:"flex",flexDirection:"column"}}>
+              <div className="buyer-skeleton" style={{height:isMobile?190:238}}/>
+              <div style={{padding:isMobile?"15px 14px 16px":"24px 20px 22px"}}>
+                <div className="buyer-skeleton" style={{height:24,width:"58%",borderRadius:8,marginBottom:10}}/>
+                <div className="buyer-skeleton" style={{height:14,width:"38%",borderRadius:8,marginBottom:18}}/>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:isMobile?8:14,marginBottom:12}}>
+                  <div className="buyer-skeleton" style={{height:isMobile?67:76,borderRadius:isMobile?12:8}}/>
+                  <div className="buyer-skeleton" style={{height:isMobile?67:76,borderRadius:isMobile?12:8}}/>
+                </div>
+                <div className="buyer-skeleton" style={{height:76,borderRadius:12,marginBottom:16}}/>
+                <div className="buyer-skeleton" style={{height:isMobile?48:54,borderRadius:isMobile?12:9}}/>
+              </div>
+            </div>
+          ))}
+        </div>:
+        filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to compare and request quotes later.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?26:28,margin:isMobile?"0 32px":undefined}}>
           {filtered.map((slab,index)=>{
             const g=gradeConf(slab.grade);
