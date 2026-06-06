@@ -318,6 +318,10 @@ const DB = {
     const data=await rows(await supabase.from("inspections").select(INSP_LIST_SELECT).eq("factory_id",fid).order("ts",{ascending:false}).limit(300));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready,inventoryStatus:d.inventory_status||"available"}));
   },
+  async facStoneOptions(fid) {
+    const data=await rows(await supabase.from("inspections").select("stone,grade").eq("factory_id",fid).in("grade",["Premium","Standard"]).not("stone","is",null).order("stone",{ascending:true}).limit(1000));
+    return Array.from(new Set((data||[]).map(d=>d.stone).filter(Boolean))).sort();
+  },
   async allInsps() {
     const data=await rows(await supabase.from("inspections").select("id,factory_id,grade,ts").order("ts",{ascending:false}).limit(1000));
     return (data||[]).map(d=>({...d,userId:d.user_id,factoryId:d.factory_id,factoryName:d.factory_name,supplierId:d.supplier_id,pricePerSqFt:d.price_per_sq_ft,exportReady:d.export_ready}));
@@ -4102,6 +4106,7 @@ function slabDims(slab) {
 function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
   const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");const [statusFilter,setStatusFilter]=useState("available");
+  const [fastStoneOptions,setFastStoneOptions]=useState([]);
   const [maxPrice,setMaxPrice]=useState("");const [sortBy,setSortBy]=useState("newest");
   const [viewMode,setViewMode]=useState("all");const [savedIds,setSavedIds]=useState([]);
   const localFactoryId=()=>{try{return localStorage.getItem("epistable_last_buyer_factory_id")||"";}catch{return "";}};
@@ -4132,6 +4137,8 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
       if(active)setPortalFactoryId(fid);
       try {
         setLoadError("");
+        setFastStoneOptions([]);
+        DB.facStoneOptions(fid).then(options=>{if(active)setFastStoneOptions(options);}).catch(()=>{});
         const [f,i]=await Promise.all([DB.getFac(fid),DB.facInsps(fid)]);
         if(active){setFac(f);setInsps(i.filter(x=>x.grade==="Premium"||x.grade==="Standard"));}
       } catch(e) {
@@ -4177,7 +4184,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     const text=lines.length?lines.join("\n"):"No slabs saved yet.";
     try{await navigator.clipboard.writeText(text);setShortlistCopied(true);setTimeout(()=>setShortlistCopied(false),1400);}catch(e){window.prompt("Copy shortlist",text);}
   }
-  const stoneOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.stone).filter(Boolean))).sort()],[insps]);
+  const stoneOptions=useMemo(()=>["All",...Array.from(new Set([...fastStoneOptions,...insps.map(i=>i.stone).filter(Boolean)])).sort()],[fastStoneOptions,insps]);
   const supplierOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()],[insps]);
   const featuredSlabs=useMemo(()=>insps
     .filter(i=>(i.inventoryStatus||"available")==="available")
