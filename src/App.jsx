@@ -4179,10 +4179,16 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   }
   const stoneOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.stone).filter(Boolean))).sort()],[insps]);
   const supplierOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()],[insps]);
+  const featuredSlabs=useMemo(()=>insps
+    .filter(i=>(i.inventoryStatus||"available")==="available")
+    .map(s=>({slab:s,evidence:evidenceReadiness(s)}))
+    .sort((a,b)=>(b.slab.exportReady?1:0)-(a.slab.exportReady?1:0)||(b.slab.grade==="Premium"?1:0)-(a.slab.grade==="Premium"?1:0)||b.evidence.score-a.evidence.score||Number(b.slab.ts||0)-Number(a.slab.ts||0))
+    .slice(0,4),[insps]);
+  const featuredSet=useMemo(()=>new Set(featuredSlabs.map(x=>x.slab.id)),[featuredSlabs]);
   const filtered=useMemo(()=>{
     const q=search.toLowerCase();
     return insps.filter(i=>(filter==="All"||i.grade===filter)
-      &&(viewMode==="all"||savedSet.has(i.id))
+      &&(viewMode==="all"||(viewMode==="saved"&&savedSet.has(i.id))||(viewMode==="featured"&&featuredSet.has(i.id)))
       &&(stoneFilter==="All"||i.stone===stoneFilter)
       &&(supplierFilter==="All"||i.supplier===supplierFilter)
       &&(exportFilter==="All"||(exportFilter==="Export"&&i.exportReady)||(exportFilter==="Domestic"&&!i.exportReady))
@@ -4196,7 +4202,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
       if(sortBy==="evidence")return evidenceReadiness(b).score-evidenceReadiness(a).score;
       return Number(b.ts||0)-Number(a.ts||0);
     });
-  },[insps,filter,viewMode,savedSet,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,search,sortBy]);
+  },[insps,filter,viewMode,savedSet,featuredSet,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,search,sortBy]);
   const clearFilters=()=>{setViewMode("all");setFilter("All");setStoneFilter("All");setSupplierFilter("All");setExportFilter("All");setStatusFilter("available");setMaxPrice("");setSortBy("newest");setSearch("");};
   const tradeBudget=useMemo(()=>{
     const text=tradePrompt.toLowerCase();
@@ -4383,27 +4389,29 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
       <div style={{padding:isMobile?"12px 12px 184px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
         <ErrorNotice message={loadError}/>
         {isMobile?<>
-          <section className="buyer-command-card buyer-enter" style={{"--i":0,background:"linear-gradient(135deg,#003d7a 0%,#0057a8 52%,#0c76d8 100%)",borderRadius:18,padding:"16px 15px",marginBottom:10,color:C.white,boxShadow:"0 16px 40px rgba(0,87,168,0.22)",overflow:"hidden",position:"relative"}}>
-            <div style={{position:"absolute",inset:"auto -42px -70px auto",width:150,height:150,borderRadius:999,background:"rgba(255,255,255,0.14)"}}/>
-            <div style={{position:"relative",zIndex:1}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:12}}>
-                <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"6px 9px",fontSize:11,fontWeight:800}}>
-                  <Icon name="bot" size={14}/> Trade GPT
+          <section className="buyer-featured-card buyer-enter" style={{"--i":0,background:C.white,border:`1px solid ${C.border}`,borderRadius:18,padding:14,marginBottom:10,boxShadow:"0 12px 30px rgba(16,24,40,0.07)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:11}}>
+              <div>
+                <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,color:C.primaryD,padding:"5px 8px",fontSize:10,fontWeight:800,marginBottom:7}}>
+                  <Icon name="trend" size={13}/> Featured
                 </div>
-                <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.78)"}}>{filtered.length} matches</div>
+                <div style={{fontSize:18,lineHeight:1.2,fontWeight:800,color:C.text}}>Buyer picks worth opening first</div>
               </div>
-              <h2 style={{margin:"0 0 6px",fontSize:24,lineHeight:1.12,fontWeight:750,letterSpacing:0}}>Find the right slab in one ask.</h2>
-              <div style={{fontSize:13,lineHeight:1.55,color:"rgba(255,255,255,0.84)",marginBottom:13}}>Ask by stone, budget, export need, and evidence quality. Then compare only the slabs worth calling about.</div>
-              <button className="buyer-button buyer-command-input" onClick={()=>openTradeWithPrompt()} style={{width:"100%",background:C.white,border:"1px solid rgba(255,255,255,0.72)",borderRadius:14,padding:"12px 13px",color:C.primaryD,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",gap:9,textAlign:"left",boxShadow:"0 10px 26px rgba(0,26,64,0.18)"}}>
-                <Icon name="search" size={16}/>
-                <span style={{flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Ask: export-ready under Rs 500 with strong proof</span>
-                <Icon name="arrow" size={15}/>
-              </button>
-              <div style={{display:"flex",gap:8,overflowX:"auto",paddingTop:10}}>
-                {["Best evidence first","Premium lobby slabs","Export-ready now"].map(prompt=>(
-                  <button key={prompt} className="buyer-chip" onClick={()=>openTradeWithPrompt(prompt)} style={{flex:"0 0 auto",background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:999,color:C.white,padding:"7px 9px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>{prompt}</button>
-                ))}
-              </div>
+              <button className="buyer-button" onClick={()=>{setViewMode("featured");setSortBy("evidence");}} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:999,color:C.primaryD,padding:"8px 10px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>View all</button>
+            </div>
+            <div style={{display:"grid",gap:9}}>
+              {(featuredSlabs.length?featuredSlabs:[{slab:heroSlab,evidence:heroSlab?evidenceReadiness(heroSlab):{score:0}}].filter(x=>x.slab)).slice(0,2).map(({slab,evidence},idx)=>(
+                <button key={slab.id} className="buyer-action-card" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{display:"grid",gridTemplateColumns:"64px minmax(0,1fr) auto",gap:10,alignItems:"center",background:idx===0?"#f8fbff":C.white,border:`1px solid ${idx===0?C.primaryBorder:C.border}`,borderRadius:14,padding:9,textAlign:"left",cursor:"pointer",fontFamily:FONT_STACK}}>
+                  <div style={{height:58,borderRadius:11,overflow:"hidden",background:"#edf3fa",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<Icon name="package" size={24} color="#8da0bf"/>}
+                  </div>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:800,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
+                    <div style={{fontSize:11,color:C.textMid,fontWeight:600,marginTop:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Evidence {evidence.score}%</div>
+                  </div>
+                  <Icon name="arrow" size={15} color={C.primary}/>
+                </button>
+              ))}
             </div>
           </section>
           <section className="buyer-trust-rail buyer-enter" style={{"--i":1,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:14}}>
@@ -4488,7 +4496,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             {isMobile&&<div style={{fontSize:12,color:C.textMid,marginTop:3}}>{filtered.length} results, {availableCount} available now</div>}
           </div>
           <div style={{display:"flex",gap:8,flexWrap:isMobile?"nowrap":"wrap",justifyContent:isMobile?"flex-start":"flex-end",overflowX:isMobile?"auto":"visible",paddingBottom:isMobile?2:0}}>
-            {[{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Saved",count:savedIds.length}].map(v=>(
+            {[{id:"featured",label:"Featured",count:featuredSlabs.length},{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Saved",count:savedIds.length}].map(v=>(
               <button key={v.id} className="buyer-chip" onClick={()=>setViewMode(v.id)} style={{padding:isMobile?"9px 12px":"10px 14px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:999,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flex:"0 0 auto"}}>
                 {v.label} <span style={{opacity:0.72}}>({v.count})</span>
               </button>
