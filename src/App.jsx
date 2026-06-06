@@ -4188,15 +4188,15 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
       return next;
     });
   }
-  const evidenceReadiness=s=>{
+  const exportReadiness=s=>{
     const trace=s.measurements?.traceability||{};
     const audit=s.measurements?.audit||{};
     const traceCount=["quarrySource","batchNo","blockNo","productionLine","operator","containerNo","customerRef"].filter(k=>trace[k]).length;
     const auditCount=["calibrationChecked","checklistComplete","rootCause","correctiveAction","actionOwner","actionDue"].filter(k=>audit[k]).length;
-    return {score:Math.round(((traceCount/7)*100+(auditCount/6)*100+(s.photo?100:0))/3),trace,audit,traceCount,auditCount};
+    return {score:Math.round(((s.exportReady?100:0)+(traceCount/7)*100+(auditCount/6)*100+(s.photo?100:0))/4),trace,audit,traceCount,auditCount};
   };
   async function copyShortlist(){
-    const lines=savedSlabs.map(s=>{const e=evidenceReadiness(s);return `${s.stone} | ${s.grade} | Rs ${s.pricePerSqFt}/sqft | Evidence ${e.score}%${e.trace.batchNo?` | Batch ${e.trace.batchNo}`:""} | ${window.location.origin}/slab/${encodeURIComponent(s.id)}`;});
+    const lines=savedSlabs.map(s=>{const e=exportReadiness(s);return `${s.stone} | ${s.grade} | Rs ${s.pricePerSqFt}/sqft | Export readiness ${e.score}%${e.trace.batchNo?` | Batch ${e.trace.batchNo}`:""} | ${window.location.origin}/slab/${encodeURIComponent(s.id)}`;});
     const text=lines.length?lines.join("\n"):"No slabs saved yet.";
     try{await navigator.clipboard.writeText(text);setShortlistCopied(true);setTimeout(()=>setShortlistCopied(false),1400);}catch(e){window.prompt("Copy shortlist",text);}
   }
@@ -4204,8 +4204,8 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const supplierOptions=useMemo(()=>["All",...Array.from(new Set(insps.map(i=>i.supplier).filter(Boolean))).sort()],[insps]);
   const featuredSlabs=useMemo(()=>insps
     .filter(i=>(i.inventoryStatus||"available")==="available")
-    .map(s=>({slab:s,evidence:evidenceReadiness(s)}))
-    .sort((a,b)=>(b.slab.exportReady?1:0)-(a.slab.exportReady?1:0)||(b.slab.grade==="Premium"?1:0)-(a.slab.grade==="Premium"?1:0)||b.evidence.score-a.evidence.score||Number(b.slab.ts||0)-Number(a.slab.ts||0))
+    .map(s=>({slab:s,readiness:exportReadiness(s)}))
+    .sort((a,b)=>(b.slab.exportReady?1:0)-(a.slab.exportReady?1:0)||(b.slab.grade==="Premium"?1:0)-(a.slab.grade==="Premium"?1:0)||b.readiness.score-a.readiness.score||Number(b.slab.ts||0)-Number(a.slab.ts||0))
     .slice(0,4),[insps]);
   const featuredSet=useMemo(()=>new Set(featuredSlabs.map(x=>x.slab.id)),[featuredSlabs]);
   const filtered=useMemo(()=>{
@@ -4222,7 +4222,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
       if(sortBy==="priceLow")return Number(a.pricePerSqFt||0)-Number(b.pricePerSqFt||0);
       if(sortBy==="priceHigh")return Number(b.pricePerSqFt||0)-Number(a.pricePerSqFt||0);
       if(sortBy==="grade")return (a.grade==="Premium"?0:1)-(b.grade==="Premium"?0:1);
-      if(sortBy==="evidence")return evidenceReadiness(b).score-evidenceReadiness(a).score;
+      if(sortBy==="evidence")return exportReadiness(b).score-exportReadiness(a).score;
       return Number(b.ts||0)-Number(a.ts||0);
     });
   },[insps,filter,viewMode,savedSet,featuredSet,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,search,sortBy]);
@@ -4244,7 +4244,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     const wantsBudget=/budget|cheap|affordable|under|below|price|rate|cost/.test(text);
     const words=text.split(/[^a-z0-9]+/).filter(w=>w.length>2);
     return insps.map(s=>{
-      const e=evidenceReadiness(s);
+      const e=exportReadiness(s);
       const hay=[s.stone,s.supplier,s.grade,slabDims(s),s.measurements?.traceability?.batchNo,s.measurements?.traceability?.quarrySource,...(s.defects||[])].filter(Boolean).join(" ").toLowerCase();
       let score=0;
       if((s.inventoryStatus||"available")==="available")score+=24;
@@ -4288,15 +4288,15 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   async function submitInquiry(){
     if(!inquiry||inquiryBusy)return;
     setInquiryBusy(true);setInquiryError("");
-    const evidence=evidenceReadiness(inquiry);
+    const readiness=exportReadiness(inquiry);
     const requestLines=[
       "Quote request",
       `Certificate: ${window.location.origin}/slab/${encodeURIComponent(inquiry.id)}`,
-      `Evidence readiness: ${evidence.score}%`,
-      `Traceability fields: ${evidence.traceCount}/7`,
-      `Audit fields: ${evidence.auditCount}/6`,
-      evidence.trace.batchNo?`Batch: ${evidence.trace.batchNo}`:null,
-      evidence.trace.quarrySource?`Source: ${evidence.trace.quarrySource}`:null,
+      `Export readiness: ${readiness.score}%`,
+      `Traceability fields: ${readiness.traceCount}/7`,
+      `Audit fields: ${readiness.auditCount}/6`,
+      readiness.trace.batchNo?`Batch: ${readiness.trace.batchNo}`:null,
+      readiness.trace.quarrySource?`Source: ${readiness.trace.quarrySource}`:null,
       quoteReq.areaSqFt?`Area required: ${quoteReq.areaSqFt} sq ft`:null,
       quoteReq.deliveryLocation?`Delivery location: ${quoteReq.deliveryLocation}`:null,
       quoteReq.targetDate?`Target date: ${quoteReq.targetDate}`:null,
@@ -4313,8 +4313,8 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     }
   }
   const estimateTotal=quoteReq.areaSqFt&&inquiry?Math.round(Number(quoteReq.areaSqFt||0)*Number(inquiry.pricePerSqFt||0)):0;
-  const inquiryEvidence=inquiry?evidenceReadiness(inquiry):{score:0,traceCount:0,auditCount:0};
-  const inquiryReadiness=inquiryEvidence.score;
+  const inquiryExportReadiness=inquiry?exportReadiness(inquiry):{score:0,traceCount:0,auditCount:0};
+  const inquiryReadiness=inquiryExportReadiness.score;
   const factoryName=fac?.name||buyer?.factory_name||"Verified factory";
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
@@ -4397,7 +4397,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         {isMobile?<>
           <section className="buyer-featured-card buyer-enter" style={{"--i":0,marginBottom:32}}>
             <div style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory"}}>
-              {(featuredSlabs.length?featuredSlabs:[{slab:heroSlab,evidence:heroSlab?evidenceReadiness(heroSlab):{score:0}}].filter(x=>x.slab)).map(({slab,evidence})=>(
+              {(featuredSlabs.length?featuredSlabs:[{slab:heroSlab,readiness:heroSlab?exportReadiness(heroSlab):{score:0}}].filter(x=>x.slab)).map(({slab,readiness})=>(
                 <article key={slab.id} className="buyer-featured-hero" style={{flex:"0 0 100%",scrollSnapAlign:"start",background:C.white,overflow:"hidden"}}>
                   <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{height:430,background:"#edf3fa",position:"relative",cursor:"pointer",overflow:"hidden"}}>
                     {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={42} color="#8da0bf"/></div>}
@@ -4406,7 +4406,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                         <Icon name="trend" size={14}/> Featured
                       </div>
                       <div style={{fontSize:42,lineHeight:1.03,fontWeight:850,letterSpacing:0,maxWidth:320}}>{slab.stone}</div>
-                      <div style={{fontSize:17,lineHeight:1.45,fontWeight:600,color:"rgba(255,255,255,0.86)",marginTop:16,maxWidth:340}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Evidence {evidence.score}%</div>
+                      <div style={{fontSize:17,lineHeight:1.45,fontWeight:600,color:"rgba(255,255,255,0.86)",marginTop:16,maxWidth:340}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Export readiness {readiness.score}%</div>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:28}}>
                         <button className="buyer-button" onClick={e=>{e.stopPropagation();openQuoteRequest(slab);}} style={{background:C.white,border:`1px solid ${C.white}`,borderRadius:12,color:C.primaryD,padding:"16px 12px",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Request Quote</button>
                         <button className="buyer-button" onClick={e=>{e.stopPropagation();window.location.assign(`/slab/${encodeURIComponent(slab.id)}`);}} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.76)",borderRadius:12,color:C.white,padding:"16px 12px",fontSize:15,fontWeight:750,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
@@ -4425,10 +4425,10 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             <h2 style={{fontSize:isMobile?27:48,lineHeight:isMobile?1.12:1.02,letterSpacing:0,margin:isMobile?"0 0 10px":"0 0 18px",fontWeight:700}}>
               Premium<br/><span style={{color:"#c9dcff"}}>{heroName}</span>
             </h2>
-            <div style={{fontSize:isMobile?13:17,lineHeight:1.55,color:"rgba(255,255,255,0.86)",maxWidth:580,marginBottom:isMobile?14:28}}>Verified photos, inspection evidence, and quote workflow from {factoryName}.</div>
+            <div style={{fontSize:isMobile?13:17,lineHeight:1.55,color:"rgba(255,255,255,0.86)",maxWidth:580,marginBottom:isMobile?14:28}}>Verified photos, export checks, and quote workflow from {factoryName}.</div>
             <div style={{display:"flex",gap:isMobile?8:18,flexWrap:"wrap"}}>
               <button className="buyer-button" onClick={onViewQuotes} style={{background:C.white,border:"none",borderRadius:isMobile?12:14,padding:isMobile?"11px 14px":"16px 30px",color:C.primaryD,fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View quotes</button>
-              <button className="buyer-button" onClick={()=>setSortBy("evidence")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.75)",borderRadius:isMobile?12:14,padding:isMobile?"10px 14px":"15px 30px",color:C.white,fontSize:isMobile?13:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Evidence first</button>
+              <button className="buyer-button" onClick={()=>setSortBy("evidence")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.75)",borderRadius:isMobile?12:14,padding:isMobile?"10px 14px":"15px 30px",color:C.white,fontSize:isMobile?13:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Export ready first</button>
             </div>
           </div>
           {!isMobile&&<div style={{position:"absolute",left:"50%",bottom:20,transform:"translateX(-50%)",display:"flex",gap:8}}>
@@ -4464,7 +4464,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                 <option value="priceLow">Price low-high</option>
                 <option value="priceHigh">Price high-low</option>
                 <option value="grade">Premium first</option>
-                <option value="evidence">Evidence first</option>
+                <option value="evidence">Export readiness</option>
               </select>
             </label>
             <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,color:C.textMid,padding:isMobile?"12px 11px":"17px 18px",fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,alignSelf:"end"}}>Clear</button>
@@ -4495,9 +4495,8 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             const inv=slab.inventoryStatus||"available";
             const canInquire=inv==="available";
             const saved=savedSet.has(slab.id);
-            const evidence=evidenceReadiness(slab);
-            const trace=evidence.trace;
-            const readiness=evidence.score;
+            const exportReadyScore=exportReadiness(slab);
+            const readiness=exportReadyScore.score;
             return (
               <div key={slab.id} className="buyer-product-card buyer-enter" style={{"--i":Math.min(index,8)+2,background:"#fff",border:`1px solid ${C.border}`,borderRadius:isMobile?18:16,overflow:"hidden",minHeight:isMobile?"auto":520,display:"flex",flexDirection:"column"}}>
                 <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{cursor:"pointer"}}>
@@ -4527,15 +4526,11 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                     </div>
                     <div style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 11px",marginBottom:6}}>
                       <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:8,alignItems:"center"}}>
-                        <div style={{fontSize:12,color:C.textMid,fontWeight:700}}>Evidence readiness</div>
+                        <div style={{fontSize:12,color:C.textMid,fontWeight:700}}>Export readiness</div>
                         <div style={{fontSize:12,color:readiness>=70?C.green:C.amber,fontWeight:800}}>{readiness}%</div>
                       </div>
                       <div style={{height:6,background:"#edf2f8",borderRadius:999,overflow:"hidden",marginBottom:8}}>
                         <span className="buyer-evidence-fill" style={{display:"block",height:"100%",width:`${Math.max(8,Math.min(100,readiness))}%`,background:readiness>=70?C.green:C.primary,borderRadius:999}}/>
-                      </div>
-                      <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:C.textDim,fontWeight:600}}>
-                        <span>{trace.batchNo?`Batch ${trace.batchNo}`:"Batch pending"}</span>
-                        <span>{slab.exportReady?"Export ready":"Domestic ready"}</span>
                       </div>
                     </div>
                   </div>
@@ -4574,13 +4569,13 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
               <div>
                 <div style={{display:"inline-flex",alignItems:"center",gap:7,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,color:C.primaryD,borderRadius:999,padding:"5px 9px",fontSize:11,fontWeight:700,marginBottom:8}}><Icon name="bot" size={14}/> Trade GPT</div>
                 <div style={{fontSize:20,lineHeight:1.25,fontWeight:700,color:C.text}}>Describe what you need</div>
-                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid,marginTop:3}}>I’ll filter the catalog by stone, budget, export-readiness, and evidence.</div>
+                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid,marginTop:3}}>I’ll filter the catalog by stone, budget, and export readiness.</div>
               </div>
               <button className="buyer-button" onClick={()=>setTradeOpen(false)} style={{width:38,height:38,borderRadius:12,border:`1px solid ${C.border}`,background:"#f9fbfe",color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label="Close Trade GPT"><Icon name="close" size={16}/></button>
             </div>
-            <textarea value={tradePrompt} onChange={e=>setTradePrompt(e.target.value)} rows={3} placeholder="Example: Need export-ready Makrana White under ₹500/sqft with strong evidence for a hotel lobby" style={{width:"100%",padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:12,background:"#f9fbfe",fontSize:14,lineHeight:1.55,color:C.text,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+            <textarea value={tradePrompt} onChange={e=>setTradePrompt(e.target.value)} rows={3} placeholder="Example: Need export-ready Makrana White under ₹500/sqft for a hotel lobby" style={{width:"100%",padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:12,background:"#f9fbfe",fontSize:14,lineHeight:1.55,color:C.text,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
             <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:3,marginBottom:12}}>
-              {["Export-ready under ₹500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"].map(example=>(
+              {["Export-ready under ₹500","Best export readiness","Premium slabs for hotel lobby","Makrana White available"].map(example=>(
                 <button key={example} className="buyer-chip" onClick={()=>{setTradePrompt(example);applyTradePrompt(example);}} style={{flex:"0 0 auto",border:`1px solid ${C.primaryBorder}`,background:C.primaryBg,color:C.primaryD,borderRadius:999,padding:"8px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>{example}</button>
               ))}
             </div>
@@ -4592,11 +4587,11 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
                   <div style={{width:32,height:32,borderRadius:10,background:idx===0?C.primary:C.surface,color:idx===0?C.white:C.textMid,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800}}>{idx+1}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:700,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
-                    <div style={{fontSize:11,color:C.textMid,marginTop:2}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Evidence {evidence.score}%</div>
+                    <div style={{fontSize:11,color:C.textMid,marginTop:2}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Export readiness {evidence.score}%</div>
                   </div>
                   <Icon name="filter" size={15} color={C.primary}/>
                 </button>
-              )):<div style={{fontSize:12,lineHeight:1.55,color:C.textMid,background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:12}}>Ask for budget, stone type, export-readiness, or evidence quality to get recommendations.</div>}
+              )):<div style={{fontSize:12,lineHeight:1.55,color:C.textMid,background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:12}}>Ask for budget, stone type, or export readiness to get recommendations.</div>}
             </div>
           </div>
         </div>
@@ -4620,10 +4615,10 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
               </div>
               <div style={{background:inquiryReadiness>=70?C.greenBg:C.amberBg,border:`1px solid ${inquiryReadiness>=70?C.greenBorder:C.amberBorder}`,borderRadius:10,padding:12,marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:6}}>
-                  <div style={{fontSize:13,fontWeight:600,color:inquiryReadiness>=70?C.green:C.amber}}>Evidence readiness</div>
+                  <div style={{fontSize:13,fontWeight:600,color:inquiryReadiness>=70?C.green:C.amber}}>Export readiness</div>
                   <div style={{fontSize:16,fontWeight:700,color:inquiryReadiness>=70?C.green:C.amber}}>{inquiryReadiness}%</div>
                 </div>
-                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Includes photo evidence, {inquiryEvidence.traceCount}/7 traceability fields, and {inquiryEvidence.auditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
+                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid}}>Includes export flag, photo proof, {inquiryExportReadiness.traceCount}/7 traceability fields, and {inquiryExportReadiness.auditCount}/6 audit fields. Review the certificate before confirming commercial terms.</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
                 <Inp label="Area Required" value={quoteReq.areaSqFt} onChange={v=>setQuoteReq(p=>({...p,areaSqFt:v.replace(/[^0-9.]/g,"")}))} placeholder="120" hint="sq ft"/>
