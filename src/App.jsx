@@ -4184,8 +4184,6 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     .map(s=>({slab:s,evidence:evidenceReadiness(s)}))
     .sort((a,b)=>(b.slab.exportReady?1:0)-(a.slab.exportReady?1:0)||(b.slab.grade==="Premium"?1:0)-(a.slab.grade==="Premium"?1:0)||b.evidence.score-a.evidence.score||Number(b.slab.ts||0)-Number(a.slab.ts||0))
     .slice(0,4),[insps]);
-  const featuredLead=featuredSlabs[0]||null;
-  const featuredRest=featuredSlabs.slice(1);
   const featuredSet=useMemo(()=>new Set(featuredSlabs.map(x=>x.slab.id)),[featuredSlabs]);
   const filtered=useMemo(()=>{
     const q=search.toLowerCase();
@@ -4395,40 +4393,27 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
               </div>
               <button className="buyer-button" onClick={()=>{setViewMode("featured");setSortBy("evidence");}} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:999,color:C.primaryD,padding:"8px 10px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>View all</button>
             </div>
-            {featuredLead&&<div className="buyer-featured-hero" style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 14px 34px rgba(16,24,40,0.08)",marginBottom:11}}>
-              <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(featuredLead.slab.id)}`)} style={{height:214,background:"#edf3fa",position:"relative",cursor:"pointer",overflow:"hidden"}}>
-                {featuredLead.slab.photo?<img src={featuredLead.slab.photo} alt={featuredLead.slab.stone} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={42} color="#8da0bf"/></div>}
-                <div style={{position:"absolute",inset:"auto 0 0",padding:"42px 14px 13px",background:"linear-gradient(180deg,rgba(6,18,45,0),rgba(6,18,45,0.78))",color:C.white}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:6}}>
-                    <span style={{background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"5px 8px",fontSize:10,fontWeight:800}}>{featuredLead.slab.exportReady?"EXPORT READY":"AVAILABLE NOW"}</span>
-                    <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.82)"}}>Evidence {featuredLead.evidence.score}%</span>
-                  </div>
-                  <div style={{fontSize:22,lineHeight:1.08,fontWeight:800,letterSpacing:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{featuredLead.slab.stone}</div>
-                  <div style={{fontSize:12,fontWeight:650,color:"rgba(255,255,255,0.84)",marginTop:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{featuredLead.slab.grade} · {fmtMoney(featuredLead.slab.pricePerSqFt)}/sqft · {featuredLead.slab.supplier||factoryName}</div>
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:10}}>
-                <button className="buyer-button" onClick={()=>openQuoteRequest(featuredLead.slab)} style={{background:C.primary,border:`1px solid ${C.primary}`,borderRadius:12,color:C.white,padding:"12px 10px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Request Quote</button>
-                <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(featuredLead.slab.id)}`)} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:12,color:C.primaryD,padding:"12px 10px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
-              </div>
-            </div>}
-            {featuredRest.length>0&&<div style={{display:"flex",gap:10,overflowX:"auto",padding:"1px 2px 5px",scrollSnapType:"x mandatory"}}>
-              {featuredRest.map(({slab,evidence})=>(
-                <button key={slab.id} className="buyer-action-card" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{flex:"0 0 74%",scrollSnapAlign:"start",display:"grid",gridTemplateColumns:"74px minmax(0,1fr)",gap:10,alignItems:"center",background:C.white,border:`1px solid ${C.border}`,borderRadius:15,padding:9,textAlign:"left",cursor:"pointer",fontFamily:FONT_STACK,boxShadow:"0 8px 20px rgba(16,24,40,0.05)"}}>
-                  <div style={{height:70,borderRadius:12,overflow:"hidden",background:"#edf3fa",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<Icon name="package" size={24} color="#8da0bf"/>}
-                  </div>
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:800,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
-                    <div style={{fontSize:11,color:C.textMid,fontWeight:650,marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft</div>
-                    <div style={{display:"flex",gap:6,marginTop:7,alignItems:"center"}}>
-                      <span style={{fontSize:10,fontWeight:800,color:slab.exportReady?C.green:C.textMid,background:slab.exportReady?C.greenBg:C.surface,border:`1px solid ${slab.exportReady?C.greenBorder:C.border}`,borderRadius:999,padding:"3px 6px"}}>{slab.exportReady?"Export":"Ready"}</span>
-                      <span style={{fontSize:10,fontWeight:800,color:C.primaryD,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,padding:"3px 6px"}}>{evidence.score}% proof</span>
+            <div style={{display:"flex",gap:12,overflowX:"auto",padding:"1px 2px 6px",scrollSnapType:"x mandatory"}}>
+              {(featuredSlabs.length?featuredSlabs:[{slab:heroSlab,evidence:heroSlab?evidenceReadiness(heroSlab):{score:0}}].filter(x=>x.slab)).map(({slab,evidence})=>(
+                <article key={slab.id} className="buyer-featured-hero" style={{flex:"0 0 88%",scrollSnapAlign:"start",background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 14px 34px rgba(16,24,40,0.08)"}}>
+                  <div onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{height:224,background:"#edf3fa",position:"relative",cursor:"pointer",overflow:"hidden"}}>
+                    {slab.photo?<img src={slab.photo} alt={slab.stone} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#f8fafc,#edf3fa)"}}><Icon name="package" size={42} color="#8da0bf"/></div>}
+                    <div style={{position:"absolute",inset:"auto 0 0",padding:"44px 14px 13px",background:"linear-gradient(180deg,rgba(6,18,45,0),rgba(6,18,45,0.78))",color:C.white}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:6}}>
+                        <span style={{background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"5px 8px",fontSize:10,fontWeight:800}}>{slab.exportReady?"EXPORT READY":"AVAILABLE NOW"}</span>
+                        <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.82)"}}>Evidence {evidence.score}%</span>
+                      </div>
+                      <div style={{fontSize:22,lineHeight:1.08,fontWeight:800,letterSpacing:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
+                      <div style={{fontSize:12,fontWeight:650,color:"rgba(255,255,255,0.84)",marginTop:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · {slab.supplier||factoryName}</div>
                     </div>
                   </div>
-                </button>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:10}}>
+                    <button className="buyer-button" onClick={()=>openQuoteRequest(slab)} style={{background:C.primary,border:`1px solid ${C.primary}`,borderRadius:12,color:C.white,padding:"12px 10px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Request Quote</button>
+                    <button className="buyer-button" onClick={()=>window.location.assign(`/slab/${encodeURIComponent(slab.id)}`)} style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:12,color:C.primaryD,padding:"12px 10px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Certificate</button>
+                  </div>
+                </article>
               ))}
-            </div>}
+            </div>
           </section>
         </>:<section className="buyer-hero buyer-enter" style={{...heroStyle,borderRadius:20,minHeight:376,padding:"42px 50px",marginBottom:30,color:C.white,display:"flex",alignItems:"center"}}>
           <div style={{maxWidth:isMobile?420:560,width:"100%"}}>
