@@ -4446,20 +4446,6 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             <button className="buyer-button" onClick={clearFilters} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?12:14,color:C.textMid,padding:isMobile?"12px 11px":"17px 18px",fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,alignSelf:"end"}}>Clear</button>
           </div>
         </section>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:isMobile?"stretch":"center",gap:isMobile?12:18,margin:isMobile?"0 32px 24px":undefined,marginBottom:isMobile?24:26,flexDirection:isMobile?"column":"row"}}>
-          <div>
-            <h2 style={{margin:0,fontSize:isMobile?20:24,lineHeight:1.25,fontWeight:700,color:C.text}}>Available Inventory {!isMobile&&<span style={{fontWeight:500,color:C.textMid}}>({filtered.length} results)</span>}</h2>
-            {isMobile&&<div style={{fontSize:12,color:C.textMid,marginTop:3}}>{filtered.length} results, {availableCount} available now</div>}
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:isMobile?"nowrap":"wrap",justifyContent:isMobile?"flex-start":"flex-end",overflowX:isMobile?"auto":"visible",paddingBottom:isMobile?2:0}}>
-            {[{id:"featured",label:"Featured",count:featuredSlabs.length},{id:"all",label:"All slabs",count:insps.length},{id:"saved",label:"Saved",count:savedIds.length}].map(v=>(
-              <button key={v.id} className="buyer-chip" onClick={()=>setViewMode(v.id)} style={{padding:isMobile?"9px 12px":"10px 14px",background:viewMode===v.id?C.primary:C.white,border:`1px solid ${viewMode===v.id?C.primary:C.border}`,borderRadius:999,color:viewMode===v.id?C.white:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flex:"0 0 auto"}}>
-                {v.label} <span style={{opacity:0.72}}>({v.count})</span>
-              </button>
-            ))}
-            <button className="buyer-chip" onClick={copyShortlist} style={{padding:isMobile?"9px 12px":"10px 14px",background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap",flex:"0 0 auto"}}>{shortlistCopied?"Copied":"Copy shortlist"}</button>
-          </div>
-        </div>
         {filtered.length===0?<EmptyState title={viewMode==="saved"?"No saved slabs yet":insps.length?"No slabs match these filters":"No slabs available yet"} body={viewMode==="saved"?"Save slabs from inventory to compare and request quotes later.":insps.length?"Try clearing filters, increasing max price, or changing stone, supplier, grade, or status.":"This factory has not published available Premium or Standard slabs yet."} actionLabel={insps.length?"Clear filters":undefined} onAction={clearFilters}/>:
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?26:28,margin:isMobile?"0 32px":undefined}}>
           {filtered.map((slab,index)=>{
