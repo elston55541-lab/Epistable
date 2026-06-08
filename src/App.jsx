@@ -4384,7 +4384,6 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
             {onBack&&<button className="buyer-button" onClick={onBack} style={{width:38,height:38,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Back"><Icon name="prev" size={18}/></button>}
             <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
           </div>
-          {onLogout&&<button className="buyer-button" onClick={onLogout} style={{width:38,height:38,background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Log out"><Icon name="close" size={16}/></button>}
         </>:<>
           <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
           <div style={{flex:1}}/>
