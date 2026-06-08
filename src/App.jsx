@@ -3794,12 +3794,13 @@ function buyerQuotePriority(q) {
   return 6;
 }
 
-function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
+function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal,embedded=false}) {
   const [fac,setFac]=useState(null);const [quotes,setQuotes]=useState([]);const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState("active");const [search,setSearch]=useState("");const [sortBy,setSortBy]=useState("priority");const [copiedQuote,setCopiedQuote]=useState("");
   const [quoteAction,setQuoteAction]=useState(null);const [quoteMsg,setQuoteMsg]=useState("");const [quoteBusy,setQuoteBusy]=useState("");const [quoteError,setQuoteError]=useState("");
   const [loadError,setLoadError]=useState("");
   const [resolvedFactoryId,setResolvedFactoryId]=useState(buyer.factory_id||buyer.factoryId||"");
+  const {isMobile}=useBP();
   const buyerFactoryId=buyer.factory_id||buyer.factoryId||resolvedFactoryId;
   async function load(){
     let fid=buyerFactoryId;
@@ -3865,9 +3866,9 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
   },{needResponse:0,accepted:0}),[quotes]);
   const needResponse=quoteCounts.needResponse;
   const accepted=quoteCounts.accepted;
-  if(loading)return <Loader/>;
+  if(loading)return embedded?<div style={{padding:isMobile?"48px 0":"72px 0"}}><Loader/></div>:<Loader/>;
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
+    <div style={{minHeight:embedded?"auto":"100vh",background:embedded?"transparent":C.bg,fontFamily:FONT_STACK,color:C.text}}>
       {quoteAction&&<Modal title={quoteAction.decision==="accepted"?"Accept Quote":"Request Changes"} onClose={()=>{setQuoteAction(null);setQuoteError("");}}>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:12}}>
@@ -3882,7 +3883,7 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
           </div>
         </div>
       </Modal>}
-      <div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"16px 16px 22px"}}>
+      {!embedded&&<div style={{background:`linear-gradient(135deg,${C.primaryD},${C.primary},${C.teal})`,padding:"16px 16px 22px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16}}>
           <button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Back</button>
           <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,color:C.white,padding:"7px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Sign Out</button>
@@ -3890,8 +3891,8 @@ function BuyerQuotesPage({buyer,onBack,onLogout,onViewPortal}) {
         <div style={{fontSize:12,color:"rgba(255,255,255,0.68)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:5}}>Buyer Quotes</div>
         <div style={{fontSize:24,fontWeight:700,color:C.white,marginBottom:4}}>Track quotes and orders</div>
         <div style={{fontSize:13,color:"rgba(255,255,255,0.75)"}}>{fac?.name||buyer.factory_name||"Factory"} - {quotes.length} quotes</div>
-      </div>
-      <div style={{padding:"14px 14px 60px"}}>
+      </div>}
+      <div style={{padding:embedded?0:"14px 14px 60px"}}>
         <ErrorNotice message={loadError} onRetry={load}/>
         <KpiGrid items={[{label:"Need Response",value:needResponse,icon:"Reply",color:C.primary},{label:"Accepted",value:accepted,icon:"Won",color:C.green},{label:"Total Quotes",value:quotes.length,icon:"Quote",color:C.text},{label:"Factory",value:fac?.name?"1":"-",icon:"Mill",color:C.teal}]}/>
         <Card style={{padding:12,marginBottom:18}}>
@@ -4112,7 +4113,7 @@ function slabDims(slab) {
   return m.length&&m.width?`${m.length} x ${m.width} cm`:"Size not recorded";
 }
 
-function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
+function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
   const [inventoryLoading,setInventoryLoading]=useState(true);
   const [stoneFilter,setStoneFilter]=useState("All");const [supplierFilter,setSupplierFilter]=useState("All");const [exportFilter,setExportFilter]=useState("All");const [statusFilter,setStatusFilter]=useState("available");
@@ -4321,11 +4322,12 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const showInventorySkeleton=inventoryLoading&&insps.length===0;
   const tradeExamples=isMobile?[]:["Export-ready under Rs 500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"];
   const tradeHasPrompt=tradePrompt.trim().length>0;
+  const canOpenBuyerQuotes=!!buyer?.email;
   const sidebarItems=[
     {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>openTradeWithPrompt()},
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
-    {label:"My Quotes",mobileLabel:"Quotes",icon:"message",action:onViewQuotes},
-    {label:"My Orders",mobileLabel:"Orders",icon:"truck",action:onViewQuotes},
+    {label:"My Quotes",mobileLabel:"Quotes",icon:"message",active:viewMode==="quotes"&&!tradeOpen,action:canOpenBuyerQuotes?()=>{setViewMode("quotes");setTradeOpen(false);}:null},
+    {label:"My Orders",mobileLabel:"Orders",icon:"truck",active:viewMode==="quotes"&&!tradeOpen,action:canOpenBuyerQuotes?()=>{setViewMode("quotes");setTradeOpen(false);}:null},
     {label:"My Requirements",mobileLabel:"Needs",icon:"list",action:null},
     {label:"Profile",mobileLabel:"Profile",icon:"user",action:null},
   ];
@@ -4346,7 +4348,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
     {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",active:tradeOpen,action:()=>openTradeWithPrompt()},
     {label:"Saved",mobileLabel:"Saved",icon:"check",active:viewMode==="saved"&&!tradeOpen,action:()=>{setViewMode("saved");setTradeOpen(false);}},
-    {label:"Quotes",mobileLabel:"Quotes",icon:"message",action:onViewQuotes},
+    {label:"Quotes",mobileLabel:"Quotes",icon:"message",active:viewMode==="quotes"&&!tradeOpen,action:canOpenBuyerQuotes?()=>{setViewMode("quotes");setTradeOpen(false);}:null},
   ];
   return (
     <div className="buyer-app" style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
@@ -4380,21 +4382,22 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         {isMobile?<>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
             {onBack&&<button className="buyer-button" onClick={onBack} style={{width:38,height:38,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Back"><Icon name="prev" size={18}/></button>}
-            <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>Catalog</h1>
+            <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
           </div>
           {onLogout&&<button className="buyer-button" onClick={onLogout} style={{width:38,height:38,background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Log out"><Icon name="close" size={16}/></button>}
         </>:<>
-          <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>Catalog</h1>
+          <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
           <div style={{flex:1}}/>
-          <div style={{width:380,maxWidth:"48vw",position:"relative"}}>
+          {viewMode!=="quotes"&&<div style={{width:380,maxWidth:"48vw",position:"relative"}}>
             <Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search stone, batch, source" style={{width:"100%",padding:"13px 14px 13px 42px",background:"#f9fbfe",border:`1px solid ${C.border}`,borderRadius:999,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/>
-          </div>
-          <button className="buyer-button" onClick={()=>setSortBy("newest")} style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Refresh catalog"><Icon name="refresh" size={19}/></button>
-          <button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>
+          </div>}
+          {viewMode!=="quotes"&&<button className="buyer-button" onClick={()=>setSortBy("newest")} style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Refresh catalog"><Icon name="refresh" size={19}/></button>}
+          {viewMode!=="quotes"&&<button className="buyer-button" style={{width:50,height:50,background:C.white,border:`1px solid ${C.border}`,borderRadius:999,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Help"><Icon name="alert" size={19}/></button>}
         </>}
       </div>
       <div style={{padding:isMobile?"0 0 184px":"30px 30px 90px",maxWidth:1600,margin:"0 auto"}}>
+        {viewMode==="quotes"&&canOpenBuyerQuotes?<BuyerQuotesPage buyer={buyer} embedded onViewPortal={()=>{setViewMode("all");setTradeOpen(false);}}/>:<>
         <ErrorNotice message={loadError}/>
         {isMobile?<>
           <section className="buyer-featured-card buyer-enter" style={{"--i":0,marginBottom:32}}>
@@ -4429,7 +4432,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             </h2>
             <div style={{fontSize:isMobile?13:17,lineHeight:1.55,color:"rgba(255,255,255,0.86)",maxWidth:580,marginBottom:isMobile?14:28}}>Verified photos, export checks, and quote workflow from {factoryName}.</div>
             <div style={{display:"flex",gap:isMobile?8:18,flexWrap:"wrap"}}>
-              <button className="buyer-button" onClick={onViewQuotes} style={{background:C.white,border:"none",borderRadius:isMobile?12:14,padding:isMobile?"11px 14px":"16px 30px",color:C.primaryD,fontSize:isMobile?13:16,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>View quotes</button>
+              <button className="buyer-button" disabled={!canOpenBuyerQuotes} onClick={()=>{if(!canOpenBuyerQuotes)return;setViewMode("quotes");setTradeOpen(false);}} style={{background:C.white,border:"none",borderRadius:isMobile?12:14,padding:isMobile?"11px 14px":"16px 30px",color:C.primaryD,fontSize:isMobile?13:16,fontWeight:700,cursor:canOpenBuyerQuotes?"pointer":"not-allowed",fontFamily:FONT_STACK,opacity:canOpenBuyerQuotes?1:0.7}}>View quotes</button>
               <button className="buyer-button" onClick={()=>setSortBy("evidence")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.75)",borderRadius:isMobile?12:14,padding:isMobile?"10px 14px":"15px 30px",color:C.white,fontSize:isMobile?13:16,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK}}>Export ready first</button>
             </div>
           </div>
@@ -4548,6 +4551,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
             );
           })}
         </div>}
+        </>}
       </div>
       </main>
       {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
@@ -4942,7 +4946,7 @@ export default function App() {
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
     :session?.type==="factory"?<FactoryApp user={session.user} onLogout={logout}/>
-    :session?.type==="buyer"?(session.showQuotes?<BuyerQuotesPage buyer={session.buyer} onLogout={logout} onBack={()=>setSession({...session,showQuotes:false})} onViewPortal={factoryId=>setSession(prev=>{const nextFactoryId=factoryId||prev?.buyer?.factory_id||prev?.buyer?.factoryId;return {...prev,buyer:{...prev.buyer,factory_id:nextFactoryId,factoryId:nextFactoryId},showQuotes:false};})}/>:<BuyerPortal factoryId={session.buyer.factory_id||session.buyer.factoryId} buyer={session.buyer} onLogout={logout} onViewQuotes={()=>setSession({...session,showQuotes:true})}/>)
+    :session?.type==="buyer"?<BuyerPortal factoryId={session.buyer.factory_id||session.buyer.factoryId} buyer={session.buyer} onLogout={logout}/>
     :<Login onOwner={()=>{clearCachedProfile();setSession({type:"owner"});}} onFactory={u=>{cacheProfile(u);setSession({type:"factory",user:normalizeProfile(u)});}} onBuyer={b=>{cacheProfile(b);setSession({type:"buyer",buyer:normalizeProfile(b)});}}/>;
 }
 
