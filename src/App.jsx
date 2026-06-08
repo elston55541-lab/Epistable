@@ -4319,6 +4319,8 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
   const showInventorySkeleton=inventoryLoading&&insps.length===0;
+  const tradeExamples=["Export-ready under Rs 500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"];
+  const tradeHasPrompt=tradePrompt.trim().length>0;
   const sidebarItems=[
     {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>openTradeWithPrompt()},
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
@@ -4563,35 +4565,69 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         ))}
       </nav>}
       {tradeOpen&&(
-        <div className="buyer-trade-overlay" style={{position:"fixed",inset:0,background:"rgba(6,18,45,0.42)",zIndex:190,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:isMobile?"0 10px calc(84px + env(safe-area-inset-bottom))":"24px"}} onClick={()=>setTradeOpen(false)}>
-          <div className="buyer-trade-sheet" style={{width:"100%",maxWidth:620,background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?"18px 18px 14px 14px":18,boxShadow:"0 20px 54px rgba(6,18,45,0.22)",padding:isMobile?16:22,boxSizing:"border-box"}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,marginBottom:14}}>
-              <div>
-                <div style={{display:"inline-flex",alignItems:"center",gap:7,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,color:C.primaryD,borderRadius:999,padding:"5px 9px",fontSize:11,fontWeight:700,marginBottom:8}}><Icon name="bot" size={14}/> Trade GPT</div>
-                <div style={{fontSize:20,lineHeight:1.25,fontWeight:700,color:C.text}}>Describe what you need</div>
-                <div style={{fontSize:12,lineHeight:1.55,color:C.textMid,marginTop:3}}>I’ll filter the catalog by stone, budget, and export readiness.</div>
+        <div className="buyer-trade-overlay" style={{position:"fixed",inset:0,background:isMobile?C.white:"rgba(246,248,252,0.96)",zIndex:190,display:"flex",alignItems:isMobile?"stretch":"center",justifyContent:"center",padding:isMobile?"0":"24px"}} onClick={()=>setTradeOpen(false)}>
+          <div className="buyer-trade-sheet buyer-gpt-shell" style={{width:"100%",maxWidth:760,height:isMobile?"100dvh":"min(760px, calc(100dvh - 48px))",background:C.white,border:isMobile?"none":`1px solid ${C.border}`,borderRadius:isMobile?0:18,boxShadow:isMobile?"none":"0 22px 70px rgba(16,24,40,0.12)",boxSizing:"border-box",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+            <div style={{height:58,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,padding:isMobile?"0 14px":"0 18px",flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+                <div style={{width:30,height:30,borderRadius:9,background:"#f2f4f7",display:"flex",alignItems:"center",justifyContent:"center",color:C.textMid,flexShrink:0}}><Icon name="bot" size={16}/></div>
+                <div style={{fontSize:15,fontWeight:700,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Trade GPT</div>
               </div>
-              <button className="buyer-button" onClick={()=>setTradeOpen(false)} style={{width:38,height:38,borderRadius:12,border:`1px solid ${C.border}`,background:"#f9fbfe",color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label="Close Trade GPT"><Icon name="close" size={16}/></button>
+              <button className="buyer-button" onClick={()=>setTradeOpen(false)} style={{width:34,height:34,borderRadius:10,border:"none",background:"transparent",color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label="Close Trade GPT"><Icon name="close" size={17}/></button>
             </div>
-            <textarea value={tradePrompt} onChange={e=>setTradePrompt(e.target.value)} rows={3} placeholder="Example: Need export-ready Makrana White under ₹500/sqft for a hotel lobby" style={{width:"100%",padding:"13px 14px",border:`1px solid ${C.border}`,borderRadius:12,background:"#f9fbfe",fontSize:14,lineHeight:1.55,color:C.text,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
-            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:3,marginBottom:12}}>
-              {["Export-ready under ₹500","Best export readiness","Premium slabs for hotel lobby","Makrana White available"].map(example=>(
-                <button key={example} className="buyer-chip" onClick={()=>{setTradePrompt(example);applyTradePrompt(example);}} style={{flex:"0 0 auto",border:`1px solid ${C.primaryBorder}`,background:C.primaryBg,color:C.primaryD,borderRadius:999,padding:"8px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>{example}</button>
-              ))}
-            </div>
-            <button className="buyer-button" onClick={()=>applyTradePrompt()} disabled={!tradePrompt.trim()} style={{width:"100%",background:tradePrompt.trim()?C.primary:C.surface,border:`1px solid ${tradePrompt.trim()?C.primary:C.border}`,borderRadius:12,padding:"13px 14px",color:tradePrompt.trim()?C.white:C.textDim,fontSize:14,fontWeight:700,cursor:tradePrompt.trim()?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:14}}>Apply to catalog</button>
-            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12}}>
-              <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:8}}>Best current matches</div>
-              {tradeRecommendations.length?tradeRecommendations.map(({slab,evidence},idx)=>(
-                <button key={slab.id} className="buyer-button" onClick={()=>{setTradePrompt(slab.stone);applyTradePrompt(slab.stone);}} style={{width:"100%",display:"grid",gridTemplateColumns:"auto minmax(0,1fr) auto",gap:10,alignItems:"center",background:idx===0?C.primaryBg:"#fff",border:`1px solid ${idx===0?C.primaryBorder:C.border}`,borderRadius:12,padding:"10px 11px",marginTop:8,textAlign:"left",cursor:"pointer",fontFamily:FONT_STACK}}>
-                  <div style={{width:32,height:32,borderRadius:10,background:idx===0?C.primary:C.surface,color:idx===0?C.white:C.textMid,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800}}>{idx+1}</div>
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</div>
-                    <div style={{fontSize:11,color:C.textMid,marginTop:2}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Export readiness {evidence.score}%</div>
+
+            <div style={{flex:1,overflowY:"auto",padding:isMobile?"22px 14px 18px":"30px 24px 22px"}}>
+              <div style={{maxWidth:620,margin:"0 auto",display:"flex",flexDirection:"column",gap:18}}>
+                <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <div style={{width:30,height:30,borderRadius:9,background:"#f2f4f7",display:"flex",alignItems:"center",justifyContent:"center",color:C.textMid,flexShrink:0}}><Icon name="bot" size={15}/></div>
+                  <div style={{fontSize:15,lineHeight:1.65,color:C.text,maxWidth:520}}>
+                    Tell me the stone, budget, delivery market, or export readiness you need. I can narrow the catalog for you.
                   </div>
-                  <Icon name="filter" size={15} color={C.primary}/>
-                </button>
-              )):<div style={{fontSize:12,lineHeight:1.55,color:C.textMid,background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:12}}>Ask for budget, stone type, or export readiness to get recommendations.</div>}
+                </div>
+
+                {!tradeHasPrompt&&(
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginLeft:isMobile?0:42}}>
+                    {tradeExamples.map(example=>(
+                      <button key={example} className="buyer-chip" onClick={()=>setTradePrompt(example)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px 14px",fontSize:13,lineHeight:1.35,fontWeight:600,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>{example}</button>
+                    ))}
+                  </div>
+                )}
+
+                {tradeHasPrompt&&(
+                  <>
+                    <div style={{display:"flex",justifyContent:"flex-end"}}>
+                      <div style={{maxWidth:"80%",background:"#f2f4f7",borderRadius:"18px 18px 4px 18px",padding:"11px 14px",fontSize:14,lineHeight:1.55,color:C.text}}>{tradePrompt.trim()}</div>
+                    </div>
+                    <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                      <div style={{width:30,height:30,borderRadius:9,background:"#f2f4f7",display:"flex",alignItems:"center",justifyContent:"center",color:C.textMid,flexShrink:0}}><Icon name="bot" size={15}/></div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,lineHeight:1.6,color:C.text,marginBottom:12}}>
+                          {tradeRecommendations.length?`I found ${tradeRecommendations.length} good match${tradeRecommendations.length===1?"":"es"}. Apply this to update the catalog.`:"I do not see a strong match yet. Try adding a stone name, budget, export market, or readiness requirement."}
+                        </div>
+                        {tradeRecommendations.length>0&&(
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            {tradeRecommendations.slice(0,3).map(({slab,evidence})=>(
+                              <button key={slab.id} className="buyer-button" onClick={()=>{setTradePrompt(slab.stone);applyTradePrompt(slab.stone);}} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:"11px 12px",textAlign:"left",cursor:"pointer",fontFamily:FONT_STACK}}>
+                                <span style={{minWidth:0}}>
+                                  <span style={{display:"block",fontSize:13,fontWeight:700,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.stone}</span>
+                                  <span style={{display:"block",fontSize:12,color:C.textDim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{slab.grade} · {fmtMoney(slab.pricePerSqFt)}/sqft · Export readiness {evidence.score}%</span>
+                                </span>
+                                <Icon name="filter" size={15} color={C.textDim}/>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div style={{borderTop:`1px solid ${C.border}`,padding:isMobile?"12px 12px calc(12px + env(safe-area-inset-bottom))":"14px 18px 18px",flexShrink:0,background:C.white}}>
+              <div style={{maxWidth:620,margin:"0 auto",display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:10,alignItems:"end",border:`1px solid ${C.border}`,borderRadius:18,padding:"8px 8px 8px 14px",background:"#fff"}}>
+                <textarea value={tradePrompt} onChange={e=>setTradePrompt(e.target.value)} rows={1} placeholder="Ask for slabs, budget, export readiness..." style={{width:"100%",minHeight:38,maxHeight:120,padding:"8px 0",border:"none",background:"transparent",fontSize:14,lineHeight:1.45,color:C.text,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&tradePrompt.trim()){e.preventDefault();applyTradePrompt();}}}/>
+                <button className="buyer-button" onClick={()=>applyTradePrompt()} disabled={!tradeHasPrompt} style={{width:38,height:38,borderRadius:12,background:tradeHasPrompt?C.primary:C.surface,border:`1px solid ${tradeHasPrompt?C.primary:C.border}`,color:tradeHasPrompt?C.white:C.textDim,cursor:tradeHasPrompt?"pointer":"not-allowed",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Apply to catalog"><Icon name="filter" size={16}/></button>
+              </div>
             </div>
           </div>
         </div>
