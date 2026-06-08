@@ -4550,7 +4550,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>}
       </div>
       </main>
-      {isMobile&&!tradeOpen&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
+      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
         {mobileNavItems.map(item=>(
           <button
             key={item.label}
@@ -4565,8 +4565,8 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         ))}
       </nav>}
       {tradeOpen&&(
-        <div className="buyer-trade-overlay" style={{position:"fixed",inset:0,background:isMobile?C.white:"rgba(246,248,252,0.96)",zIndex:260,display:"flex",alignItems:isMobile?"stretch":"center",justifyContent:"center",padding:isMobile?"0":"24px"}} onClick={()=>setTradeOpen(false)}>
-          <div className="buyer-trade-sheet buyer-gpt-shell" style={{width:"100%",maxWidth:760,height:isMobile?"100dvh":"min(760px, calc(100dvh - 48px))",background:C.white,border:isMobile?"none":`1px solid ${C.border}`,borderRadius:isMobile?0:18,boxShadow:isMobile?"none":"0 22px 70px rgba(16,24,40,0.12)",boxSizing:"border-box",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+        <div className="buyer-trade-overlay" style={{position:"fixed",top:0,left:0,right:0,bottom:isMobile?"calc(92px + env(safe-area-inset-bottom))":0,background:isMobile?C.white:"rgba(246,248,252,0.96)",zIndex:isMobile?120:260,display:"flex",alignItems:isMobile?"stretch":"center",justifyContent:"center",padding:isMobile?"0":"24px"}} onClick={()=>setTradeOpen(false)}>
+          <div className="buyer-trade-sheet buyer-gpt-shell" style={{width:"100%",maxWidth:760,height:isMobile?"100%":"min(760px, calc(100dvh - 48px))",background:C.white,border:isMobile?"none":`1px solid ${C.border}`,borderRadius:isMobile?0:18,boxShadow:isMobile?"none":"0 22px 70px rgba(16,24,40,0.12)",boxSizing:"border-box",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
             <div style={{height:58,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,padding:isMobile?"0 14px":"0 18px",flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
                 <div style={{width:30,height:30,borderRadius:9,background:"#f2f4f7",display:"flex",alignItems:"center",justifyContent:"center",color:C.textMid,flexShrink:0}}><Icon name="bot" size={16}/></div>
@@ -4624,7 +4624,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
               </div>
             </div>
 
-            <div style={{borderTop:`1px solid ${C.border}`,padding:isMobile?"12px 12px calc(12px + env(safe-area-inset-bottom))":"14px 18px 18px",flexShrink:0,background:C.white}}>
+            <div style={{borderTop:`1px solid ${C.border}`,padding:isMobile?"12px":"14px 18px 18px",flexShrink:0,background:C.white}}>
               <div style={{maxWidth:620,margin:"0 auto",display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:10,alignItems:"end",border:`1px solid ${C.border}`,borderRadius:18,padding:"8px 8px 8px 14px",background:"#fff"}}>
                 <textarea value={tradePrompt} onChange={e=>setTradePrompt(e.target.value)} rows={1} placeholder="Ask for slabs, budget, export readiness..." style={{width:"100%",minHeight:38,maxHeight:120,padding:"8px 0",border:"none",background:"transparent",fontSize:14,lineHeight:1.45,color:C.text,fontFamily:FONT_STACK,resize:"none",outline:"none",boxSizing:"border-box"}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&tradePrompt.trim()){e.preventDefault();applyTradePrompt();}}}/>
                 <button className="buyer-button" onClick={()=>applyTradePrompt()} disabled={!tradeHasPrompt} style={{width:38,height:38,borderRadius:12,background:tradeHasPrompt?C.primary:C.surface,border:`1px solid ${tradeHasPrompt?C.primary:C.border}`,color:tradeHasPrompt?C.white:C.textDim,cursor:tradeHasPrompt?"pointer":"not-allowed",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center"}} aria-label="Apply to catalog"><Icon name="filter" size={16}/></button>
