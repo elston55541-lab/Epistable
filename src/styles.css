@@ -77,8 +77,8 @@ select {
 }
 
 .buyer-enter {
-  animation: buyer-enter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--i, 0) * 28ms);
+  animation: buyer-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 24ms);
 }
 
 .buyer-skeleton {
@@ -109,6 +109,28 @@ select {
   }
 }
 
+@keyframes buyer-results-focus {
+  from {
+    opacity: 0.92;
+    transform: translateY(4px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes buyer-evidence-in {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(var(--buyer-readiness-scale));
+  }
+}
+
 .buyer-product-card,
 .buyer-action-card,
 .buyer-chip,
@@ -119,7 +141,9 @@ select {
     box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
     background 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    width 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .buyer-button:focus-visible,
@@ -141,17 +165,69 @@ select {
   transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.buyer-results-grid {
+  animation: buyer-results-focus 210ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.buyer-evidence-fill {
+  transform-origin: left center;
+  animation: buyer-evidence-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+
+.buyer-mobile-nav {
+  isolation: isolate;
+}
+
+.buyer-mobile-nav-indicator {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 7px;
+  width: calc((100% - 37px) / 4);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0067c5, #004987);
+  box-shadow: 0 12px 26px rgba(0, 87, 168, 0.28);
+  transition:
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.buyer-mobile-nav-item {
+  position: relative;
+  z-index: 1;
+}
+
+.buyer-mobile-nav-item.is-active svg,
+.buyer-mobile-nav-item.is-active span {
+  transform: translateY(-1px);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.buyer-app-trade-open main > .buyer-topbar,
+.buyer-app-trade-open main > div {
+  filter: blur(1px);
+  opacity: 0.68;
+  transform: translateY(-2px);
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .buyer-sheet {
   animation: buyer-sheet 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 .buyer-trade-overlay {
-  animation: buyer-overlay-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: buyer-overlay-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 .buyer-trade-sheet {
   transform-origin: bottom center;
-  animation: buyer-trade-sheet-in 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: buyer-trade-sheet-in 230ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes buyer-sheet {
@@ -214,6 +290,8 @@ select {
 
 @media (prefers-reduced-motion: reduce) {
   .buyer-enter,
+  .buyer-results-grid,
+  .buyer-evidence-fill,
   .buyer-skeleton,
   .buyer-sheet,
   .buyer-trade-overlay,
@@ -232,9 +310,22 @@ select {
     transition-duration: 0.01ms !important;
   }
 
+  .buyer-mobile-nav-indicator,
+  .buyer-mobile-nav-item,
+  .buyer-mobile-nav-item.is-active svg,
+  .buyer-mobile-nav-item.is-active span,
+  .buyer-app-trade-open main > .buyer-topbar,
+  .buyer-app-trade-open main > div {
+    transition-duration: 0.01ms !important;
+  }
+
   .buyer-product-card:hover,
   .buyer-action-card:hover,
-  .buyer-product-card:hover .buyer-image {
+  .buyer-product-card:hover .buyer-image,
+  .buyer-app-trade-open main > .buyer-topbar,
+  .buyer-app-trade-open main > div {
     transform: none !important;
+    filter: none !important;
+    opacity: 1 !important;
   }
 }

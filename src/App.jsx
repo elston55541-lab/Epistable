@@ -4323,6 +4323,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
   const tradeExamples=isMobile?[]:["Export-ready under Rs 500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"];
   const tradeHasPrompt=tradePrompt.trim().length>0;
   const canOpenBuyerQuotes=!!buyer?.email;
+  const resultMotionKey=[viewMode,filter,stoneFilter,supplierFilter,exportFilter,statusFilter,maxPrice,sortBy,search].join("|");
   const sidebarItems=[
     {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>openTradeWithPrompt()},
     {label:"Catalog",mobileLabel:"Catalog",icon:"package",active:viewMode==="all"&&!tradeOpen,action:()=>{setViewMode("all");setTradeOpen(false);}},
@@ -4350,8 +4351,15 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
     {label:"Saved",mobileLabel:"Saved",icon:"check",active:viewMode==="saved"&&!tradeOpen,action:()=>{setViewMode("saved");setTradeOpen(false);}},
     {label:"Quotes",mobileLabel:"Quotes",icon:"message",active:viewMode==="quotes"&&!tradeOpen,action:canOpenBuyerQuotes?()=>{setViewMode("quotes");setTradeOpen(false);}:null},
   ];
+  const activeMobileNavIndex=Math.max(0,mobileNavItems.findIndex(item=>item.active));
+  const mobileNavIndicatorTransform=[
+    "translateX(0) translateY(-18px)",
+    "translateX(calc(100% + 7px)) translateY(-18px)",
+    "translateX(calc(200% + 14px)) translateY(-18px)",
+    "translateX(calc(300% + 21px)) translateY(-18px)",
+  ][activeMobileNavIndex]||"translateX(0) translateY(-18px)";
   return (
-    <div className="buyer-app" style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
+    <div className={`buyer-app${tradeOpen?" buyer-app-trade-open":""}`} style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {!isMobile&&<aside className="buyer-sidebar" style={{position:"sticky",top:0,height:"100vh",padding:"28px 14px 16px",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:24}}>
         <div style={{padding:"0 16px 2px"}}>
@@ -4474,7 +4482,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
           </div>
         </section>
         {showInventorySkeleton?
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?26:28,margin:isMobile?"0 32px":undefined}}>
+        <div className="buyer-results-grid" key={resultMotionKey} style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(300px,1fr))",gap:isMobile?26:28,margin:isMobile?"0 32px":undefined}}>
           {[0,1,2].map(i=>(
             <div key={i} className="buyer-product-card buyer-enter" style={{"--i":i+2,background:C.white,border:`1px solid ${C.border}`,borderRadius:isMobile?18:16,overflow:"hidden",minHeight:isMobile?"auto":520,display:"flex",flexDirection:"column"}}>
               <div className="buyer-skeleton" style={{height:isMobile?190:238}}/>
@@ -4533,7 +4541,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
                         <div style={{fontSize:12,color:readiness>=70?C.green:C.amber,fontWeight:800}}>{readiness}%</div>
                       </div>
                       <div style={{height:6,background:"#edf2f8",borderRadius:999,overflow:"hidden",marginBottom:8}}>
-                        <span className="buyer-evidence-fill" style={{display:"block",height:"100%",width:`${Math.max(8,Math.min(100,readiness))}%`,background:readiness>=70?C.green:C.primary,borderRadius:999}}/>
+                        <span className="buyer-evidence-fill" style={{"--buyer-readiness-scale":Math.max(0.08,Math.min(1,readiness/100)),display:"block",height:"100%",width:"100%",transform:"scaleX(var(--buyer-readiness-scale))",background:readiness>=70?C.green:C.primary,borderRadius:999}}/>
                       </div>
                     </div>
                   </div>
@@ -4552,14 +4560,15 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
         </>}
       </div>
       </main>
-      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
+      {isMobile&&<nav className="buyer-mobile-nav" aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
+        <span className="buyer-mobile-nav-indicator" aria-hidden="true" style={{transform:mobileNavIndicatorTransform}}/>
         {mobileNavItems.map(item=>(
           <button
             key={item.label}
-            className="buyer-button"
+            className={`buyer-button buyer-mobile-nav-item${item.active?" is-active":""}`}
             onClick={item.action||undefined}
             disabled={!item.action&&!item.active}
-            style={{minHeight:item.active?58:52,background:item.active?C.primary:"#f9fbfe",border:`1px solid ${item.active?C.primary:"#eef2f7"}`,borderRadius:item.active?999:12,color:item.active?C.white:"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:item.action||item.active?1:0.62,padding:"6px 4px",transform:item.active?"translateY(-18px)":"none",boxShadow:item.active?"0 12px 26px rgba(0,87,168,0.28)":"none"}}
+            style={{minHeight:item.active?58:52,background:item.active?"transparent":"#f9fbfe",border:`1px solid ${item.active?"transparent":"#eef2f7"}`,borderRadius:item.active?999:12,color:item.active?C.white:"#5c6678",fontSize:11,fontWeight:700,cursor:item.action||item.active?"pointer":"default",fontFamily:FONT_STACK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:item.action||item.active?1:0.62,padding:"6px 4px",transform:item.active?"translateY(-18px)":"none",boxShadow:"none"}}
           >
             <Icon name={item.icon} size={17}/>
             <span style={{whiteSpace:"nowrap",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{item.mobileLabel||item.label}</span>
