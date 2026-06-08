@@ -4319,7 +4319,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
   const buyerInitials=(buyer?.name||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const activeFilterCount=[filter!=="All",viewMode!=="all",stoneFilter!=="All",supplierFilter!=="All",exportFilter!=="All",statusFilter!=="available",!!maxPrice,sortBy!=="newest",!!search].filter(Boolean).length;
   const showInventorySkeleton=inventoryLoading&&insps.length===0;
-  const tradeExamples=["Export-ready under Rs 500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"];
+  const tradeExamples=isMobile?[]:["Export-ready under Rs 500","Best evidence first","Premium slabs for hotel lobby","Makrana White available"];
   const tradeHasPrompt=tradePrompt.trim().length>0;
   const sidebarItems=[
     {label:"Trade GPT",mobileLabel:"GPT",icon:"bot",action:()=>openTradeWithPrompt()},
@@ -4550,7 +4550,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         </div>}
       </div>
       </main>
-      {isMobile&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
+      {isMobile&&!tradeOpen&&<nav aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,0.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
         {mobileNavItems.map(item=>(
           <button
             key={item.label}
@@ -4565,7 +4565,7 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
         ))}
       </nav>}
       {tradeOpen&&(
-        <div className="buyer-trade-overlay" style={{position:"fixed",inset:0,background:isMobile?C.white:"rgba(246,248,252,0.96)",zIndex:190,display:"flex",alignItems:isMobile?"stretch":"center",justifyContent:"center",padding:isMobile?"0":"24px"}} onClick={()=>setTradeOpen(false)}>
+        <div className="buyer-trade-overlay" style={{position:"fixed",inset:0,background:isMobile?C.white:"rgba(246,248,252,0.96)",zIndex:260,display:"flex",alignItems:isMobile?"stretch":"center",justifyContent:"center",padding:isMobile?"0":"24px"}} onClick={()=>setTradeOpen(false)}>
           <div className="buyer-trade-sheet buyer-gpt-shell" style={{width:"100%",maxWidth:760,height:isMobile?"100dvh":"min(760px, calc(100dvh - 48px))",background:C.white,border:isMobile?"none":`1px solid ${C.border}`,borderRadius:isMobile?0:18,boxShadow:isMobile?"none":"0 22px 70px rgba(16,24,40,0.12)",boxSizing:"border-box",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
             <div style={{height:58,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,padding:isMobile?"0 14px":"0 18px",flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
@@ -4575,16 +4575,17 @@ function BuyerPortal({factoryId,onBack,buyer,onViewQuotes,onLogout}) {
               <button className="buyer-button" onClick={()=>setTradeOpen(false)} style={{width:34,height:34,borderRadius:10,border:"none",background:"transparent",color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label="Close Trade GPT"><Icon name="close" size={17}/></button>
             </div>
 
-            <div style={{flex:1,overflowY:"auto",padding:isMobile?"22px 14px 18px":"30px 24px 22px"}}>
+            <div style={{flex:1,overflowY:"auto",padding:isMobile?"34px 18px 18px":"30px 24px 22px"}}>
               <div style={{maxWidth:620,margin:"0 auto",display:"flex",flexDirection:"column",gap:18}}>
-                <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                  <div style={{width:30,height:30,borderRadius:9,background:"#f2f4f7",display:"flex",alignItems:"center",justifyContent:"center",color:C.textMid,flexShrink:0}}><Icon name="bot" size={15}/></div>
-                  <div style={{fontSize:15,lineHeight:1.65,color:C.text,maxWidth:520}}>
-                    Tell me the stone, budget, delivery market, or export readiness you need. I can narrow the catalog for you.
+                <div style={{display:"flex",gap:12,alignItems:"flex-start",justifyContent:isMobile?"center":"flex-start",textAlign:isMobile?"center":"left"}}>
+                  {!isMobile&&<div style={{width:30,height:30,borderRadius:9,background:"#f2f4f7",display:"flex",alignItems:"center",justifyContent:"center",color:C.textMid,flexShrink:0}}><Icon name="bot" size={15}/></div>}
+                  <div style={{fontSize:isMobile?16:15,lineHeight:1.65,color:C.text,maxWidth:isMobile?300:520}}>
+                    {isMobile?"What are you looking for?":"Tell me the stone, budget, delivery market, or export readiness you need. I can narrow the catalog for you."}
+                    {isMobile&&<div style={{fontSize:13,lineHeight:1.55,color:C.textDim,marginTop:8}}>Ask in plain language. I will filter the catalog for you.</div>}
                   </div>
                 </div>
 
-                {!tradeHasPrompt&&(
+                {!tradeHasPrompt&&tradeExamples.length>0&&(
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginLeft:isMobile?0:42}}>
                     {tradeExamples.map(example=>(
                       <button key={example} className="buyer-chip" onClick={()=>setTradePrompt(example)} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px 14px",fontSize:13,lineHeight:1.35,fontWeight:600,color:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>{example}</button>
