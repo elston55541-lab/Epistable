@@ -4906,6 +4906,7 @@ function PublicQuotePage({quoteId}) {
 function SupplierProfileMockup() {
   const {isMobile}=useBP();
   const [mode,setMode]=useState("visual");
+  const [buyerLens,setBuyerLens]=useState("Europe");
   const heroImage="/mockups/supplier-profile-hero.png";
   const factoryImages=[
     {label:"Slab inspection",src:"https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",detail:"Current Makrana White lot photographed before quote"},
@@ -4948,6 +4949,15 @@ function SupplierProfileMockup() {
     {label:"Response",value:78,color:C.amber},
   ];
   const capabilityChips=["Makrana White","Export packing","Cut-to-size","UAE/Qatar","3-5 day lead","English desk"];
+  const buyerLenses={
+    International:{score:82,title:"International readiness",chips:["Export docs","Traceable lots","Packing photos"],focus:["Quality proof","Export packing","Named contact"]},
+    Europe:{score:78,title:"European buyer lens",chips:["Documentation","Traceability","Consistency"],focus:["Invoice + packing list","Lot-level source","Tolerance control"]},
+    GCC:{score:86,title:"GCC project lens",chips:["Availability","Speed","Large lots"],focus:["Ready stock","Hotel projects","Fast dispatch"]},
+    "North America":{score:74,title:"North America lens",chips:["Sample match","Claims trail","Email record"],focus:["Sample-to-shipment","Defect disclosure","Change history"]},
+    Domestic:{score:88,title:"Domestic buyer lens",chips:["Price","Availability","Delivery"],focus:["Local dispatch","Known supplier","Fast quote"]},
+    "Design / Project":{score:80,title:"Architect lens",chips:["Finish","Color range","References"],focus:["Visual consistency","Sample confidence","Project supply"]},
+  };
+  const activeLens=buyerLenses[buyerLens];
   const WireBlock=({h=18,w="100%",label})=>(
     <div style={{display:"grid",gap:8}}>
       {label&&<div style={{fontSize:11,fontWeight:700,color:C.textDim}}>{label}</div>}
@@ -5004,11 +5014,11 @@ function SupplierProfileMockup() {
             <div style={{width:"100%",display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.25fr) 360px",gap:24,alignItems:"end"}}>
               <div>
                 <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.32)",borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:800,marginBottom:14}}>
-                  <Icon name="verified" size={14}/> Buyer trust snapshot
+                  <Icon name="verified" size={14}/> Supplier trust dossier
                 </div>
                 <h1 style={{margin:"0 0 10px",fontSize:isMobile?34:52,lineHeight:1.02,letterSpacing:0,fontWeight:850}}>Sharma Marble Works</h1>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
-                  {["Makrana White","Export packing","Named buyer desk"].map(tag=>(
+                  {["Quality proof","Traceable lots","Export packing","Named people"].map(tag=>(
                     <span key={tag} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"7px 10px",fontSize:12,fontWeight:800}}>{tag}</span>
                   ))}
                 </div>
@@ -5037,10 +5047,40 @@ function SupplierProfileMockup() {
             ))}
           </div>
         </section>
+        <section style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,padding:isMobile?14:18,boxShadow:"0 14px 34px rgba(16,24,40,0.06)",marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,flexWrap:"wrap",marginBottom:14}}>
+            <SectionTitle title="Buyer readiness" subtitle="Same supplier, different buyer priorities." compact/>
+            <div style={{display:"flex",gap:7,overflowX:"auto",maxWidth:"100%"}}>
+              {Object.keys(buyerLenses).map(lens=>(
+                <button key={lens} onClick={()=>setBuyerLens(lens)} style={{background:buyerLens===lens?C.primary:C.surface,border:`1px solid ${buyerLens===lens?C.primary:C.border}`,borderRadius:999,color:buyerLens===lens?C.white:C.textMid,padding:"8px 11px",fontSize:12,fontWeight:850,cursor:"pointer",fontFamily:FONT_STACK,whiteSpace:"nowrap"}}>{lens}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"180px 1fr 1fr",gap:12,alignItems:"stretch"}}>
+            <div style={{background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:16,padding:16,display:"grid",placeItems:"center",textAlign:"center"}}>
+              <div style={{fontSize:38,fontWeight:950,color:C.primaryD,lineHeight:1}}>{activeLens.score}</div>
+              <div style={{fontSize:11,fontWeight:900,color:C.primary,marginTop:5}}>readiness</div>
+            </div>
+            <div style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:16,padding:16}}>
+              <div style={{fontSize:14,fontWeight:900,color:C.text,marginBottom:10}}>{activeLens.title}</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {activeLens.chips.map(chip=><span key={chip} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:999,padding:"7px 10px",fontSize:12,fontWeight:850,color:C.textMid}}>{chip}</span>)}
+              </div>
+            </div>
+            <div style={{display:"grid",gap:8}}>
+              {activeLens.focus.map((item,i)=>(
+                <div key={item} style={{display:"flex",alignItems:"center",gap:10,background:i===0?C.greenBg:C.surface,border:`1px solid ${i===0?C.greenBorder:C.border}`,borderRadius:12,padding:"10px 12px"}}>
+                  <Icon name="check" size={14} color={i===0?C.green:C.primary}/>
+                  <span style={{fontSize:12,fontWeight:850,color:C.text}}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"0.92fr 1.08fr",gap:16,alignItems:"start"}}>
           <div style={{display:"grid",gap:16}}>
             <Card style={{padding:20}}>
-              <SectionTitle title="Buyer confidence" subtitle="Quick visual read before opening details."/>
+              <SectionTitle title="Universal trust core" subtitle="Quality, export, response."/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,alignItems:"center"}}>
                 <div style={{height:164,borderRadius:18,background:`conic-gradient(${C.green} 0 82%, #edf2f8 82% 100%)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <div style={{width:112,height:112,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",boxShadow:"inset 0 0 0 1px rgba(16,24,40,0.06)"}}>
@@ -5065,7 +5105,7 @@ function SupplierProfileMockup() {
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="People" subtitle="Who owns the buyer experience."/>
+              <SectionTitle title="Human accountability" subtitle="Named roles, not a faceless supplier."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:10}}>
                 {people.map((p,i)=>(
                   <div key={p.name} style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden"}}>
@@ -5079,7 +5119,7 @@ function SupplierProfileMockup() {
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="Capability" subtitle="What this seller can actually handle."/>
+              <SectionTitle title="Supply capability" subtitle="Material, capacity, speed."/>
               <div style={{display:"flex",flexWrap:"wrap",gap:9}}>
                 {capabilityChips.map(chip=>(
                   <span key={chip} style={{display:"inline-flex",alignItems:"center",gap:7,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,padding:"8px 11px",fontSize:12,fontWeight:850,color:C.primaryD}}>
@@ -5091,7 +5131,7 @@ function SupplierProfileMockup() {
           </div>
           <div style={{display:"grid",gap:16}}>
             <Card style={{padding:20}}>
-              <SectionTitle title="Image trail" subtitle="Current-lot proof, at a glance."/>
+              <SectionTitle title="Quality proof" subtitle="Photos tied to actual lots."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.15fr 0.85fr",gap:12}}>
                 <img src={factoryImages[0].src} alt={factoryImages[0].label} style={{width:"100%",height:isMobile?210:278,objectFit:"cover",borderRadius:14,border:`1px solid ${C.border}`}}/>
                 <div style={{display:"grid",gap:12}}>
@@ -5108,7 +5148,7 @@ function SupplierProfileMockup() {
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="Evidence" subtitle="Green is ready. Amber needs detail."/>
+              <SectionTitle title="Document evidence" subtitle="Compliance and traceability status."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
                 {evidence.map(e=>(
                   <div key={e.label} style={{background:e.bg,border:`1px solid ${e.border}`,borderRadius:14,padding:14,display:"grid",gridTemplateColumns:"48px 1fr auto",gap:12,alignItems:"center"}}>
@@ -5125,7 +5165,7 @@ function SupplierProfileMockup() {
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="Proof of life" subtitle="Recent activity without opening reports."/>
+              <SectionTitle title="Operating rhythm" subtitle="Recent signals of responsiveness."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:10,marginBottom:18}}>
                 {recent.map((item,i)=>(
                   <div key={item} style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:14,padding:12,minHeight:92,display:"grid",alignContent:"space-between"}}>
@@ -5164,9 +5204,9 @@ function MockupTopbar({mode,setMode}) {
   );
 }
 
-function SectionTitle({title,subtitle}) {
+function SectionTitle({title,subtitle,compact=false}) {
   return (
-    <div style={{marginBottom:16}}>
+    <div style={{marginBottom:compact?0:16}}>
       <div style={{fontSize:15,fontWeight:850,color:C.text,marginBottom:3}}>{title}</div>
       {subtitle&&<div style={{fontSize:12,lineHeight:1.55,color:C.textDim}}>{subtitle}</div>}
     </div>
