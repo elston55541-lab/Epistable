@@ -4903,9 +4903,204 @@ function PublicQuotePage({quoteId}) {
   );
 }
 
+function SupplierProfileMockup() {
+  const {isMobile}=useBP();
+  const [mode,setMode]=useState("visual");
+  const trustStats=[
+    {label:"Verified slabs",value:"186",detail:"74 inspected in the last 30 days"},
+    {label:"Export docs",value:"92%",detail:"Traceability and packing evidence coverage"},
+    {label:"Quote response",value:"1 day",detail:"Median buyer response time"},
+    {label:"Active since",value:"2008",detail:"Family-operated Makrana supplier"},
+  ];
+  const evidence=[
+    {label:"GST and IEC",status:"Verified",detail:"Business identity and export code on file",color:C.green,bg:C.greenBg,border:C.greenBorder},
+    {label:"Traceability",status:"Strong",detail:"Batch, source, block, and operator captured on most inspected slabs",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+    {label:"Packing evidence",status:"Available",detail:"Recent dispatch photos and pre-loading checks attached",color:C.green,bg:C.greenBg,border:C.greenBorder},
+    {label:"Certification",status:"Partial",detail:"Factory documents present. Third-party lab tests vary by slab",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+  ];
+  const people=[
+    {name:"Arvind Sharma",role:"Owner",detail:"Second-generation stone operator. Handles pricing and long-term buyer relationships."},
+    {name:"Meera Joshi",role:"Buyer desk",detail:"English and Hindi. Shares quotes, documents, and shipment updates."},
+    {name:"Ramesh Gurjar",role:"Dispatch lead",detail:"Coordinates packing photos, vehicle loading, and final handover checks."},
+  ];
+  const capabilities=[
+    ["Primary stones","Makrana White, Albeta, Dungri"],
+    ["Finishes","Polished, honed, leather, cut-to-size"],
+    ["Monthly capacity","38,000-45,000 sq ft"],
+    ["Export markets","UAE, Qatar, Oman, domestic hotel projects"],
+    ["Typical lead time","3-5 days for available slabs"],
+    ["Languages","Hindi, English"],
+  ];
+  const recent=[
+    "12 Makrana White slabs inspected this week",
+    "Dubai hotel lobby quote sent yesterday",
+    "Packing photos uploaded for 3 accepted orders",
+  ];
+  const WireBlock=({h=18,w="100%",label})=>(
+    <div style={{display:"grid",gap:8}}>
+      {label&&<div style={{fontSize:11,fontWeight:700,color:C.textDim}}>{label}</div>}
+      <div style={{height:h,width:w,background:"#eef3f8",border:"1px solid #dfe7f1",borderRadius:8}}/>
+    </div>
+  );
+  if(mode==="wireframe")return (
+    <div style={{minHeight:"100vh",background:"#f4f6fa",fontFamily:FONT_STACK,color:C.text,padding:isMobile?"18px 14px 32px":"28px"}}>
+      <div style={{maxWidth:1180,margin:"0 auto"}}>
+        <MockupTopbar mode={mode} setMode={setMode}/>
+        <Card style={{padding:isMobile?16:24,marginBottom:16}}>
+          <WireBlock h={isMobile?180:240} label="Hero image / factory context"/>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.2fr 0.8fr",gap:18,marginTop:18}}>
+            <div style={{display:"grid",gap:12}}>
+              <WireBlock h={34} w="70%" label="Factory name and location"/>
+              <WireBlock h={18} w="92%" label="Human factory note"/>
+              <WireBlock h={18} w="82%"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {trustStats.map(s=><WireBlock key={s.label} h={72} label={s.label}/>)}
+            </div>
+          </div>
+        </Card>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"0.9fr 1.1fr",gap:16}}>
+          <Card style={{padding:18}}>
+            <WireBlock h={22} w="46%" label="People"/>
+            <div style={{display:"grid",gap:12,marginTop:14}}>
+              {people.map(p=><WireBlock key={p.name} h={72}/>)}
+            </div>
+          </Card>
+          <Card style={{padding:18}}>
+            <WireBlock h={22} w="52%" label="Evidence scorecard"/>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12,marginTop:14}}>
+              {evidence.map(e=><WireBlock key={e.label} h={102}/>)}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div className="supplier-profile-mockup" style={{minHeight:"100vh",background:"#f5f7fb",fontFamily:FONT_STACK,color:C.text,padding:isMobile?"14px 12px 32px":"28px"}}>
+      <div style={{maxWidth:1180,margin:"0 auto"}}>
+        <MockupTopbar mode={mode} setMode={setMode}/>
+        <section style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 18px 50px rgba(16,24,40,0.09)",marginBottom:16}}>
+          <div style={{minHeight:isMobile?260:330,background:"linear-gradient(135deg,rgba(6,18,45,0.9),rgba(0,87,168,0.62)),url('https://images.unsplash.com/photo-1581093458791-9d42e2f26ead?auto=format&fit=crop&w=1600&q=80')",backgroundSize:"cover",backgroundPosition:"center",color:C.white,padding:isMobile?"22px":"34px",display:"flex",alignItems:"flex-end"}}>
+            <div style={{width:"100%",display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.25fr) 360px",gap:24,alignItems:"end"}}>
+              <div>
+                <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.32)",borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:800,marginBottom:14}}>
+                  <Icon name="verified" size={14}/> Supplier Trust Profile
+                </div>
+                <h1 style={{margin:"0 0 10px",fontSize:isMobile?34:52,lineHeight:1.02,letterSpacing:0,fontWeight:850}}>Sharma Marble Works</h1>
+                <div style={{fontSize:isMobile?14:17,lineHeight:1.55,color:"rgba(255,255,255,0.84)",maxWidth:660}}>Makrana-based family supplier with verified slab evidence, export documentation, and named people for quote, inspection, and dispatch follow-through.</div>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:14,padding:16,backdropFilter:"blur(10px)"}}>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",fontWeight:700,marginBottom:8}}>Factory note</div>
+                <div style={{fontSize:14,lineHeight:1.65,color:C.white}}>"We photograph inspected slabs before packing and keep one person accountable for every buyer update until dispatch."</div>
+              </div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:1,background:C.border}}>
+            {trustStats.map(s=>(
+              <div key={s.label} style={{background:C.white,padding:isMobile?"14px 13px":"18px 20px"}}>
+                <div style={{fontSize:isMobile?21:25,fontWeight:850,color:C.primaryD,letterSpacing:0}}>{s.value}</div>
+                <div style={{fontSize:12,fontWeight:800,color:C.text,marginTop:3}}>{s.label}</div>
+                <div style={{fontSize:11,lineHeight:1.5,color:C.textDim,marginTop:4}}>{s.detail}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"0.92fr 1.08fr",gap:16,alignItems:"start"}}>
+          <div style={{display:"grid",gap:16}}>
+            <Card style={{padding:20}}>
+              <SectionTitle title="People buyers can reach" subtitle="Humanness with operational accountability."/>
+              <div style={{display:"grid",gap:12}}>
+                {people.map((p,i)=>(
+                  <div key={p.name} style={{display:"grid",gridTemplateColumns:"44px 1fr",gap:12,alignItems:"start",padding:"12px 0",borderBottom:i<people.length-1?`1px solid ${C.border}`:"none"}}>
+                    <Avi initials={p.name.split(" ").map(x=>x[0]).join("").slice(0,2)} size={44}/>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:800}}>{p.name}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:C.primary,marginTop:1}}>{p.role}</div>
+                      <div style={{fontSize:12,lineHeight:1.65,color:C.textMid,marginTop:5}}>{p.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card style={{padding:20}}>
+              <SectionTitle title="Capability snapshot" subtitle="Practical facts before a buyer starts a conversation."/>
+              <div style={{display:"grid",gap:10}}>
+                {capabilities.map(([label,value])=>(
+                  <div key={label} style={{display:"grid",gridTemplateColumns:"118px 1fr",gap:12,padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <div style={{fontSize:12,fontWeight:700,color:C.textDim}}>{label}</div>
+                    <div style={{fontSize:13,fontWeight:700,lineHeight:1.45}}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+          <div style={{display:"grid",gap:16}}>
+            <Card style={{padding:20}}>
+              <SectionTitle title="Trust evidence" subtitle="What is present, fresh, and buyer-visible."/>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
+                {evidence.map(e=>(
+                  <div key={e.label} style={{background:e.bg,border:`1px solid ${e.border}`,borderRadius:12,padding:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:8}}>
+                      <div style={{fontSize:13,fontWeight:850,color:C.text}}>{e.label}</div>
+                      <span style={{fontSize:11,fontWeight:850,color:e.color,background:C.white,border:`1px solid ${e.border}`,borderRadius:999,padding:"4px 8px"}}>{e.status}</span>
+                    </div>
+                    <div style={{fontSize:12,lineHeight:1.6,color:C.textMid}}>{e.detail}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card style={{padding:20}}>
+              <SectionTitle title="Recent proof of life" subtitle="Signals that the supplier is active and responsive now."/>
+              <div style={{display:"grid",gap:10,marginBottom:18}}>
+                {recent.map(item=>(
+                  <div key={item} style={{display:"flex",gap:10,alignItems:"center",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 12px"}}>
+                    <Icon name="check" size={16} color={C.green}/>
+                    <div style={{fontSize:13,fontWeight:650,color:C.text}}>{item}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                <button className="buyer-button" style={{background:C.primary,border:"none",borderRadius:12,color:C.white,padding:"14px 16px",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>View inventory</button>
+                <button className="buyer-button" style={{background:C.white,border:`1px solid ${C.primaryBorder}`,borderRadius:12,color:C.primaryD,padding:"14px 16px",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Request quote</button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MockupTopbar({mode,setMode}) {
+  return (
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16,flexWrap:"wrap"}}>
+      <div>
+        <div style={{fontSize:12,fontWeight:800,color:C.primary,marginBottom:4}}>Prototype</div>
+        <div style={{fontSize:22,fontWeight:850,color:C.text}}>Supplier trust profile</div>
+      </div>
+      <div style={{display:"inline-grid",gridTemplateColumns:"1fr 1fr",background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:4}}>
+        {["wireframe","visual"].map(id=>(
+          <button key={id} onClick={()=>setMode(id)} style={{background:mode===id?C.primary:"transparent",border:"none",borderRadius:9,color:mode===id?C.white:C.textMid,padding:"9px 12px",fontSize:12,fontWeight:800,textTransform:"capitalize",cursor:"pointer",fontFamily:FONT_STACK}}>{id}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({title,subtitle}) {
+  return (
+    <div style={{marginBottom:16}}>
+      <div style={{fontSize:15,fontWeight:850,color:C.text,marginBottom:3}}>{title}</div>
+      {subtitle&&<div style={{fontSize:12,lineHeight:1.55,color:C.textDim}}>{subtitle}</div>}
+    </div>
+  );
+}
+
 export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const quoteMatch=window.location.pathname.match(/^\/quote\/([^/?#]+)/);
+  const supplierMockupMatch=window.location.pathname==="/supplier-profile-mockup";
   const inviteMatch=window.location.pathname==="/invite";
   function normalizeProfile(profile){
     if(!profile)return profile;
@@ -4949,6 +5144,7 @@ export default function App() {
   async function logout(){try{await signOut();}catch(e){}clearCachedProfile();setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
   if(quoteMatch)return <PublicQuotePage quoteId={decodeURIComponent(quoteMatch[1])}/>;
+  if(supplierMockupMatch)return <SupplierProfileMockup/>;
   if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");cacheProfile(profile);setSession(profileSession(profile));}}/>;
   if(booting)return <Loader/>;
   return session?.type==="owner"?<Owner onLogout={logout}/>
