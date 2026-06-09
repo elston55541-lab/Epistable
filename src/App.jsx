@@ -4906,6 +4906,12 @@ function PublicQuotePage({quoteId}) {
 function SupplierProfileMockup() {
   const {isMobile}=useBP();
   const [mode,setMode]=useState("visual");
+  const heroImage="/mockups/supplier-profile-hero.png";
+  const factoryImages=[
+    {label:"Slab inspection",src:"https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",detail:"Current Makrana White lot photographed before quote"},
+    {label:"Packing check",src:"https://images.unsplash.com/photo-1604079628040-94301bb21b91?auto=format&fit=crop&w=900&q=80",detail:"Wooden crate and edge-protection evidence"},
+    {label:"Dispatch floor",src:"https://images.unsplash.com/photo-1581092921461-39b9d08a9b21?auto=format&fit=crop&w=900&q=80",detail:"Loading lane and inventory handover area"},
+  ];
   const trustStats=[
     {label:"Verified slabs",value:"186",detail:"74 inspected in the last 30 days"},
     {label:"Export docs",value:"92%",detail:"Traceability and packing evidence coverage"},
@@ -4919,9 +4925,9 @@ function SupplierProfileMockup() {
     {label:"Certification",status:"Partial",detail:"Factory documents present. Third-party lab tests vary by slab",color:C.amber,bg:C.amberBg,border:C.amberBorder},
   ];
   const people=[
-    {name:"Arvind Sharma",role:"Owner",detail:"Second-generation stone operator. Handles pricing and long-term buyer relationships."},
-    {name:"Meera Joshi",role:"Buyer desk",detail:"English and Hindi. Shares quotes, documents, and shipment updates."},
-    {name:"Ramesh Gurjar",role:"Dispatch lead",detail:"Coordinates packing photos, vehicle loading, and final handover checks."},
+    {name:"Arvind Sharma",role:"Owner",img:"https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=240&q=80",detail:"Second-generation stone operator. Handles pricing and long-term buyer relationships."},
+    {name:"Meera Joshi",role:"Buyer desk",img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80",detail:"English and Hindi. Shares quotes, documents, and shipment updates."},
+    {name:"Ramesh Gurjar",role:"Dispatch lead",img:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=240&q=80",detail:"Coordinates packing photos, vehicle loading, and final handover checks."},
   ];
   const capabilities=[
     ["Primary stones","Makrana White, Albeta, Dungri"],
@@ -4947,7 +4953,14 @@ function SupplierProfileMockup() {
       <div style={{maxWidth:1180,margin:"0 auto"}}>
         <MockupTopbar mode={mode} setMode={setMode}/>
         <Card style={{padding:isMobile?16:24,marginBottom:16}}>
-          <WireBlock h={isMobile?180:240} label="Hero image / factory context"/>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.25fr 0.75fr",gap:16}}>
+            <WireBlock h={isMobile?180:240} label="Hero image / factory context"/>
+            <div style={{display:"grid",gap:10}}>
+              <WireBlock h={isMobile?58:72} label="Evidence thumbnail"/>
+              <WireBlock h={isMobile?58:72} label="People thumbnail"/>
+              <WireBlock h={isMobile?58:72} label="Packing thumbnail"/>
+            </div>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.2fr 0.8fr",gap:18,marginTop:18}}>
             <div style={{display:"grid",gap:12}}>
               <WireBlock h={34} w="70%" label="Factory name and location"/>
@@ -4981,7 +4994,7 @@ function SupplierProfileMockup() {
       <div style={{maxWidth:1180,margin:"0 auto"}}>
         <MockupTopbar mode={mode} setMode={setMode}/>
         <section style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 18px 50px rgba(16,24,40,0.09)",marginBottom:16}}>
-          <div style={{minHeight:isMobile?260:330,background:"linear-gradient(135deg,rgba(6,18,45,0.9),rgba(0,87,168,0.62)),url('https://images.unsplash.com/photo-1581093458791-9d42e2f26ead?auto=format&fit=crop&w=1600&q=80')",backgroundSize:"cover",backgroundPosition:"center",color:C.white,padding:isMobile?"22px":"34px",display:"flex",alignItems:"flex-end"}}>
+          <div style={{minHeight:isMobile?360:390,background:`linear-gradient(135deg,rgba(6,18,45,0.9),rgba(0,87,168,0.58)),url("${heroImage}")`,backgroundSize:"cover",backgroundPosition:"center",color:C.white,padding:isMobile?"22px":"34px",display:"flex",alignItems:"flex-end"}}>
             <div style={{width:"100%",display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.25fr) 360px",gap:24,alignItems:"end"}}>
               <div>
                 <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.32)",borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:800,marginBottom:14}}>
@@ -4993,6 +5006,11 @@ function SupplierProfileMockup() {
               <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:14,padding:16,backdropFilter:"blur(10px)"}}>
                 <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",fontWeight:700,marginBottom:8}}>Factory note</div>
                 <div style={{fontSize:14,lineHeight:1.65,color:C.white}}>"We photograph inspected slabs before packing and keep one person accountable for every buyer update until dispatch."</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:14}}>
+                  {factoryImages.map(img=>(
+                    <img key={img.label} src={img.src} alt={img.label} style={{width:"100%",height:58,objectFit:"cover",borderRadius:9,border:"1px solid rgba(255,255,255,0.24)"}}/>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -5013,7 +5031,7 @@ function SupplierProfileMockup() {
               <div style={{display:"grid",gap:12}}>
                 {people.map((p,i)=>(
                   <div key={p.name} style={{display:"grid",gridTemplateColumns:"44px 1fr",gap:12,alignItems:"start",padding:"12px 0",borderBottom:i<people.length-1?`1px solid ${C.border}`:"none"}}>
-                    <Avi initials={p.name.split(" ").map(x=>x[0]).join("").slice(0,2)} size={44}/>
+                    <img src={p.img} alt={p.name} style={{width:44,height:44,borderRadius:12,objectFit:"cover",border:`1px solid ${C.border}`}}/>
                     <div>
                       <div style={{fontSize:14,fontWeight:800}}>{p.name}</div>
                       <div style={{fontSize:12,fontWeight:700,color:C.primary,marginTop:1}}>{p.role}</div>
@@ -5036,6 +5054,23 @@ function SupplierProfileMockup() {
             </Card>
           </div>
           <div style={{display:"grid",gap:16}}>
+            <Card style={{padding:20}}>
+              <SectionTitle title="Inspection image trail" subtitle="Photos tied to current inventory, not generic factory decoration."/>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.15fr 0.85fr",gap:12}}>
+                <img src={factoryImages[0].src} alt={factoryImages[0].label} style={{width:"100%",height:isMobile?210:278,objectFit:"cover",borderRadius:14,border:`1px solid ${C.border}`}}/>
+                <div style={{display:"grid",gap:12}}>
+                  {factoryImages.slice(1).map(img=>(
+                    <div key={img.label} style={{display:"grid",gridTemplateColumns:"92px 1fr",gap:12,alignItems:"center",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:12,padding:8}}>
+                      <img src={img.src} alt={img.label} style={{width:92,height:74,objectFit:"cover",borderRadius:9}}/>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:850,color:C.text}}>{img.label}</div>
+                        <div style={{fontSize:11,lineHeight:1.5,color:C.textDim,marginTop:4}}>{img.detail}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
             <Card style={{padding:20}}>
               <SectionTitle title="Trust evidence" subtitle="What is present, fresh, and buyer-visible."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
