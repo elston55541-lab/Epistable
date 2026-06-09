@@ -4919,10 +4919,10 @@ function SupplierProfileMockup() {
     {label:"Active since",value:"2008",detail:"Family-operated Makrana supplier"},
   ];
   const evidence=[
-    {label:"GST and IEC",status:"Verified",detail:"Business identity and export code on file",color:C.green,bg:C.greenBg,border:C.greenBorder},
-    {label:"Traceability",status:"Strong",detail:"Batch, source, block, and operator captured on most inspected slabs",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
-    {label:"Packing evidence",status:"Available",detail:"Recent dispatch photos and pre-loading checks attached",color:C.green,bg:C.greenBg,border:C.greenBorder},
-    {label:"Certification",status:"Partial",detail:"Factory documents present. Third-party lab tests vary by slab",color:C.amber,bg:C.amberBg,border:C.amberBorder},
+    {label:"GST and IEC",status:"Verified",score:"100",icon:"file",color:C.green,bg:C.greenBg,border:C.greenBorder},
+    {label:"Traceability",status:"Strong",score:"88",icon:"qr",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
+    {label:"Packing evidence",status:"Available",score:"94",icon:"box",color:C.green,bg:C.greenBg,border:C.greenBorder},
+    {label:"Certification",status:"Partial",score:"62",icon:"verified",color:C.amber,bg:C.amberBg,border:C.amberBorder},
   ];
   const people=[
     {name:"Arvind Sharma",role:"Owner",img:"https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=240&q=80",detail:"Second-generation stone operator. Handles pricing and long-term buyer relationships."},
@@ -4942,6 +4942,12 @@ function SupplierProfileMockup() {
     "Dubai hotel lobby quote sent yesterday",
     "Packing photos uploaded for 3 accepted orders",
   ];
+  const confidence=[
+    {label:"Quality proof",value:91,color:C.green},
+    {label:"Export ready",value:86,color:C.primary},
+    {label:"Response",value:78,color:C.amber},
+  ];
+  const capabilityChips=["Makrana White","Export packing","Cut-to-size","UAE/Qatar","3-5 day lead","English desk"];
   const WireBlock=({h=18,w="100%",label})=>(
     <div style={{display:"grid",gap:8}}>
       {label&&<div style={{fontSize:11,fontWeight:700,color:C.textDim}}>{label}</div>}
@@ -4994,21 +5000,26 @@ function SupplierProfileMockup() {
       <div style={{maxWidth:1180,margin:"0 auto"}}>
         <MockupTopbar mode={mode} setMode={setMode}/>
         <section style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 18px 50px rgba(16,24,40,0.09)",marginBottom:16}}>
-          <div style={{minHeight:isMobile?360:390,background:`linear-gradient(135deg,rgba(6,18,45,0.9),rgba(0,87,168,0.58)),url("${heroImage}")`,backgroundSize:"cover",backgroundPosition:"center",color:C.white,padding:isMobile?"22px":"34px",display:"flex",alignItems:"flex-end"}}>
+          <div style={{minHeight:isMobile?390:430,background:`linear-gradient(135deg,rgba(6,18,45,0.86),rgba(0,87,168,0.42)),url("${heroImage}")`,backgroundSize:"cover",backgroundPosition:"center",color:C.white,padding:isMobile?"20px":"30px",display:"flex",alignItems:"flex-end"}}>
             <div style={{width:"100%",display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.25fr) 360px",gap:24,alignItems:"end"}}>
               <div>
                 <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.32)",borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:800,marginBottom:14}}>
-                  <Icon name="verified" size={14}/> Supplier Trust Profile
+                  <Icon name="verified" size={14}/> Buyer trust snapshot
                 </div>
                 <h1 style={{margin:"0 0 10px",fontSize:isMobile?34:52,lineHeight:1.02,letterSpacing:0,fontWeight:850}}>Sharma Marble Works</h1>
-                <div style={{fontSize:isMobile?14:17,lineHeight:1.55,color:"rgba(255,255,255,0.84)",maxWidth:660}}>Makrana-based family supplier with verified slab evidence, export documentation, and named people for quote, inspection, and dispatch follow-through.</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
+                  {["Makrana White","Export packing","Named buyer desk"].map(tag=>(
+                    <span key={tag} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"7px 10px",fontSize:12,fontWeight:800}}>{tag}</span>
+                  ))}
+                </div>
               </div>
-              <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:14,padding:16,backdropFilter:"blur(10px)"}}>
-                <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",fontWeight:700,marginBottom:8}}>Factory note</div>
-                <div style={{fontSize:14,lineHeight:1.65,color:C.white}}>"We photograph inspected slabs before packing and keep one person accountable for every buyer update until dispatch."</div>
+              <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:16,padding:12,backdropFilter:"blur(10px)"}}>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:14}}>
                   {factoryImages.map(img=>(
-                    <img key={img.label} src={img.src} alt={img.label} style={{width:"100%",height:58,objectFit:"cover",borderRadius:9,border:"1px solid rgba(255,255,255,0.24)"}}/>
+                    <div key={img.label} style={{position:"relative",overflow:"hidden",borderRadius:11,border:"1px solid rgba(255,255,255,0.24)"}}>
+                      <img src={img.src} alt={img.label} style={{width:"100%",height:86,objectFit:"cover",display:"block"}}/>
+                      <div style={{position:"absolute",left:7,right:7,bottom:7,background:"rgba(6,18,45,0.58)",borderRadius:8,padding:"5px 6px",fontSize:10,fontWeight:850,color:C.white,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{img.label}</div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -5017,9 +5028,11 @@ function SupplierProfileMockup() {
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:1,background:C.border}}>
             {trustStats.map(s=>(
               <div key={s.label} style={{background:C.white,padding:isMobile?"14px 13px":"18px 20px"}}>
-                <div style={{fontSize:isMobile?21:25,fontWeight:850,color:C.primaryD,letterSpacing:0}}>{s.value}</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                  <div style={{fontSize:isMobile?23:29,fontWeight:850,color:C.primaryD,letterSpacing:0}}>{s.value}</div>
+                  <span style={{width:34,height:34,borderRadius:12,background:C.primaryBg,color:C.primary,display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name={s.label==="Quote response"?"message":s.label==="Export docs"?"file":s.label==="Verified slabs"?"verified":"date"} size={16}/></span>
+                </div>
                 <div style={{fontSize:12,fontWeight:800,color:C.text,marginTop:3}}>{s.label}</div>
-                <div style={{fontSize:11,lineHeight:1.5,color:C.textDim,marginTop:4}}>{s.detail}</div>
               </div>
             ))}
           </div>
@@ -5027,35 +5040,58 @@ function SupplierProfileMockup() {
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"0.92fr 1.08fr",gap:16,alignItems:"start"}}>
           <div style={{display:"grid",gap:16}}>
             <Card style={{padding:20}}>
-              <SectionTitle title="People buyers can reach" subtitle="Humanness with operational accountability."/>
-              <div style={{display:"grid",gap:12}}>
-                {people.map((p,i)=>(
-                  <div key={p.name} style={{display:"grid",gridTemplateColumns:"44px 1fr",gap:12,alignItems:"start",padding:"12px 0",borderBottom:i<people.length-1?`1px solid ${C.border}`:"none"}}>
-                    <img src={p.img} alt={p.name} style={{width:44,height:44,borderRadius:12,objectFit:"cover",border:`1px solid ${C.border}`}}/>
+              <SectionTitle title="Buyer confidence" subtitle="Quick visual read before opening details."/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,alignItems:"center"}}>
+                <div style={{height:164,borderRadius:18,background:`conic-gradient(${C.green} 0 82%, #edf2f8 82% 100%)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <div style={{width:112,height:112,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",boxShadow:"inset 0 0 0 1px rgba(16,24,40,0.06)"}}>
                     <div>
-                      <div style={{fontSize:14,fontWeight:800}}>{p.name}</div>
-                      <div style={{fontSize:12,fontWeight:700,color:C.primary,marginTop:1}}>{p.role}</div>
-                      <div style={{fontSize:12,lineHeight:1.65,color:C.textMid,marginTop:5}}>{p.detail}</div>
+                      <div style={{fontSize:34,fontWeight:900,color:C.primaryD,lineHeight:1}}>82</div>
+                      <div style={{fontSize:11,fontWeight:850,color:C.textDim,marginTop:3}}>trust read</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gap:10}}>
+                  {confidence.map(item=>(
+                    <div key={item.label}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:850,color:C.text,marginBottom:5}}>
+                        <span>{item.label}</span><span>{item.value}%</span>
+                      </div>
+                      <div style={{height:8,background:"#edf2f8",borderRadius:999,overflow:"hidden"}}>
+                        <span style={{display:"block",height:"100%",width:`${item.value}%`,background:item.color,borderRadius:999}}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+            <Card style={{padding:20}}>
+              <SectionTitle title="People" subtitle="Who owns the buyer experience."/>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:10}}>
+                {people.map((p,i)=>(
+                  <div key={p.name} style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden"}}>
+                    <img src={p.img} alt={p.name} style={{width:"100%",height:isMobile?154:112,objectFit:"cover",display:"block"}}/>
+                    <div style={{padding:10}}>
+                      <div style={{fontSize:13,fontWeight:850,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+                      <div style={{fontSize:11,fontWeight:800,color:C.primary,marginTop:2}}>{p.role}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="Capability snapshot" subtitle="Practical facts before a buyer starts a conversation."/>
-              <div style={{display:"grid",gap:10}}>
-                {capabilities.map(([label,value])=>(
-                  <div key={label} style={{display:"grid",gridTemplateColumns:"118px 1fr",gap:12,padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-                    <div style={{fontSize:12,fontWeight:700,color:C.textDim}}>{label}</div>
-                    <div style={{fontSize:13,fontWeight:700,lineHeight:1.45}}>{value}</div>
-                  </div>
+              <SectionTitle title="Capability" subtitle="What this seller can actually handle."/>
+              <div style={{display:"flex",flexWrap:"wrap",gap:9}}>
+                {capabilityChips.map(chip=>(
+                  <span key={chip} style={{display:"inline-flex",alignItems:"center",gap:7,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,padding:"8px 11px",fontSize:12,fontWeight:850,color:C.primaryD}}>
+                    <Icon name="check" size={13} color={C.primary}/>{chip}
+                  </span>
                 ))}
               </div>
             </Card>
           </div>
           <div style={{display:"grid",gap:16}}>
             <Card style={{padding:20}}>
-              <SectionTitle title="Inspection image trail" subtitle="Photos tied to current inventory, not generic factory decoration."/>
+              <SectionTitle title="Image trail" subtitle="Current-lot proof, at a glance."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.15fr 0.85fr",gap:12}}>
                 <img src={factoryImages[0].src} alt={factoryImages[0].label} style={{width:"100%",height:isMobile?210:278,objectFit:"cover",borderRadius:14,border:`1px solid ${C.border}`}}/>
                 <div style={{display:"grid",gap:12}}>
@@ -5064,7 +5100,7 @@ function SupplierProfileMockup() {
                       <img src={img.src} alt={img.label} style={{width:92,height:74,objectFit:"cover",borderRadius:9}}/>
                       <div>
                         <div style={{fontSize:12,fontWeight:850,color:C.text}}>{img.label}</div>
-                        <div style={{fontSize:11,lineHeight:1.5,color:C.textDim,marginTop:4}}>{img.detail}</div>
+                        <div style={{fontSize:11,lineHeight:1.5,color:C.textDim,marginTop:4}}>Photo evidence</div>
                       </div>
                     </div>
                   ))}
@@ -5072,26 +5108,31 @@ function SupplierProfileMockup() {
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="Trust evidence" subtitle="What is present, fresh, and buyer-visible."/>
+              <SectionTitle title="Evidence" subtitle="Green is ready. Amber needs detail."/>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
                 {evidence.map(e=>(
-                  <div key={e.label} style={{background:e.bg,border:`1px solid ${e.border}`,borderRadius:12,padding:14}}>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:8}}>
-                      <div style={{fontSize:13,fontWeight:850,color:C.text}}>{e.label}</div>
-                      <span style={{fontSize:11,fontWeight:850,color:e.color,background:C.white,border:`1px solid ${e.border}`,borderRadius:999,padding:"4px 8px"}}>{e.status}</span>
+                  <div key={e.label} style={{background:e.bg,border:`1px solid ${e.border}`,borderRadius:14,padding:14,display:"grid",gridTemplateColumns:"48px 1fr auto",gap:12,alignItems:"center"}}>
+                    <div style={{width:48,height:48,borderRadius:14,background:C.white,border:`1px solid ${e.border}`,display:"flex",alignItems:"center",justifyContent:"center",color:e.color}}>
+                      <Icon name={e.icon} size={20}/>
                     </div>
-                    <div style={{fontSize:12,lineHeight:1.6,color:C.textMid}}>{e.detail}</div>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:900,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.label}</div>
+                      <div style={{fontSize:11,fontWeight:850,color:e.color,marginTop:3}}>{e.status}</div>
+                    </div>
+                    <div style={{fontSize:22,fontWeight:900,color:e.color}}>{e.score}</div>
                   </div>
                 ))}
               </div>
             </Card>
             <Card style={{padding:20}}>
-              <SectionTitle title="Recent proof of life" subtitle="Signals that the supplier is active and responsive now."/>
-              <div style={{display:"grid",gap:10,marginBottom:18}}>
-                {recent.map(item=>(
-                  <div key={item} style={{display:"flex",gap:10,alignItems:"center",background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 12px"}}>
-                    <Icon name="check" size={16} color={C.green}/>
-                    <div style={{fontSize:13,fontWeight:650,color:C.text}}>{item}</div>
+              <SectionTitle title="Proof of life" subtitle="Recent activity without opening reports."/>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:10,marginBottom:18}}>
+                {recent.map((item,i)=>(
+                  <div key={item} style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:14,padding:12,minHeight:92,display:"grid",alignContent:"space-between"}}>
+                    <div style={{width:34,height:34,borderRadius:12,background:i===0?C.greenBg:i===1?C.primaryBg:C.amberBg,color:i===0?C.green:i===1?C.primary:C.amber,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <Icon name={i===0?"camera":i===1?"message":"box"} size={16}/>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:850,lineHeight:1.35,color:C.text}}>{i===0?"12 slabs inspected":i===1?"Quote sent yesterday":"3 packing sets"}</div>
                   </div>
                 ))}
               </div>
