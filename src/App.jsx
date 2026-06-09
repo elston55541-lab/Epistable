@@ -5010,28 +5010,36 @@ function SupplierProfileMockup() {
       <div style={{maxWidth:1180,margin:"0 auto"}}>
         <MockupTopbar mode={mode} setMode={setMode}/>
         <section style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 18px 50px rgba(16,24,40,0.09)",marginBottom:16}}>
-          <div style={{minHeight:isMobile?390:430,background:`linear-gradient(135deg,rgba(6,18,45,0.86),rgba(0,87,168,0.42)),url("${heroImage}")`,backgroundSize:"cover",backgroundPosition:"center",color:C.white,padding:isMobile?"20px":"30px",display:"flex",alignItems:"flex-end"}}>
-            <div style={{width:"100%",display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.25fr) 360px",gap:24,alignItems:"end"}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.08fr) 0.92fr",gap:0}}>
+            <div style={{position:"relative",minHeight:isMobile?260:430,background:"#eef3f8"}}>
+              <img src={heroImage} alt="Factory media" style={{width:"100%",height:"100%",position:"absolute",inset:0,objectFit:"cover",display:"block"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(6,18,45,0.04),rgba(6,18,45,0.22))"}}/>
+              <div style={{position:"absolute",left:isMobile?14:20,bottom:isMobile?14:20,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <button style={{display:"inline-flex",alignItems:"center",gap:8,background:C.white,border:"none",borderRadius:999,padding:"10px 13px",boxShadow:"0 10px 24px rgba(16,24,40,0.18)",fontSize:12,fontWeight:900,color:C.primaryD,cursor:"pointer",fontFamily:FONT_STACK}}>
+                  <Icon name="play" size={14}/> Factory video
+                </button>
+                <span style={{background:"rgba(255,255,255,0.86)",border:"1px solid rgba(255,255,255,0.7)",borderRadius:999,padding:"9px 11px",fontSize:12,fontWeight:850,color:C.text}}>Photo / video slot</span>
+              </div>
+            </div>
+            <div style={{padding:isMobile?18:28,display:"grid",alignContent:"space-between",gap:22}}>
               <div>
-                <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.32)",borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:800,marginBottom:14}}>
+                <div style={{display:"inline-flex",alignItems:"center",gap:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:900,color:C.primaryD,marginBottom:14}}>
                   <Icon name="verified" size={14}/> Supplier trust dossier
                 </div>
-                <h1 style={{margin:"0 0 10px",fontSize:isMobile?34:52,lineHeight:1.02,letterSpacing:0,fontWeight:850}}>Sharma Marble Works</h1>
+                <h1 style={{margin:"0 0 10px",fontSize:isMobile?32:44,lineHeight:1.04,letterSpacing:0,fontWeight:900,color:C.text}}>Sharma Marble Works</h1>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
                   {["Quality proof","Traceable lots","Export packing","Named people"].map(tag=>(
-                    <span key={tag} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.28)",borderRadius:999,padding:"7px 10px",fontSize:12,fontWeight:800}}>{tag}</span>
+                    <span key={tag} style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:999,padding:"8px 10px",fontSize:12,fontWeight:850,color:C.textMid}}>{tag}</span>
                   ))}
                 </div>
               </div>
-              <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.24)",borderRadius:16,padding:12,backdropFilter:"blur(10px)"}}>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:14}}>
-                  {factoryImages.map(img=>(
-                    <div key={img.label} style={{position:"relative",overflow:"hidden",borderRadius:11,border:"1px solid rgba(255,255,255,0.24)"}}>
-                      <img src={img.src} alt={img.label} style={{width:"100%",height:86,objectFit:"cover",display:"block"}}/>
-                      <div style={{position:"absolute",left:7,right:7,bottom:7,background:"rgba(6,18,45,0.58)",borderRadius:8,padding:"5px 6px",fontSize:10,fontWeight:850,color:C.white,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{img.label}</div>
-                    </div>
-                  ))}
-                </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                {factoryImages.map(img=>(
+                  <div key={img.label} style={{position:"relative",overflow:"hidden",borderRadius:12,border:`1px solid ${C.border}`,background:C.surface}}>
+                    <img src={img.src} alt={img.label} style={{width:"100%",height:isMobile?74:92,objectFit:"cover",display:"block"}}/>
+                    <div style={{padding:"7px 8px",fontSize:10,fontWeight:900,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{img.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
