@@ -4280,6 +4280,10 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
     if(prompt)setTradePrompt(prompt);
     setTradeOpen(true);
   }
+  function openSupplierProfile(){
+    const id=portalFactoryId||factoryId||buyer?.factory_id||buyer?.factoryId;
+    if(id)window.location.assign(`/supplier/${encodeURIComponent(id)}`);
+  }
   function openQuoteRequest(slab){
     setInquiry(slab);
     setInquiryMsg("");
@@ -4522,6 +4526,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
                       <div style={{minWidth:0}}>
                         <div style={{fontSize:isMobile?19:23,fontWeight:750,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.text}}>{slab.stone}</div>
                         <div style={{fontSize:13,color:C.textDim,fontWeight:600}}>{slab.supplier||factoryName}</div>
+                        <button className="buyer-button" onClick={e=>{e.stopPropagation();openSupplierProfile();}} style={{marginTop:7,background:"transparent",border:"none",padding:0,color:C.primary,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK}}>Supplier profile</button>
                       </div>
                       <button className="buyer-button" onClick={e=>{e.stopPropagation();toggleSaved(slab.id);}} style={{background:saved?C.primary:C.white,border:`1px solid ${saved?C.primary:C.border}`,borderRadius:999,width:isMobile?40:36,height:isMobile?40:36,color:saved?C.white:C.textMid,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}} aria-label={saved?"Remove from saved slabs":"Save slab"}><Icon name={saved?"check":"add"} size={16}/></button>
                     </div>
@@ -4903,19 +4908,32 @@ function PublicQuotePage({quoteId}) {
   );
 }
 
-function SupplierProfileMockup() {
+function SupplierProfileMockup({prototype=true,factoryId=""}) {
   const {isMobile}=useBP();
-  const [mode,setMode]=useState("visual");
+  const [mode,setMode]=useState(prototype?"visual":"profile");
+  const [profileFac,setProfileFac]=useState(null);
+  const [profileInsps,setProfileInsps]=useState([]);
   const [buyerLens,setBuyerLens]=useState("Europe");
+  useEffect(()=>{
+    if(!factoryId)return;
+    let active=true;
+    Promise.all([DB.getFac(factoryId),DB.facBuyerInsps(factoryId)])
+      .then(([f,i])=>{if(active){setProfileFac(f);setProfileInsps(i||[]);}})
+      .catch(()=>{});
+    return()=>{active=false;};
+  },[factoryId]);
   const heroImage="/mockups/supplier-profile-hero.png";
   const factoryImages=[
     {label:"Slab inspection",src:"https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",detail:"Current Makrana White lot photographed before quote"},
     {label:"Packing check",src:"https://images.unsplash.com/photo-1604079628040-94301bb21b91?auto=format&fit=crop&w=900&q=80",detail:"Wooden crate and edge-protection evidence"},
     {label:"Dispatch floor",src:"https://images.unsplash.com/photo-1581092921461-39b9d08a9b21?auto=format&fit=crop&w=900&q=80",detail:"Loading lane and inventory handover area"},
   ];
+  const profileName=profileFac?.name||"Sharma Marble Works";
+  const verifiedSlabCount=profileInsps.length||186;
+  const exportDocPct=profileInsps.length?Math.round((profileInsps.filter(i=>i.exportReady).length/profileInsps.length)*100):92;
   const trustStats=[
-    {label:"Verified slabs",value:"186",detail:"74 inspected in the last 30 days"},
-    {label:"Export docs",value:"92%",detail:"Traceability and packing evidence coverage"},
+    {label:"Verified slabs",value:String(verifiedSlabCount),detail:"Inspected buyer-visible slabs"},
+    {label:"Export docs",value:`${exportDocPct}%`,detail:"Traceability and packing evidence coverage"},
     {label:"Quote response",value:"1 day",detail:"Median buyer response time"},
     {label:"Active since",value:"2008",detail:"Family-operated Makrana supplier"},
   ];
@@ -4964,10 +4982,10 @@ function SupplierProfileMockup() {
       <div style={{height:h,width:w,background:"#eef3f8",border:"1px solid #dfe7f1",borderRadius:8}}/>
     </div>
   );
-  if(mode==="wireframe")return (
+  if(prototype&&mode==="wireframe")return (
     <div style={{minHeight:"100vh",background:"#f4f6fa",fontFamily:FONT_STACK,color:C.text,padding:isMobile?"18px 14px 32px":"28px"}}>
       <div style={{maxWidth:1180,margin:"0 auto"}}>
-        <MockupTopbar mode={mode} setMode={setMode}/>
+        {prototype&&<MockupTopbar mode={mode} setMode={setMode}/>}
         <Card style={{padding:isMobile?16:24,marginBottom:16}}>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.25fr 0.75fr",gap:16}}>
             <WireBlock h={isMobile?180:240} label="Hero image / factory context"/>
@@ -5008,7 +5026,13 @@ function SupplierProfileMockup() {
   return (
     <div className="supplier-profile-mockup" style={{minHeight:"100vh",background:"#f5f7fb",fontFamily:FONT_STACK,color:C.text,padding:isMobile?"14px 12px 32px":"28px"}}>
       <div style={{maxWidth:1180,margin:"0 auto"}}>
-        <MockupTopbar mode={mode} setMode={setMode}/>
+        {prototype&&<MockupTopbar mode={mode} setMode={setMode}/>}
+        {!prototype&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,marginBottom:16}}>
+          <button className="buyer-button" onClick={()=>{if(window.history.length>1)window.history.back();else window.location.assign("/");}} style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,color:C.textMid,padding:"10px 13px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",gap:8}}>
+            <Icon name="prev" size={15}/> Back
+          </button>
+          <div style={{fontSize:12,fontWeight:850,color:C.textDim}}>Supplier profile</div>
+        </div>}
         <section style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:18,overflow:"hidden",boxShadow:"0 18px 50px rgba(16,24,40,0.09)",marginBottom:16}}>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"minmax(0,1.08fr) 0.92fr",gap:0}}>
             <div style={{position:"relative",minHeight:isMobile?260:430,background:"#eef3f8"}}>
@@ -5026,7 +5050,7 @@ function SupplierProfileMockup() {
                 <div style={{display:"inline-flex",alignItems:"center",gap:8,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:999,padding:"7px 12px",fontSize:12,fontWeight:900,color:C.primaryD,marginBottom:14}}>
                   <Icon name="verified" size={14}/> Supplier trust dossier
                 </div>
-                <h1 style={{margin:"0 0 10px",fontSize:isMobile?32:44,lineHeight:1.04,letterSpacing:0,fontWeight:900,color:C.text}}>Sharma Marble Works</h1>
+                <h1 style={{margin:"0 0 10px",fontSize:isMobile?32:44,lineHeight:1.04,letterSpacing:0,fontWeight:900,color:C.text}}>{profileName}</h1>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
                   {["Quality proof","Traceable lots","Export packing","Named people"].map(tag=>(
                     <span key={tag} style={{background:"#fbfcff",border:`1px solid ${C.border}`,borderRadius:999,padding:"8px 10px",fontSize:12,fontWeight:850,color:C.textMid}}>{tag}</span>
@@ -5224,6 +5248,7 @@ function SectionTitle({title,subtitle,compact=false}) {
 export default function App() {
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const quoteMatch=window.location.pathname.match(/^\/quote\/([^/?#]+)/);
+  const supplierMatch=window.location.pathname.match(/^\/supplier\/([^/?#]+)/);
   const supplierMockupMatch=window.location.pathname==="/supplier-profile-mockup";
   const inviteMatch=window.location.pathname==="/invite";
   function normalizeProfile(profile){
@@ -5268,6 +5293,7 @@ export default function App() {
   async function logout(){try{await signOut();}catch(e){}clearCachedProfile();setSession(null);}
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
   if(quoteMatch)return <PublicQuotePage quoteId={decodeURIComponent(quoteMatch[1])}/>;
+  if(supplierMatch)return <SupplierProfileMockup prototype={false} factoryId={decodeURIComponent(supplierMatch[1])}/>;
   if(supplierMockupMatch)return <SupplierProfileMockup/>;
   if(inviteMatch)return <InviteAccept onAccepted={profile=>{window.history.replaceState(null,"","/");cacheProfile(profile);setSession(profileSession(profile));}}/>;
   if(booting)return <Loader/>;
