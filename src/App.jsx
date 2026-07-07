@@ -6,6 +6,7 @@ import { C, STONES, DEFECTS, GRADES, PLANS, genId, fmtT, fmtD, curMon, calcBill,
 import { useBP } from "./hooks/useBP";
 import { Avi, BillPill, Btn, Card, DisputeStatusPill, Inp, InqPill, KpiGrid, Loader, Modal, PBar, Sel, StatPill, T } from "./components/ui";
 import { SlabCertificate } from "./components/SlabCertificate";
+import { QualityReport } from "./components/QualityReport";
 import { Icon } from "./components/Icon";
 import { Pill } from "./components/Pill";
 import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
@@ -4555,7 +4556,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
                   <button className="buyer-button" disabled={!canInquire} onClick={()=>{if(!canInquire)return;openQuoteRequest(slab);}} style={{width:"100%",background:canInquire?C.primary:C.surface,border:`1px solid ${canInquire?C.primary:C.border}`,borderRadius:isMobile?12:9,padding:isMobile?"14px 12px":"17px 12px",color:canInquire?C.white:C.textDim,fontSize:15,fontWeight:750,cursor:canInquire?"pointer":"not-allowed",fontFamily:FONT_STACK,marginBottom:10,boxShadow:canInquire&&isMobile?"0 10px 24px rgba(0,87,168,0.18)":"none"}}>{canInquire?"Request Quote":invConf(inv).label}</button>
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr",gap:isMobile?8:0}}>
                     <button className="buyer-button" onClick={()=>openSupplierProfile()} style={{width:"100%",background:C.white,border:"1px solid #cfe0ff",borderRadius:isMobile?10:9,padding:isMobile?"12px 10px":"14px 12px",color:"#1267e8",fontSize:isMobile?13:15,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Supplier profile</button>
-                    <button className="buyer-button" onClick={()=>setQrSlab(slab)} style={{width:"100%",background:isMobile?C.white:"transparent",border:isMobile?`1px solid ${C.border}`:"none",borderRadius:isMobile?10:0,padding:isMobile?"12px 10px":"12px 12px 0",color:C.textMid,fontSize:isMobile?13:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="qr" size={15}/> QR label</button>
+                    <button className="buyer-button" onClick={()=>window.location.assign(`/quality/${encodeURIComponent(slab.id)}`)} style={{width:"100%",background:isMobile?C.white:"transparent",border:isMobile?`1px solid ${C.border}`:"none",borderRadius:isMobile?10:0,padding:isMobile?"12px 10px":"12px 12px 0",color:C.textMid,fontSize:isMobile?13:13,fontWeight:600,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="file" size={15}/> Quality report</button>
                   </div>
                 </div>
               </div>
@@ -5246,6 +5247,7 @@ function SectionTitle({title,subtitle,compact=false}) {
 }
 
 export default function App() {
+  const qualityMatch=window.location.pathname.match(/^\/quality\/([^/?#]+)/);
   const slabMatch=window.location.pathname.match(/^\/slab\/([^/?#]+)/);
   const quoteMatch=window.location.pathname.match(/^\/quote\/([^/?#]+)/);
   const supplierMatch=window.location.pathname.match(/^\/supplier\/([^/?#]+)/);
@@ -5291,6 +5293,7 @@ export default function App() {
     return ()=>{active=false;};
   },[]);
   async function logout(){try{await signOut();}catch(e){}clearCachedProfile();setSession(null);}
+  if(qualityMatch)return <QualityReport slabId={decodeURIComponent(qualityMatch[1])}/>;
   if(slabMatch)return <SlabCertificate slabId={decodeURIComponent(slabMatch[1])}/>;
   if(quoteMatch)return <PublicQuotePage quoteId={decodeURIComponent(quoteMatch[1])}/>;
   if(supplierMatch)return <SupplierProfileMockup prototype={false} factoryId={decodeURIComponent(supplierMatch[1])}/>;
