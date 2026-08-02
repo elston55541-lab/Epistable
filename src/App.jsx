@@ -4119,9 +4119,9 @@ function slabDims(slab) {
 
 function BuyerWordmark({ compact = false }) {
   return (
-    <div style={{display:"inline-flex",alignItems:"center",gap:compact?6:8,whiteSpace:"nowrap",lineHeight:1}}>
+    <div style={{display:"inline-flex",alignItems:"baseline",gap:compact?4:5,whiteSpace:"nowrap",lineHeight:1}}>
       <span style={{fontSize:compact?21:25,fontWeight:750,letterSpacing:-0.25,color:C.primaryD}}>Epistable</span>
-      <span style={{fontSize:compact?10:11,fontWeight:800,letterSpacing:0.4,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:compact?"3px 5px":"4px 6px",lineHeight:1}}>AI</span>
+      <span style={{fontSize:compact?21:25,fontWeight:750,letterSpacing:-0.25,color:C.primary}}>AI</span>
     </div>
   );
 }
