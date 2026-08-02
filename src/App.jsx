@@ -1705,6 +1705,118 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
   }
   const adminPriorities=[...overdueFollowups.slice(0,2).map(q=>({label:"Overdue follow-up",detail:q.buyerName||q.buyer_name||"Buyer",color:C.red,page:"inquiries"})),...quoteRequests.slice(0,2).map(q=>({label:"Quote request",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.green,page:"inquiries"})),...newInquiries.slice(0,2).map(q=>({label:"New inquiry",detail:`${q.buyerName||q.buyer_name||"Buyer"} - ${q.stone}`,color:C.primary,page:"inquiries"}))].slice(0,4);
   const homeKpisNext=[{label:"Scans This Month",value:sc,icon:"Scan",color:C.primary},{label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},{label:"Premium Rate",value:pp+"%",icon:"Grade",color:C.green},{label:"Bill Due",value:fmtMoney(b.total),icon:"Bill",color:C.amber},...(isAdmin?[{label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:C.primary},{label:"Overdue Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim}]:[])];
+  const adminKpis=[
+    {label:"Available Slabs",value:availableSlabs,icon:"Stock",color:C.green},
+    {label:"Quote Requests",value:quoteRequests.length,icon:"Quote",color:quoteRequests.length?C.primary:C.textDim},
+    {label:"Open Follow-ups",value:overdueFollowups.length,icon:"Due",color:overdueFollowups.length?C.red:C.textDim},
+    {label:"Bill Due",value:fmtMoney(b.total),icon:"Bill",color:b.total?C.amber:C.textDim},
+  ];
+  const focusItems=[
+    quoteRequests.length&&{label:"Quote requests",detail:`${quoteRequests.length} buyer request${quoteRequests.length===1?" needs":"s need"} pricing.`,page:"inquiries",tone:"success",icon:"message"},
+    overdueFollowups.length&&{label:"Overdue follow-ups",detail:`${overdueFollowups.length} buyer follow-up${overdueFollowups.length===1?" is":"s are"} overdue.`,page:"inquiries",tone:"danger",icon:"date"},
+    insps.length===0&&{label:"First scan",detail:"Create one buyer-ready slab certificate with photos and measurements.",page:"scan",tone:"primary",icon:"camera"},
+    availableSlabs===0&&insps.length>0&&{label:"Publish inventory",detail:"Mark available slabs so buyers can browse and request quotes.",page:"history",tone:"warning",icon:"package"},
+    b.total>0&&{label:"Billing",detail:`${fmtMoney(b.total)} is due for current usage.`,page:"sales",tone:"warning",icon:"billing"},
+  ].filter(Boolean).slice(0,3);
+  const adminActions=[
+    {label:"Scan slab",detail:"Create a certificate and QR from a new inspection.",icon:"camera",page:"scan",primary:true},
+    {label:"Open Documents",detail:"Add certificates, reports, shipment papers, and buyer proof.",icon:"file",page:"docs"},
+    {label:"Respond to quotes",detail:quoteRequests.length?`${quoteRequests.length} request${quoteRequests.length===1?"":"s"} waiting.`:"Review inquiries and prepare quotes.",icon:"message",page:"inquiries"},
+  ];
+  const recentActivity=[
+    ...inquiries.map(q=>({ts:q.ts||q.created_at||0,label:/quote request/i.test(q.message||"")?"Quote request received":"Buyer inquiry received",detail:`${q.buyerName||q.buyer_name||"Buyer"}${q.stone?` - ${q.stone}`:""}`,page:"inquiries",icon:"message"})),
+    ...insps.map(i=>({ts:i.ts||0,label:"Slab scanned",detail:`${i.stone||"Stone"}${i.grade?` - ${i.grade}`:""}`,page:"history",icon:"verified"})),
+  ].sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,5);
+  if(isAdmin)return (
+    <div>
+      <Card style={{padding:22,marginBottom:18,borderColor:focusItems.length?C.primaryBorder:C.greenBorder,background:focusItems.length?C.primaryBg:C.greenBg}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:18,flexWrap:"wrap"}}>
+          <div style={{minWidth:240,flex:1}}>
+            <div style={{fontSize:12,fontWeight:600,color:C.textMid,marginBottom:6}}>Today&apos;s focus</div>
+            <div style={{fontSize:24,lineHeight:1.2,fontWeight:700,color:C.text,letterSpacing:0,marginBottom:8}}>
+              {focusItems.length?`${focusItems.length} item${focusItems.length===1?"":"s"} need attention`:"Factory is clear for now"}
+            </div>
+            <div style={{fontSize:14,lineHeight:1.6,color:C.textMid,maxWidth:720}}>
+              {focusItems.length?"Handle the few things that move buyers forward today: pricing, follow-ups, proof, and fresh inventory.":"No urgent buyer follow-ups right now. Keep scanning and adding proof as work happens."}
+            </div>
+          </div>
+          <Btn onClick={()=>setPage(focusItems[0]?.page||"scan")} disabled={paused&&focusItems[0]?.page==="scan"}>
+            {focusItems.length?"Review now":"New Scan"}
+          </Btn>
+        </div>
+        {focusItems.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginTop:18}}>
+          {focusItems.map(item=>{
+            const tone=item.tone==="danger"?{bg:C.redBg,border:C.redBorder,color:C.red}:item.tone==="warning"?{bg:C.amberBg,border:C.amberBorder,color:C.amber}:item.tone==="success"?{bg:C.greenBg,border:C.greenBorder,color:C.green}:{bg:C.white,border:C.primaryBorder,color:C.primary};
+            return (
+              <button key={item.label} onClick={()=>setPage(item.page)} style={{display:"flex",gap:12,alignItems:"flex-start",background:C.white,border:`1px solid ${tone.border}`,borderRadius:10,padding:"14px 15px",cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+                <span style={{width:34,height:34,borderRadius:10,background:tone.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Icon name={item.icon} size={17} color={tone.color}/>
+                </span>
+                <span style={{minWidth:0}}>
+                  <span style={{display:"block",fontSize:13,fontWeight:700,color:C.text,marginBottom:3}}>{item.label}</span>
+                  <span style={{display:"block",fontSize:12,lineHeight:1.5,color:C.textMid}}>{item.detail}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>}
+      </Card>
+
+      <KpiGrid items={adminKpis}/>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,marginBottom:18}}>
+        {adminActions.map(action=>(
+          <button key={action.label} onClick={()=>setPage(action.page)} disabled={paused&&action.page==="scan"} style={{background:action.primary?C.primary:C.white,border:`1px solid ${action.primary?C.primary:C.border}`,borderRadius:14,padding:"18px",cursor:paused&&action.page==="scan"?"not-allowed":"pointer",fontFamily:FONT_STACK,textAlign:"left",boxShadow:action.primary?"0 3px 8px rgba(10,37,64,0.16)":C.shadow,opacity:paused&&action.page==="scan"?0.55:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+              <span style={{width:38,height:38,borderRadius:11,background:action.primary?"rgba(255,255,255,0.14)":C.primaryBg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Icon name={action.icon} size={18} color={action.primary?C.white:C.primary}/>
+              </span>
+              <span style={{fontSize:15,fontWeight:700,color:action.primary?C.white:C.text}}>{action.label}</span>
+            </div>
+            <div style={{fontSize:13,lineHeight:1.55,color:action.primary?"rgba(255,255,255,0.78)":C.textMid}}>{action.detail}</div>
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:18,alignItems:"start"}}>
+        <Card>
+          <div style={{padding:"16px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:C.text}}>Recent activity</div>
+              <div style={{fontSize:12,lineHeight:1.45,color:C.textDim,marginTop:2}}>Latest buyer and inspection movement</div>
+            </div>
+            <Btn size="sm" variant="ghost" onClick={()=>setPage("history")}>History</Btn>
+          </div>
+          {recentActivity.length===0?<div style={{padding:18,fontSize:13,lineHeight:1.6,color:C.textMid}}>No activity yet. Start with one scan, then share the certificate or buyer inventory link.</div>:
+            recentActivity.map((item,i)=>(
+              <button key={`${item.label}-${item.ts}-${i}`} onClick={()=>setPage(item.page)} style={{width:"100%",display:"flex",alignItems:"center",gap:13,padding:"14px 18px",border:"none",borderBottom:i<recentActivity.length-1?`1px solid ${C.border}`:"none",background:C.white,cursor:"pointer",fontFamily:FONT_STACK,textAlign:"left"}}>
+                <span style={{width:34,height:34,borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Icon name={item.icon} size={16} color={C.primary}/>
+                </span>
+                <span style={{flex:1,minWidth:0}}>
+                  <span style={{display:"block",fontSize:13,fontWeight:700,color:C.text}}>{item.label}</span>
+                  <span style={{display:"block",fontSize:12,color:C.textDim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{item.detail}</span>
+                </span>
+                <span style={{fontSize:12,color:C.textDim,flexShrink:0}}>{item.ts?fmtT(item.ts):""}</span>
+              </button>
+            ))}
+        </Card>
+
+        <Card style={{padding:18,borderColor:C.primaryBorder,background:C.primaryBg}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+            <div style={{width:36,height:36,borderRadius:11,background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Icon name="file" size={17} color={C.primary}/>
+            </div>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:C.primary,marginBottom:4}}>Buyer proof lives in Documents</div>
+              <div style={{fontSize:13,lineHeight:1.6,color:C.textMid,marginBottom:14}}>Add certificates, test reports, shipment papers, and slab evidence only when you have them. No long checklist on Home.</div>
+              <Btn size="sm" onClick={()=>setPage("docs")}>Open Documents</Btn>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
   const factoryNextSteps=isAdmin?[
     {label:"1. Publish trust",detail:`${availableSlabs} available slabs can be shared from buyer inventory.`,color:C.green,bg:C.greenBg,border:C.greenBorder},
     {label:"2. Convert demand",detail:quoteRequests.length?`${quoteRequests.length} quote request${quoteRequests.length===1?"":"s"} need pricing.`:"Create quotes from fresh inquiries.",color:C.primary,bg:C.primaryBg,border:C.primaryBorder},
