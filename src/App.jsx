@@ -4117,6 +4117,15 @@ function slabDims(slab) {
   return m.length&&m.width?`${m.length} x ${m.width} cm`:"Size not recorded";
 }
 
+function BuyerWordmark({ compact = false }) {
+  return (
+    <div style={{display:"inline-flex",alignItems:"center",gap:compact?6:8,whiteSpace:"nowrap",lineHeight:1}}>
+      <span style={{fontSize:compact?21:25,fontWeight:750,letterSpacing:-0.25,color:C.primaryD}}>Epistable</span>
+      <span style={{fontSize:compact?10:11,fontWeight:800,letterSpacing:0.4,color:C.primary,background:C.primaryBg,border:`1px solid ${C.primaryBorder}`,borderRadius:6,padding:compact?"3px 5px":"4px 6px",lineHeight:1}}>AI</span>
+    </div>
+  );
+}
+
 function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
   const [fac,setFac]=useState(null);const [insps,setInsps]=useState([]);const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");
   const [inventoryLoading,setInventoryLoading]=useState(true);
@@ -4375,7 +4384,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
       {qrSlab&&<SlabQRModal slab={qrSlab} onClose={()=>setQrSlab(null)}/>}
       {!isMobile&&<aside className="buyer-sidebar" style={{position:"sticky",top:0,height:"100vh",padding:"28px 14px 16px",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:24}}>
         <div style={{padding:"0 16px 2px"}}>
-              <div style={{fontSize:25,fontWeight:800,letterSpacing:-0.6,color:C.primaryD,lineHeight:1}}>EPISTABLE.AI</div>
+              <BuyerWordmark />
         </div>
         <nav style={{display:"flex",flexDirection:"column",gap:8}}>
           {sidebarItems.map(item=>(
@@ -4401,11 +4410,15 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
       <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,0.04)":"none",padding:isMobile?"22px 32px 22px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18,flexWrap:isMobile?"wrap":"nowrap"}}>
         {isMobile?<>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
-            <h1 style={{margin:0,fontSize:viewMode==="quotes"?26:21,lineHeight:1.2,fontWeight:viewMode==="quotes"?750:800,letterSpacing:viewMode==="quotes"?0:-0.2,color:viewMode==="quotes"?C.text:C.primaryD}}>{viewMode==="quotes"?"Quotes":"EPISTABLE.AI"}</h1>
+            {viewMode==="quotes"
+              ? <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>Quotes</h1>
+              : <BuyerWordmark compact />}
           </div>
           {onLogout&&<button className="buyer-button" onClick={confirmBuyerLogout} style={{background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:12,color:C.red,padding:"10px 14px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 2px rgba(198,40,40,0.06)"}} aria-label="Log out of buyer portal">Log out</button>}
         </>:<>
-          <h1 style={{margin:0,fontSize:viewMode==="quotes"?26:25,lineHeight:1.2,fontWeight:viewMode==="quotes"?700:800,letterSpacing:viewMode==="quotes"?-0.2:-0.6,color:viewMode==="quotes"?C.text:C.primaryD,flex:"0 0 auto"}}>{viewMode==="quotes"?"Quotes":"EPISTABLE.AI"}</h1>
+          {viewMode==="quotes"
+            ? <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>Quotes</h1>
+            : <div style={{flex:"0 0 auto"}}><BuyerWordmark /></div>}
           <div style={{flex:1}}/>
           {viewMode!=="quotes"&&<div style={{width:380,maxWidth:"48vw",position:"relative"}}>
             <Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/>
