@@ -4401,11 +4401,11 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
       <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:"#fff",borderBottom:`1px solid ${C.border}`,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,0.04)":"none",padding:isMobile?"22px 32px 22px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18,flexWrap:isMobile?"wrap":"nowrap"}}>
         {isMobile?<>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
-            <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
+            <h1 style={{margin:0,fontSize:viewMode==="quotes"?26:21,lineHeight:1.2,fontWeight:viewMode==="quotes"?750:800,letterSpacing:viewMode==="quotes"?0:-0.2,color:viewMode==="quotes"?C.text:C.primaryD}}>{viewMode==="quotes"?"Quotes":"EPISTABLE.AI"}</h1>
           </div>
           {onLogout&&<button className="buyer-button" onClick={confirmBuyerLogout} style={{background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:12,color:C.red,padding:"10px 14px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 2px rgba(198,40,40,0.06)"}} aria-label="Log out of buyer portal">Log out</button>}
         </>:<>
-          <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
+          <h1 style={{margin:0,fontSize:viewMode==="quotes"?26:25,lineHeight:1.2,fontWeight:viewMode==="quotes"?700:800,letterSpacing:viewMode==="quotes"?-0.2:-0.6,color:viewMode==="quotes"?C.text:C.primaryD,flex:"0 0 auto"}}>{viewMode==="quotes"?"Quotes":"EPISTABLE.AI"}</h1>
           <div style={{flex:1}}/>
           {viewMode!=="quotes"&&<div style={{width:380,maxWidth:"48vw",position:"relative"}}>
             <Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/>
