@@ -11,7 +11,6 @@ import { Icon } from "./components/Icon";
 import { Pill } from "./components/Pill";
 import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
 import { mapRequirement, requirementApplies } from "./lib/readiness";
-import { ExportReadiness } from "./screens/ExportReadiness";
 import { SellerDocuments } from "./screens/SellerDocuments";
 
 // â”€â”€ DB (Supabase) â”€â”€
@@ -1621,17 +1620,15 @@ function FactoryApp({user,onLogout}) {
     ...(isAdmin?[{id:"team",label:"Team",icon:"users"},{id:"suppliers",label:"Suppliers",icon:"factory"},{id:"buyers",label:"Buyers",icon:"location"},{id:"inquiries",label:"Inquiries",icon:"mail"},{id:"disputes",label:"Disputes",icon:"alert"}]:[]),
     {id:"notifs",label:"Alerts",icon:"bell",badge:unread||undefined},
   ];
-  if(isAdmin&&!nav.some(n=>n.id==="export"))nav.splice(4,0,{id:"export",label:"Export",icon:"verified"});
-  if(isAdmin&&!nav.some(n=>n.id==="docs"))nav.splice(5,0,{id:"docs",label:"Documents",icon:"file"});
-  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(6,0,{id:"sales",label:"Sales",icon:"currency"});
-  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(7,0,{id:"quotes",label:"Quotes",icon:"message"});
+  if(isAdmin&&!nav.some(n=>n.id==="docs"))nav.splice(4,0,{id:"docs",label:"Documents",icon:"file"});
+  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(5,0,{id:"sales",label:"Sales",icon:"currency"});
+  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(6,0,{id:"quotes",label:"Quotes",icon:"message"});
 
   const pages={
     home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
     scan:<FacScan user={user} fac={fac} paused={paused} onSaved={()=>{load();setPage("history");}}/>,
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
-    ...(isAdmin?{export:<ExportReadiness fac={fac} user={user} DB={DB}/>}:{}),
     ...(isAdmin?{docs:<SellerDocuments fac={fac} user={user} DB={DB} insps={salesInsps.length?salesInsps:insps}/>}:{}),
     ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage} onChange={load}/>}:{ }),
     ...(isAdmin?{quotes:<FacQuotesPage quotes={quotes} insps={salesInsps} onChange={load}/>}:{ }),
@@ -1774,8 +1771,21 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
       </div>
       <KpiGrid items={homeKpisNext}/>
       <GuidanceCard title={isAdmin?"Next best actions":"Inspection workflow"} subtitle={isAdmin?"Keep buyer demand moving from verified slab to quote to sale":"A repeatable scan flow builds buyer trust"} items={factoryNextSteps} actionLabel={isAdmin?"Open Sales":"New Scan"} onAction={()=>setPage(isAdmin?"sales":"scan")} style={{marginBottom:18}}/>
-      <SetupChecklist title={isAdmin?"Factory setup checklist":"Inspector checklist"} subtitle={isAdmin?"The shortest path from first slab to buyer trust":"Small habits that make certificates stronger"} items={setupItems} style={{marginBottom:18}}/>
-      {isAdmin&&<Card style={{padding:20,marginBottom:18}}>
+      {isAdmin?<Card style={{padding:20,marginBottom:18,borderColor:C.primaryBorder,background:C.primaryBg}}>
+        <div style={{display:"flex",alignItems:"center",gap:14,justifyContent:"space-between",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:12,alignItems:"flex-start",minWidth:240,flex:1}}>
+            <div style={{width:38,height:38,borderRadius:12,background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Icon name="file" size={18} color={C.primary}/>
+            </div>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:C.primary,marginBottom:3}}>Add buyer proof when you have it</div>
+              <div style={{fontSize:13,lineHeight:1.6,color:C.textMid,maxWidth:680}}>Skip the full checklist for now. Use Documents to add certificates, test reports, shipment papers, and slab evidence one item at a time.</div>
+            </div>
+          </div>
+          <Btn size="sm" onClick={()=>setPage("docs")}>Open Documents</Btn>
+        </div>
+      </Card>:<SetupChecklist title="Inspector checklist" subtitle="Small habits that make certificates stronger" items={setupItems} style={{marginBottom:18}}/>}
+      {false&&<Card style={{padding:20,marginBottom:18}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
           <div>
             <div style={{fontSize:14,fontWeight:700}}>Pilot readiness checklist</div>
@@ -1796,7 +1806,7 @@ function FacHome({user,fac,insps,inquiries=[],sc,b,paused,isAdmin,setPage,openPo
           ))}
         </div>
       </Card>}
-      {isAdmin&&<Card style={{padding:20,marginBottom:18,borderColor:readinessScore>=70?C.greenBorder:C.amberBorder,background:readinessScore>=70?C.greenBg:C.amberBg}}>
+      {false&&<Card style={{padding:20,marginBottom:18,borderColor:readinessScore>=70?C.greenBorder:C.amberBorder,background:readinessScore>=70?C.greenBg:C.amberBg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,marginBottom:16}}>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:readinessScore>=70?C.green:C.amber}}>Certification readiness</div>
