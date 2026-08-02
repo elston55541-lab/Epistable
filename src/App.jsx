@@ -12,6 +12,7 @@ import { Pill } from "./components/Pill";
 import { FONT_STACK, SPACE, TYPE, WEIGHT } from "./lib/tokens";
 import { mapRequirement, requirementApplies } from "./lib/readiness";
 import { ExportReadiness } from "./screens/ExportReadiness";
+import { SellerDocuments } from "./screens/SellerDocuments";
 
 // â”€â”€ DB (Supabase) â”€â”€
 const INSP_LIST_SELECT = "id,user_id,factory_id,factory_name,inspector,stone,supplier,supplier_id,grade,reason,price_per_sq_ft,export_ready,inventory_status,measurements,defects,notes,photo,ts,date,time";
@@ -1621,8 +1622,9 @@ function FactoryApp({user,onLogout}) {
     {id:"notifs",label:"Alerts",icon:"bell",badge:unread||undefined},
   ];
   if(isAdmin&&!nav.some(n=>n.id==="export"))nav.splice(4,0,{id:"export",label:"Export",icon:"verified"});
-  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(5,0,{id:"sales",label:"Sales",icon:"currency"});
-  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(6,0,{id:"quotes",label:"Quotes",icon:"message"});
+  if(isAdmin&&!nav.some(n=>n.id==="docs"))nav.splice(5,0,{id:"docs",label:"Documents",icon:"file"});
+  if(isAdmin&&!nav.some(n=>n.id==="sales"))nav.splice(6,0,{id:"sales",label:"Sales",icon:"currency"});
+  if(isAdmin&&!nav.some(n=>n.id==="quotes"))nav.splice(7,0,{id:"quotes",label:"Quotes",icon:"message"});
 
   const pages={
     home:<FacHome user={user} fac={fac} insps={insps} inquiries={inquiries} sc={sc} b={b} paused={paused} isAdmin={isAdmin} setPage={setPage} openPortal={()=>setViewPortal(true)}/>,
@@ -1630,6 +1632,7 @@ function FactoryApp({user,onLogout}) {
     history:<FacHistory insps={insps}/>,
     analytics:<FacAnalytics insps={insps}/>,
     ...(isAdmin?{export:<ExportReadiness fac={fac} user={user} DB={DB}/>}:{}),
+    ...(isAdmin?{docs:<SellerDocuments fac={fac} user={user} DB={DB} insps={salesInsps.length?salesInsps:insps}/>}:{}),
     ...(isAdmin?{sales:<FacSalesDashboard inquiries={inquiries} insps={salesInsps} disputes={disputes} quotes={quotes} setPage={setPage} onChange={load}/>}:{ }),
     ...(isAdmin?{quotes:<FacQuotesPage quotes={quotes} insps={salesInsps} onChange={load}/>}:{ }),
     ...(isAdmin?{team:<FacTeam fac={fac} actor={user} activity={activity} onActivity={load}/>,suppliers:<FacSuppliers fac={fac}/>,buyers:<FacBuyers fac={fac} actor={user} onActivity={load}/>,inquiries:<FacInquiries fac={fac} onChange={load}/>,disputes:<FacDisputes fac={fac}/>}:{}),
