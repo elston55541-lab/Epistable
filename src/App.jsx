@@ -4156,6 +4156,22 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
   const {isMobile}=useBP();
   const shortlistKey=`epistable_shortlist_${buyer?.id||buyer?.email||factoryId||"guest"}`;
   useEffect(()=>{
+    if(typeof window==="undefined")return undefined;
+    const guardState={...window.history.state,epistableBuyerExitGuard:true};
+    window.history.pushState(guardState,"",window.location.href);
+    function onPopState(){
+      const shouldExit=window.confirm("Do you want to exit the buyer portal?");
+      if(shouldExit){
+        window.removeEventListener("popstate",onPopState);
+        window.history.back();
+        return;
+      }
+      window.history.pushState(guardState,"",window.location.href);
+    }
+    window.addEventListener("popstate",onPopState);
+    return()=>window.removeEventListener("popstate",onPopState);
+  },[]);
+  useEffect(()=>{
     let active=true;
     async function load(){
       let fid=factoryId||buyer?.factory_id||buyer?.factoryId||portalFactoryId||localFactoryId();
