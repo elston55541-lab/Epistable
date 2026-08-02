@@ -54,6 +54,7 @@ export function SellerDocuments({ fac, user, DB, insps = [] }) {
   const [evidence, setEvidence] = useState([]);
   const [bodiesByReq, setBodiesByReq] = useState({});
   const [uploadReq, setUploadReq] = useState(null);
+  const [showAllSections, setShowAllSections] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -190,6 +191,14 @@ export function SellerDocuments({ fac, user, DB, insps = [] }) {
     scored.forEach(req => { out[docSectionForRequirement(req)].push(req); });
     return out;
   }, [scored]);
+  const nextSectionId = firstMissing ? docSectionForRequirement(firstMissing) : null;
+  const visibleSections = useMemo(() => {
+    if (showAllSections || !nextSectionId) return DOC_SECTIONS;
+    return DOC_SECTIONS.filter(section =>
+      section.id === nextSectionId ||
+      (grouped[section.id] || []).some(req => evidenceByReq[req.id])
+    );
+  }, [showAllSections, nextSectionId, grouped, evidenceByReq]);
 
   if (loading) return <Loader />;
 
@@ -270,8 +279,17 @@ export function SellerDocuments({ fac, user, DB, insps = [] }) {
         </div>
       </Card>
 
+      {!showAllSections && nextSectionId && visibleSections.length < DOC_SECTIONS.length && (
+        <div style={{ display: "flex", justifyContent: "space-between", gap: SPACE.md, alignItems: "center", marginBottom: SPACE.base, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, lineHeight: 1.55, color: C.textMid }}>
+            Showing the next useful section first. The full readiness checklist is still available when needed.
+          </div>
+          <Btn size="sm" variant="secondary" onClick={() => setShowAllSections(true)}>View all document sections</Btn>
+        </div>
+      )}
+
       <div style={{ display: "grid", gap: SPACE.base }}>
-        {DOC_SECTIONS.map(section => {
+        {visibleSections.map(section => {
           const rows = grouped[section.id] || [];
           const sectionStats = scoreRequirements(rows, evidence);
           return (
