@@ -4394,7 +4394,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
             </div>
           </div>
           {onBack&&<button className="buyer-button" onClick={onBack} style={{width:"100%",background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 12px",color:C.textMid,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK}}>Back to home</button>}
-          {onLogout&&<button className="buyer-button" onClick={confirmBuyerLogout} style={{width:"100%",marginTop:10,background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:12,padding:"12px 14px",color:C.red,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}><Icon name="close" size={16}/> Log out</button>}
+          {onLogout&&<button className="buyer-button" onClick={confirmBuyerLogout} style={{width:"100%",marginTop:10,background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:12,padding:"12px 14px",color:C.red,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 2px rgba(198,40,40,0.06)"}}>Log out</button>}
         </div>
       </aside>}
       <main style={{minWidth:0}}>
@@ -4403,7 +4403,7 @@ function BuyerPortal({factoryId,onBack,buyer,onLogout}) {
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
             <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:750,letterSpacing:0,color:C.text}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
           </div>
-          {onLogout&&<button className="buyer-button" onClick={confirmBuyerLogout} style={{background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:999,color:C.red,padding:"9px 12px",fontSize:12,fontWeight:750,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",gap:6,flexShrink:0,boxShadow:"0 6px 16px rgba(184,54,44,0.10)"}} aria-label="Log out of buyer portal"><Icon name="close" size={14}/> Log out</button>}
+          {onLogout&&<button className="buyer-button" onClick={confirmBuyerLogout} style={{background:C.white,border:`1px solid ${C.redBorder}`,borderRadius:12,color:C.red,padding:"10px 14px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT_STACK,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 2px rgba(198,40,40,0.06)"}} aria-label="Log out of buyer portal">Log out</button>}
         </>:<>
           <h1 style={{margin:0,fontSize:26,lineHeight:1.2,fontWeight:700,letterSpacing:-0.2,color:C.text,flex:"0 0 auto"}}>{viewMode==="quotes"?"Quotes":"Catalog"}</h1>
           <div style={{flex:1}}/>
