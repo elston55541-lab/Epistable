@@ -12,10 +12,15 @@ export const C = {
 
 export const FOOD_PRODUCTS = [
   {id:"spices",label:"Spices & Seasonings"},
-  {id:"fresh_produce",label:"Fresh Produce"},
-  {id:"processed_fruit",label:"Processed Fruit & Fruit Ingredients"},
-  {id:"nuts",label:"Nuts & Dry Fruits"},
-  {id:"ingredients",label:"Food Ingredients"},
+  {id:"sauces",label:"Sauces, Condiments & Chutneys"},
+  {id:"processed_fruit",label:"Processed Fruit, Pulps & Concentrates"},
+  {id:"rte_rtc",label:"Ready-to-Eat / Ready-to-Cook"},
+  {id:"frozen",label:"Frozen Processed Foods"},
+  {id:"snacks_bakery",label:"Bakery, Confectionery & Snacks"},
+  {id:"oils",label:"Oils, Fats & Processed Ingredients"},
+  {id:"dehydrated",label:"Dehydrated Foods"},
+  {id:"beverages",label:"Beverages & Concentrates"},
+  {id:"ingredients",label:"Food Ingredients & Premixes"},
 ];
 
 // Temporary backwards-compatible alias while the UI is migrated from stone terminology.
