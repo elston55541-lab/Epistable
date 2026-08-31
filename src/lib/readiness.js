@@ -1,15 +1,30 @@
 export const EXPORT_PRODUCTS = [
-  {value:"any",label:"Mixed stone products"},
-  {value:"granite",label:"Granite"},
-  {value:"marble",label:"Marble"},
-  {value:"sandstone",label:"Sandstone"},
+  {value:"any",label:"Mixed processed foods"},
+  {value:"spices",label:"Spices & Seasonings"},
+  {value:"sauces",label:"Sauces, Condiments & Chutneys"},
+  {value:"processed_fruit",label:"Processed Fruit, Pulps & Concentrates"},
+  {value:"rte_rtc",label:"Ready-to-Eat / Ready-to-Cook"},
+  {value:"frozen",label:"Frozen Processed Foods"},
+  {value:"snacks_bakery",label:"Bakery, Confectionery & Snacks"},
+  {value:"oils",label:"Oils, Fats & Processed Ingredients"},
+  {value:"dehydrated",label:"Dehydrated Foods"},
+  {value:"beverages",label:"Beverages & Concentrates"},
+  {value:"ingredients",label:"Food Ingredients & Premixes"},
 ];
 
 export const EXPORT_CERTS = [
   {id:"iec",label:"IEC"},
-  {id:"iso_9001",label:"ISO 9001"},
-  {id:"lab_report",label:"Lab test reports"},
-  {id:"social_audit",label:"Social / responsible sourcing audit"},
+  {id:"fssai",label:"FSSAI"},
+  {id:"haccp",label:"HACCP"},
+  {id:"iso_22000",label:"ISO 22000"},
+  {id:"fssc_22000",label:"FSSC 22000"},
+  {id:"brcgs",label:"BRCGS Food Safety"},
+  {id:"organic",label:"Organic certification"},
+  {id:"halal",label:"Halal"},
+  {id:"kosher",label:"Kosher"},
+  {id:"vegan",label:"Vegan claim / certification"},
+  {id:"non_gmo",label:"Non-GMO evidence"},
+  {id:"lab_report",label:"Lab / COA reports"},
   {id:"origin_docs",label:"Origin / shipment documents"},
 ];
 
@@ -27,12 +42,12 @@ export const EVIDENCE_STATUS = {
 export const readinessStatusConf = status => EVIDENCE_STATUS[status] || EVIDENCE_STATUS.missing;
 
 export const READINESS_SECTIONS = [
-  {id:"market_entry",label:"Market Entry",hint:"Registrations and baseline documents needed before a shipment can move."},
-  {id:"product_standards",label:"Product Standards",hint:"Market-specific test reports, standards, and technical documentation."},
-  {id:"quality_evidence",label:"Quality Evidence",hint:"Operational records that show consistent inspection and quality control."},
-  {id:"origin_traceability",label:"Origin & Traceability",hint:"Source, supplier, batch, and origin documents buyers may ask to review."},
-  {id:"packaging_shipment",label:"Packaging & Shipment",hint:"Shipment documents, packaging proof, and labelling evidence."},
-  {id:"responsible_sourcing",label:"Responsible Sourcing",hint:"Social, safety, environmental, and due-diligence evidence."},
+  {id:"market_entry",label:"Market Entry",hint:"Exporter registrations, food-business licences, and baseline documents needed before trade conversations get serious."},
+  {id:"product_standards",label:"Product & Lab Evidence",hint:"Specifications, COAs, microbiology, pesticide/residue, allergen, heavy-metal, contaminant, and buyer-specific test evidence."},
+  {id:"quality_evidence",label:"Food Safety & Quality Systems",hint:"Facility certifications and operational evidence that show consistent food-safety and quality control."},
+  {id:"origin_traceability",label:"Origin & Traceability",hint:"Supplier, ingredient/source, production, lot/batch, and chain-of-custody records."},
+  {id:"packaging_shipment",label:"Packaging, Labelling & Shipment",hint:"Packaging configuration, label evidence, storage conditions, origin and shipment documentation."},
+  {id:"responsible_sourcing",label:"Claims & Responsible Sourcing",hint:"Organic, Halal, Kosher, Vegan, Non-GMO, sustainability, social, environmental, and buyer due-diligence evidence."},
 ];
 
 export const evidenceTypeFallback = type => {
@@ -56,7 +71,7 @@ export const marketsForRequirement = r => {
 };
 
 export const requirementApplies = (r,{sector,productType,market}) => {
-  const reqSector = r.sector || "stone";
+  const reqSector = r.sector || "food";
   const reqProduct = r.product_type || r.productCategory || r.product_category || "any";
   const reqMarkets = marketsForRequirement(r);
   return reqSector === sector
@@ -83,10 +98,10 @@ export const sectionForRequirement = r => {
   const lifecycle=(r.lifecycleType||r.evidence_lifecycle_type||"").toLowerCase();
   if(t==="registration" || lifecycle==="government_registration")return "market_entry";
   if(t==="testing" || t==="standard" || evidence==="lab_report" || lifecycle==="product_test_report")return "product_standards";
-  if(t==="packaging" || name.includes("packaging") || name.includes("origin") || lifecycle==="shipment_document")return "packaging_shipment";
-  if(name.includes("origin") || name.includes("trace") || name.includes("quarry") || name.includes("supplier"))return "origin_traceability";
-  if(t==="compliance" || lifecycle==="responsible_sourcing_audit" || name.includes("sourcing") || name.includes("silica") || name.includes("environment"))return "responsible_sourcing";
-  if(t==="certification" || lifecycle==="management_system_cert")return "quality_evidence";
+  if(t==="packaging" || name.includes("packaging") || name.includes("label") || name.includes("shipment") || lifecycle==="shipment_document")return "packaging_shipment";
+  if(name.includes("origin") || name.includes("trace") || name.includes("source") || name.includes("supplier") || name.includes("batch") || name.includes("lot"))return "origin_traceability";
+  if(t==="compliance" || lifecycle==="responsible_sourcing_audit" || name.includes("organic") || name.includes("halal") || name.includes("kosher") || name.includes("vegan") || name.includes("non-gmo") || name.includes("sourcing") || name.includes("environment") || name.includes("social audit") || name.includes("sustainability"))return "responsible_sourcing";
+  if(t==="certification" || lifecycle==="management_system_cert" || name.includes("haccp") || name.includes("fssc") || name.includes("brcgs") || name.includes("iso 22000"))return "quality_evidence";
   return "market_entry";
 };
 
