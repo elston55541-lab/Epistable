@@ -10,25 +10,35 @@ export const C = {
   shadow: SHADOW.card,
 };
 
-export const STONES = [
-  {id:"makrana",label:"Makrana White"},{id:"black",label:"Black Granite"},
-  {id:"green",label:"Rainforest Green"},{id:"yellow",label:"Jaisalmer Yellow"},
-  {id:"pink",label:"Udaipur Pink"},{id:"kota",label:"Kota Brown"},
-  {id:"carrara",label:"Carrara White"},{id:"red",label:"Indian Red Granite"},
+export const FOOD_PRODUCTS = [
+  {id:"spices",label:"Spices & Seasonings"},
+  {id:"fresh_produce",label:"Fresh Produce"},
+  {id:"processed_fruit",label:"Processed Fruit & Fruit Ingredients"},
+  {id:"nuts",label:"Nuts & Dry Fruits"},
+  {id:"ingredients",label:"Food Ingredients"},
 ];
 
-export const DEFECTS = [
-  {id:"crack",label:"Crack",color:C.red},
-  {id:"stain",label:"Stain",color:C.amber},{id:"pit",label:"Pitting",color:C.red},
-  {id:"chip",label:"Edge Chip",color:C.amber},{id:"vein",label:"Vein Issue",color:C.blue2},
-  {id:"polish",label:"Polish Issue",color:C.amber},{id:"thin",label:"Thin Spot",color:C.purple},
+// Temporary backwards-compatible alias while the UI is migrated from stone terminology.
+export const STONES = FOOD_PRODUCTS;
+
+export const QUALITY_FLAGS = [
+  {id:"microbiology",label:"Microbiology",color:C.red},
+  {id:"pesticide",label:"Pesticide / Residue",color:C.amber},
+  {id:"allergen",label:"Allergen",color:C.red},
+  {id:"foreign_matter",label:"Foreign Matter",color:C.amber},
+  {id:"moisture",label:"Moisture / Water Activity",color:C.blue2},
+  {id:"spec_variance",label:"Specification Variance",color:C.amber},
+  {id:"packaging",label:"Packaging / Labelling",color:C.purple},
 ];
+
+// Temporary backwards-compatible alias while inspection screens are migrated.
+export const DEFECTS = QUALITY_FLAGS;
 
 export const GRADES = [
-  {id:"Premium",label:"PREMIUM",color:C.green,bg:C.greenBg,border:C.greenBorder,emoji:"🏆",price:850},
-  {id:"Standard",label:"STANDARD",color:C.amber,bg:C.amberBg,border:C.amberBorder,emoji:"✅",price:480},
-  {id:"Commercial",label:"COMMERCIAL",color:C.blue2,bg:C.blue2Bg,border:C.blue2Border,emoji:"🏢",price:320},
-  {id:"Rejected",label:"REJECT",color:C.red,bg:C.redBg,border:C.redBorder,emoji:"❌",price:0},
+  {id:"Buyer Ready",label:"BUYER READY",color:C.green,bg:C.greenBg,border:C.greenBorder,emoji:"✓",price:0},
+  {id:"Review",label:"REVIEW",color:C.amber,bg:C.amberBg,border:C.amberBorder,emoji:"!",price:0},
+  {id:"Conditional",label:"CONDITIONAL",color:C.blue2,bg:C.blue2Bg,border:C.blue2Border,emoji:"~",price:0},
+  {id:"Hold",label:"HOLD",color:C.red,bg:C.redBg,border:C.redBorder,emoji:"×",price:0},
 ];
 
 export const PLANS = {
@@ -52,4 +62,7 @@ export const calcBill = (plan,scans) => {
   return {monthlyFee:p.monthlyFee,includedScans:p.scansIncluded,overageScans:ov,overageCharge:Math.round(ov*p.pricePerScan),pricePerScan:p.pricePerScan,total:p.monthlyFee+Math.round(ov*p.pricePerScan)};
 };
 export const gradeConf = g => GRADES.find(x=>x.id===g)||GRADES[1];
-export const slabQrUrl = slabId => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent("https://epistable.pages.dev/slab/"+slabId)}`;
+export const lotQrUrl = lotId => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent("https://epistable.pages.dev/lot/"+lotId)}`;
+
+// Temporary alias so existing certificate/report components keep working during conversion.
+export const slabQrUrl = lotQrUrl;
