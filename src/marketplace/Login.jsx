@@ -28,7 +28,7 @@ export function Login({onSignedIn}) {
     finally{setBusy(false);}
   }
   return <div style={{minHeight:"100vh",background:C.bg,display:"grid",placeItems:"center",padding:SPACE.xl,fontFamily:FONT_STACK,lineHeight:1.5}}>
-    <Card style={{width:"100%",maxWidth:440,padding:SPACE.xxl,boxShadow:SHADOW.raised}}>
+    <Card style={{width:"100%",maxWidth:440+SPACE.xxl*2+2,padding:SPACE.xxl,boxShadow:SHADOW.raised}}>
       <div style={{display:"flex",alignItems:"center",gap:SPACE.md,marginBottom:SPACE.xl}}>
         <div style={{width:44,height:44,flexShrink:0,borderRadius:RADIUS.md,background:C.primary,display:"grid",placeItems:"center"}}><Icon name="verified" size={22} color={C.white}/></div>
         <div><div role="heading" aria-level={1} style={{fontSize:TYPE.display.size,fontWeight:WEIGHT.bold,color:C.text}}>Epistable</div><div style={{fontSize:TYPE.label.size,color:C.textDim}}>Verified cross-border food trade</div></div>
