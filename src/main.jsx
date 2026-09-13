@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import MarketplaceApp from './MarketplaceApp.jsx'
+import { LegacyWorkspaceNotice } from './marketplace/LegacyWorkspaceNotice.jsx'
 import { registerServiceWorker } from './registerServiceWorker.js'
 import './styles.css'
 
@@ -12,6 +13,7 @@ const legacyRoute = path.startsWith('/slab/') || path.startsWith('/quote/') || p
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
+    {path.startsWith('/legacy') && <LegacyWorkspaceNotice />}
     {legacyRoute ? <App /> : <MarketplaceApp />}
   </React.StrictMode>
 )
