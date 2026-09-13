@@ -5,8 +5,8 @@ import { Button } from "./ui";
 
 export const portals = {
   admin:{title:"Epistable Admin",nav:[["overview","Overview","chart"],["organizations","Organisations","building"],["access","Team access","users"],["products","Products","package"],["rfqs","RFQs","mail"],["verification","Verification","verified"]]},
-  seller:{title:"Seller workspace",nav:[["overview","Overview","chart"],["organization","Organisation profile","building"],["products","Product catalogue","package"],["documents","Trade documents","file"],["rfqs","Buyer RFQs","mail"],["quotes","Your quotes","message"]]},
-  buyer:{title:"Buyer workspace",nav:[["discover","Discover products","search"],["suppliers","Suppliers","building"],["organization","Organisation profile","user"],["rfqs","Your RFQs","mail"],["quotes","Received quotes","message"]]},
+  seller:{title:"Seller Organisation",nav:[["overview","Overview","chart"],["organization","Organisation profile","building"],["products","Product catalogue","package"],["documents","Trade documents","file"],["rfqs","Buyer RFQs","mail"],["quotes","Your quotes","message"]]},
+  buyer:{title:"Buyer Organisation",nav:[["discover","Discover products","search"],["suppliers","Suppliers","building"],["organization","Organisation profile","user"],["rfqs","Your RFQs","mail"],["quotes","Received quotes","message"]]},
 };
 export function portalFor(access) {
   if(access?.role==="platform_admin")return "admin";
@@ -32,8 +32,8 @@ export function Shell({profile,mode,page,onNavigate,onLogout,signingOut,children
   return <div className={"mp-shell"+(isMobile?" mp-mobile":"")}>
     <a href="#marketplace-content" className="mp-skip" onClick={e=>{e.preventDefault();document.getElementById("marketplace-content")?.focus();}}>Skip to content</a>
     <header className="mp-header">
-      <div className="mp-brand"><Icon name="verified" size={24}/><strong>Epistable</strong><span>Food & Agri Trade</span></div>
-      <div className="mp-header-right"><span className="mp-account" title={profile.email}>{profile.name||profile.email}</span>
+      <div className="mp-brand"><Icon name="verified" size={24}/><strong>Epistable</strong><span>{config.title}</span></div>
+      <div className="mp-header-right"><span className="mp-account" title={profile.email}>{profile.name==="Epistable Owner"&&mode==="admin"?"Epistable Admin":profile.name||profile.email}</span>
         <Button variant="secondary" disabled={signingOut} onClick={onLogout}>{signingOut?"Logging out…":"Log out"}</Button>
         {isMobile&&<button type="button" className="mp-button mp-button-secondary" ref={menu} aria-expanded={open} aria-controls="marketplace-nav" onClick={()=>setOpen(!open)}><Icon name={open?"close":"list"}/>{open?"Close menu":"Menu"}</button>}
       </div>
