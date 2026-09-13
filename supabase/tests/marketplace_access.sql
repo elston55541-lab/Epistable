@@ -1,5 +1,11 @@
--- Run as postgres after marketplace access migration. All fixtures roll back.
+-- Run after the marketplace access migration, as postgres. All fixtures roll back.
 begin;
+
+-- Complete trade fixtures; these defaults and all records are rolled back.
+alter table public.products alter country_of_origin set default 'India', alter moq set default 1, alter moq_unit set default 'kg', alter packaging set default '["1kg pouch"]'::jsonb, alter shelf_life set default '12 months', alter storage_requirements set default 'Cool and dry';
+alter table public.rfqs alter quantity set default 1, alter quantity_unit set default 'kg', alter destination_country set default 'India';
+alter table public.trade_quotes alter quantity set default 1, alter quantity_unit set default 'kg', alter unit_price set default 1, alter total_amount set default 1, alter incoterm set default 'FOB', alter validity_ts set default (extract(epoch from now()+interval '30 days')*1000)::bigint;
+
 
 create temporary table test_actors(label text,id uuid default gen_random_uuid());
 insert into test_actors(label) values ('seller_a'),('seller_b'),('buyer_a'),('buyer_b'),('legacy_admin'),('pending'),('suspended'),('platform');
@@ -64,7 +70,7 @@ select pg_temp.assert_true((pg_temp.denied($q$insert into public.trade_quotes(id
 select pg_temp.assert_true((pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values ('phase0_badq','phase0_r','phase0_sa','accepted')$q$)), 'seller cannot forge accepted quote');
 insert into public.products(id,seller_org_id,name,category) values ('phase0_newp','phase0_sa','New','Spices');
 select pg_temp.assert_true(((select count(*) from public.products where id='phase0_newp')=1), 'own product insert works');
-insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values ('phase0_newq','phase0_r','phase0_sa','draft');
+insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values ('phase0_newq','phase0_created','phase0_sa','draft');
 update public.trade_quotes set status='sent' where id='phase0_newq';
 select pg_temp.assert_true(((select status from public.trade_quotes where id='phase0_newq')='sent'), 'seller can submit draft quote');
 update public.trade_quotes set notes='tampered' where id='phase0_newq';
@@ -106,6 +112,7 @@ set local role anon;
 select pg_temp.assert_true((pg_temp.denied('select * from public.products')), 'anonymous table access denied');
 select pg_temp.assert_true((pg_temp.denied('select public.marketplace_context()')), 'anonymous context denied');
 reset role;
+
 
 reset role;
 update public.profiles set organization_id='phase0_sa',organization_role='platform_admin' where auth_user_id=(select id from test_actors where label='legacy_admin');

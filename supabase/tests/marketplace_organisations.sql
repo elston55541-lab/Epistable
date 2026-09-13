@@ -1,6 +1,12 @@
 -- Run after the marketplace access migration, as postgres. All fixtures roll back.
 begin;
 
+-- Complete trade fixtures; these defaults and all records are rolled back.
+alter table public.products alter country_of_origin set default 'India', alter moq set default 1, alter moq_unit set default 'kg', alter packaging set default '["1kg pouch"]'::jsonb, alter shelf_life set default '12 months', alter storage_requirements set default 'Cool and dry';
+alter table public.rfqs alter quantity set default 1, alter quantity_unit set default 'kg', alter destination_country set default 'India';
+alter table public.trade_quotes alter quantity set default 1, alter quantity_unit set default 'kg', alter unit_price set default 1, alter total_amount set default 1, alter incoterm set default 'FOB', alter validity_ts set default (extract(epoch from now()+interval '30 days')*1000)::bigint;
+
+
 create temporary table test_actors(label text,id uuid default gen_random_uuid());
 insert into test_actors(label) values ('seller_a'),('seller_b'),('buyer_a'),('buyer_b'),('legacy_admin'),('pending'),('suspended'),('platform');
 insert into auth.users(id,email) select id,'phase0-'||id||'@example.invalid' from test_actors;
