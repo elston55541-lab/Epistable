@@ -2,7 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import MarketplaceApp from './MarketplaceApp.jsx'
-import { AdminInviteLauncher } from './components/AdminInviteLauncher.jsx'
 import { registerServiceWorker } from './registerServiceWorker.js'
 import './styles.css'
 
@@ -14,6 +13,5 @@ const legacyRoute = path.startsWith('/slab/') || path.startsWith('/quote/') || p
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {legacyRoute ? <App /> : <MarketplaceApp />}
-    {legacyRoute && <AdminInviteLauncher />}
   </React.StrictMode>
 )
