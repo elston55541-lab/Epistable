@@ -34,13 +34,13 @@ export function Shell({profile,mode,page,onNavigate,onLogout,signingOut,children
     <header className="mp-header">
       <div className="mp-brand"><Icon name="verified" size={24}/><strong>Epistable</strong><span>Food & Agri Trade</span></div>
       <div className="mp-header-right"><span className="mp-account" title={profile.email}>{profile.name||profile.email}</span>
-        <Button variant="secondary" disabled={signingOut} onClick={onLogout}>{signingOut?"Signing out…":"Sign out"}</Button>
+        <Button variant="secondary" disabled={signingOut} onClick={onLogout}>{signingOut?"Logging out…":"Log out"}</Button>
         {isMobile&&<button type="button" className="mp-button mp-button-secondary" ref={menu} aria-expanded={open} aria-controls="marketplace-nav" onClick={()=>setOpen(!open)}><Icon name={open?"close":"list"}/>{open?"Close menu":"Menu"}</button>}
       </div>
     </header>
     {(!isMobile||open)&&<aside className="mp-sidebar"><p className="mp-eyebrow">{config.title}</p><nav id="marketplace-nav" aria-label={config.title}>
       {config.nav.map(([id,label,icon])=><a key={id} href={"#/"+mode+"/"+id} aria-current={id===page?"page":undefined} onClick={e=>{e.preventDefault();navigate(id);}}><Icon name={icon}/>{label}</a>)}
-    </nav><div className="mp-sidebar-note"><Icon name="verified"/><p>Processed Foods<br/><small>Launch vertical</small></p></div></aside>}
+    </nav><div className="mp-nav-logout"><Button variant="secondary" aria-label="Log out from navigation" disabled={signingOut} onClick={onLogout}>{signingOut?"Logging out…":"Log out"}</Button></div><div className="mp-sidebar-note"><Icon name="verified"/><p>Processed Foods<br/><small>Launch vertical</small></p></div></aside>}
     <main id="marketplace-content" tabIndex={-1} className="mp-content">{children}</main>
   </div>;
 }
