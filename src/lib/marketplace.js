@@ -9,6 +9,14 @@ export const FOOD_CATEGORIES = [
 ];
 
 export const marketplace = {
+  async context() { return data(await supabase.rpc('marketplace_context')); },
+  async accounts() { return data(await supabase.rpc('marketplace_accounts')); },
+  async assignAccess(targetUser,targetOrg,targetRole) {
+    return data(await supabase.rpc('assign_marketplace_access',{target_user:targetUser,target_org:targetOrg,target_role:targetRole}));
+  },
+  async updateOrganization(organizationId,updates) {
+    return data(await supabase.from('organizations').update(updates).eq('id',organizationId).select().single());
+  },
   async organizations(type) {
     let q=supabase.from('organizations').select('*').order('created_at',{ascending:false});
     if(type)q=q.eq('type',type);
@@ -32,7 +40,8 @@ export const marketplace = {
     return data(await supabase.from('products').update(updates).eq('id',productId).select().single());
   },
   async documents(organizationId,productId=null) {
-    let q=supabase.from('trade_documents').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false});
+    let q=supabase.from('trade_documents').select('*').order('created_at',{ascending:false});
+    if(organizationId)q=q.eq('organization_id',organizationId);
     if(productId)q=q.eq('product_id',productId);
     return data(await q);
   },
@@ -52,7 +61,9 @@ export const marketplace = {
     return data(await supabase.from('rfqs').update(updates).eq('id',rfqId).select().single());
   },
   async quotes(rfqId) {
-    return data(await supabase.from('trade_quotes').select('*').eq('rfq_id',rfqId).order('created_at',{ascending:false}));
+    let q=supabase.from('trade_quotes').select('*').order('created_at',{ascending:false});
+    if(rfqId)q=q.eq('rfq_id',rfqId);
+    return data(await q);
   },
   async createQuote(input) {
     return data(await supabase.from('trade_quotes').insert({id:id('TQ'),...input}).select().single());
