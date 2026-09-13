@@ -48,6 +48,7 @@ export function Login({onSignedIn}) {
         </div>
       </div>
       <Btn full size="lg" disabled={loading} style={{borderRadius:6,padding:isDesktop?"15px 20px":"13px 20px",fontWeight:700,fontSize:isDesktop?15:14}}>{loading?"Signing in...":"Log In"}</Btn>
+      <div style={{textAlign:"center",marginTop:16}}><a href="/forgot-password" style={{color:C.primary,fontSize:TYPE.label.size}}>Forgot password?</a></div>
     </form>
   );
   if(isDesktop)return (
