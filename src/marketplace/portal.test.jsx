@@ -8,7 +8,7 @@ import { getSessionProfile, signInWithEmail } from '../lib/auth';
 import { marketplace } from '../lib/marketplace';
 
 vi.mock('../lib/auth',()=>({getSessionProfile:vi.fn(),signInWithEmail:vi.fn(),signOut:vi.fn(),friendlyAuthError:e=>e.message}));
-vi.mock('../lib/marketplace',()=>({marketplace:{context:vi.fn()}}));
+vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],marketplace:{context:vi.fn()}}));
 vi.mock('../lib/supabase',()=>({supabase:{auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:vi.fn()}}})}}}));
 beforeEach(()=>vi.clearAllMocks());
 const profile={name:'Test User',email:'qa@example.invalid',auth_user_id:'user-1',role:'owner'};

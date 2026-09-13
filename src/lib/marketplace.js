@@ -9,6 +9,10 @@ export const FOOD_CATEGORIES = [
 ];
 
 export const marketplace = {
+  async reviews() { return data(await supabase.from('marketplace_reviews').select('*').order('created_at',{ascending:false}).limit(100)); },
+  async review(kind,targetId,decision,reason) {
+    return data(await supabase.rpc('review_marketplace_record',{target_kind:kind,target_id:targetId,decision,reason}));
+  },
   async context() { return data(await supabase.rpc('marketplace_context')); },
   async accounts() { return data(await supabase.rpc('marketplace_accounts')); },
   async assignAccess(targetUser,targetOrg,targetRole) {
@@ -47,6 +51,9 @@ export const marketplace = {
   },
   async addDocument(input) {
     return data(await supabase.from('trade_documents').insert({id:id('DOC'),...input}).select().single());
+  },
+  async updateDocument(documentId,updates) {
+    return data(await supabase.from('trade_documents').update(updates).eq('id',documentId).select().single());
   },
   async rfqs({buyerOrgId,sellerOrgId}={}) {
     let q=supabase.from('rfqs').select('*, products(*)').order('created_at',{ascending:false});

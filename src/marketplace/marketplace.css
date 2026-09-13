@@ -42,6 +42,10 @@
 .mp-field label {font-weight:var(--mp-medium);font-size:var(--mp-type-label)}
 .mp-field input,.mp-field select,.mp-field textarea {width:100%;min-height:44px;border:1px solid var(--mp-textDim);border-radius:var(--mp-radius-sm);padding:var(--mp-space-sm) var(--mp-space-md);color:var(--mp-text);background:var(--mp-white)}
 .mp-field textarea {resize:vertical}
+.mp-details {display:grid;gap:var(--mp-space-md);margin:var(--mp-space-xl) 0}
+.mp-details>div {display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,3fr);gap:var(--mp-space-base);border-bottom:1px solid var(--mp-border);padding-bottom:var(--mp-space-sm)}
+.mp-details dt {font-weight:var(--mp-medium);color:var(--mp-textMid)}
+.mp-details dd {margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .mp-notice {padding:var(--mp-space-base);border:1px solid var(--mp-primaryBorder);background:var(--mp-primaryBg);border-radius:var(--mp-radius-sm);margin-bottom:var(--mp-space-base)}
 .mp-error {border-color:var(--mp-redBorder);background:var(--mp-redBg);color:var(--mp-red)}
 .mp-login {min-height:100vh;display:grid;place-items:center;padding:var(--mp-space-xl)}

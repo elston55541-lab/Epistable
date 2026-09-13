@@ -21,3 +21,7 @@ The deployed pages.dev app, a public slab certificate and an existing expired pu
 ## Release checks
 
 Run npm test and npm run build. SQL tests run as postgres with ephemeral fixtures inside BEGIN/ROLLBACK. Verify real Admin, Buyer and Seller flows on desktop and phone; check public slab, quote and print compatibility. Do not merge until required checks are recorded as passed. Component tests at viewport widths cover behaviour, not browser layout or real authenticated end-to-end operation. Keep pending browser checks explicit; do not mark them passed from mocks.
+
+## Implementation checkpoint
+
+Portal foundation is PR #218. Product/RFQ/quote/review implementation is the subsequent trade-workflows PR, stacked on that branch. The organisation and trade-workflow migrations have been applied and verified with rollback-only fixtures. The frontend remains unmerged pending Cloudflare preview recovery and real authenticated desktop/mobile checks. See marketplace-trade-workflows.md for implemented behaviour and exact limits.
