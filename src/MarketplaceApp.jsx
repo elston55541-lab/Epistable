@@ -1,150 +1,72 @@
-import { useEffect, useMemo, useState } from "react";
-import { getSessionProfile, signInWithEmail, signOut, friendlyAuthError } from "./lib/auth";
-import { marketplace, FOOD_CATEGORIES } from "./lib/marketplace";
-import { C } from "./lib/domain";
-import { Btn, Card, Inp, KpiGrid, Loader, Sel } from "./components/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "./lib/supabase";
+import { friendlyAuthError, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
+import { marketplace } from "./lib/marketplace";
 import { Icon } from "./components/Icon";
-import { Pill } from "./components/Pill";
-import { FONT_STACK, RADIUS, SHADOW, SPACE, TYPE, WEIGHT } from "./lib/tokens";
-import { useBP } from "./hooks/useBP";
+import { Shell, pageFromHash, portalFor, portals } from "./marketplace/Shell";
+import { AccessManagement, Organisations, OwnOrganisation } from "./marketplace/Organisations";
+import { Button, Empty, Field, Heading, Notice, Status, theme } from "./marketplace/ui";
+import "./marketplace/marketplace.css";
 
-const PORTALS = {
-  admin: {
-    label: "Epistable Admin",
-    subtitle: "Marketplace governance",
-    nav: [
-      ["overview", "Overview", "chart"], ["organizations", "Organizations", "building"],
-      ["products", "Products", "package"], ["rfqs", "RFQs", "mail"],
-      ["verification", "Verification", "verified"],
-    ],
-  },
-  seller: {
-    label: "Seller Portal",
-    subtitle: "Export and buyer operations",
-    nav: [
-      ["overview", "Overview", "chart"], ["products", "Products", "package"],
-      ["rfqs", "Buyer RFQs", "mail"], ["documents", "Documents", "file"],
-      ["trade", "Trade Pipeline", "truck"],
-    ],
-  },
-  buyer: {
-    label: "Buyer Marketplace",
-    subtitle: "Verified food sourcing",
-    nav: [
-      ["discover", "Discover", "search"], ["suppliers", "Suppliers", "building"],
-      ["rfqs", "My RFQs", "mail"], ["quotes", "Quotes", "message"],
-      ["saved", "Saved", "package"],
-    ],
-  },
-};
-
-function portalFor(profile) {
-  if (profile?.role === "owner") return "admin";
-  if (profile?.role === "admin" && !profile?.organization_id) return "admin";
-  if (profile?.role === "buyer") return "buyer";
-  return "seller";
+export function Login({onSignedIn}) {
+  const [email,setEmail]=useState(""),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
+  async function submit(e){e.preventDefault();setBusy(true);setError("");try{await signInWithEmail(email,password);await onSignedIn();}catch(e){setError(friendlyAuthError(e));}finally{setBusy(false);}}
+  return <div className="mp-login"><section className="mp-card"><div className="mp-brand"><Icon name="verified" size={24}/><strong>Epistable</strong></div><h1>Food & Agri Trade</h1><p>Connect verified businesses across borders. Starting with Processed Foods.</p><form onSubmit={submit} className="mp-form"><fieldset disabled={busy}><legend>Sign in to your workspace</legend><Field label="Email" type="email" required autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/><Field label="Password" type="password" required autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/>{error&&<Notice error>{error}</Notice>}<Button type="submit">{busy?"Signing in…":"Sign in"}</Button></fieldset></form><p><small>Use your existing Epistable account. Your administrator assigns your buyer, seller or platform access.</small></p></section></div>;
 }
 
-function Login({ onDone }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function submit() {
-    if (!email.trim() || !password) return;
-    setBusy(true); setError("");
-    try { const { profile } = await signInWithEmail(email, password); onDone(profile); }
-    catch (e) { setError(friendlyAuthError(e)); setBusy(false); }
-  }
-  return <div style={{minHeight:"100vh",background:C.bg,display:"grid",placeItems:"center",padding:SPACE.xl,fontFamily:FONT_STACK}}>
-    <Card style={{width:"100%",maxWidth:440,padding:SPACE.xxl,boxShadow:SHADOW.raised}}>
-      <div style={{display:"flex",alignItems:"center",gap:SPACE.md,marginBottom:SPACE.xl}}>
-        <div style={{width:44,height:44,borderRadius:RADIUS.md,background:C.primary,display:"grid",placeItems:"center"}}><Icon name="verified" size={22} color={C.white}/></div>
-        <div><div style={{fontSize:TYPE.display.size,fontWeight:WEIGHT.bold,color:C.text}}>Epistable</div><div style={{fontSize:TYPE.label.size,color:C.textDim}}>Verified cross-border food trade</div></div>
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:SPACE.base}}>
-        <Inp label="Email" value={email} onChange={setEmail} type="email" placeholder="name@company.com"/>
-        <Inp label="Password" value={password} onChange={setPassword} type="password"/>
-        {error && <div style={{padding:SPACE.md,borderRadius:RADIUS.md,background:C.redBg,border:`1px solid ${C.redBorder}`,color:C.red,fontSize:TYPE.label.size}}>{error}</div>}
-        <Btn full onClick={submit} disabled={busy}>{busy?"Signing in...":"Sign in"}</Btn>
-      </div>
-    </Card>
-  </div>;
+export function ResourceList({page,mode,data}) {
+  const [search,setSearch]=useState("");
+  const products=page==="products"||page==="discover";
+  const suppliers=page==="suppliers";
+  const items=products?data.products:suppliers?data.organizations.filter(o=>o.type==="seller"):page==="verification"?data.documents.filter(d=>d.verification_status==="pending"):data[page]||[];
+  const visible=items.filter(item=>[item.name,item.title,item.id,item.category,item.country_of_origin,item.country,item.product_category,item.destination_country].filter(Boolean).join(" ").toLowerCase().includes(search.toLowerCase()));
+  const title=portals[mode].nav.find(n=>n[0]===page)?.[1]||page;
+  return <><Heading title={title} description={page==="discover"?"Explore verified products from verified seller organisations.":page==="verification"?"Trade documents awaiting Epistable review.":"Records available to your workspace."}/><Field label={"Search "+title.toLowerCase()} type="search" value={search} onChange={e=>setSearch(e.target.value)}/>{!visible.length?<Empty title={search?"No matching records":"No records yet"}>{search?"Try another product, category or country.":"Records will appear here when they are available to your organisation."}</Empty>:<div className="mp-grid">{visible.map(item=><article className="mp-card" key={item.id}><div className="mp-row"><span className="mp-eyebrow">{item.category||item.document_type||item.product_category||item.type||item.id}</span><Status value={item.verification_status||item.status}/></div><h2>{item.name||item.title||item.products?.name||item.id}</h2><p>{item.description||item.requirements||item.notes}</p>{(item.country_of_origin||item.country||item.destination_country)&&<p>{item.country_of_origin||item.country||item.destination_country}</p>}{item.moq!=null&&<p>Minimum order: {item.moq} {item.moq_unit}</p>}{item.quantity!=null&&<p>Quantity: {item.quantity} {item.quantity_unit}</p>}{item.total_amount!=null&&<p>{item.currency} {item.total_amount}</p>}{item.organizations?.name&&<p>Seller: {item.organizations.name}</p>}{item.status&&item.verification_status&&<Status value={item.status}/>}</article>)}</div>}</>;
 }
 
-function Shell({profile,mode,setMode,page,setPage,children,onLogout}) {
-  const {isMobile}=useBP();
-  const config=PORTALS[mode];
-  return <div style={{minHeight:"100vh",background:C.bg,fontFamily:FONT_STACK,color:C.text}}>
-    <aside style={{position:"fixed",inset:"0 auto 0 0",width:240,background:C.white,borderRight:`1px solid ${C.border}`,padding:SPACE.xl,display:isMobile?"none":"flex",flexDirection:"column",boxSizing:"border-box"}}>
-      <div style={{marginBottom:SPACE.xl}}><div style={{fontSize:TYPE.heading.size,fontWeight:WEIGHT.bold,color:C.primary}}>Epistable</div><div style={{fontSize:TYPE.caption.size,color:C.textDim,marginTop:SPACE.xs}}>Food & Agri Trade</div></div>
-      <div style={{fontSize:TYPE.label.size,fontWeight:WEIGHT.bold,marginBottom:SPACE.xs}}>{config.label}</div>
-      <div style={{fontSize:TYPE.caption.size,color:C.textDim,marginBottom:SPACE.lg}}>{config.subtitle}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:SPACE.xs,flex:1}}>{config.nav.map(([id,label,icon])=><button key={id} onClick={()=>setPage(id)} style={{border:0,background:page===id?C.primaryBg:"transparent",color:page===id?C.primary:C.textMid,borderRadius:RADIUS.md,padding:`${SPACE.md}px ${SPACE.base}px`,display:"flex",alignItems:"center",gap:SPACE.md,cursor:"pointer",fontFamily:FONT_STACK,fontSize:TYPE.body.size,fontWeight:page===id?WEIGHT.medium:WEIGHT.regular,textAlign:"left"}}><Icon name={icon} size={16}/>{label}</button>)}</div>
-      {(profile.role==="owner" || (profile.role==="admin"&&!profile.organization_id)) && <div style={{marginBottom:SPACE.base}}><div style={{fontSize:TYPE.caption.size,color:C.textDim,marginBottom:SPACE.sm}}>Preview portal</div><Sel value={mode} onChange={v=>{setMode(v);setPage(v==="buyer"?"discover":"overview");}} options={[{value:"admin",label:"Admin"},{value:"seller",label:"Seller"},{value:"buyer",label:"Buyer"}]}/></div>}
-      <button onClick={onLogout} style={{border:`1px solid ${C.border}`,background:C.white,borderRadius:RADIUS.md,padding:SPACE.md,cursor:"pointer",fontFamily:FONT_STACK,color:C.textMid}}>Sign out</button>
-    </aside>
-    <main style={{marginLeft:isMobile?0:240,minHeight:"100vh"}}>
-      <header style={{height:72,background:C.white,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",padding:`0 ${SPACE.xl}px`,position:"sticky",top:0,zIndex:10}}>
-        <div><div style={{fontSize:TYPE.label.size,fontWeight:WEIGHT.bold}}>{config.label}</div><div style={{fontSize:TYPE.caption.size,color:C.textDim}}>{profile.name} · {profile.email}</div></div>
-        <Pill tone="primary">Processed Foods Launch</Pill>
-      </header>
-      <div style={{padding:SPACE.xl,maxWidth:1280,margin:"0 auto"}}>{children}</div>
-    </main>
-  </div>;
-}
-
-function Empty({icon,title,body}) { return <Card style={{padding:SPACE.xxl,textAlign:"center"}}><div style={{display:"flex",justifyContent:"center",marginBottom:SPACE.base}}><Icon name={icon} size={32} color={C.primary}/></div><div style={{fontSize:TYPE.heading.size,fontWeight:WEIGHT.bold,marginBottom:SPACE.sm}}>{title}</div><div style={{fontSize:TYPE.body.size,color:C.textDim,maxWidth:520,margin:"0 auto"}}>{body}</div></Card>; }
-
-function ProductCards({products, buyer=false}) {
-  if(!products.length) return <Empty icon="package" title="No products yet" body={buyer?"Verified seller products will appear here as the marketplace is onboarded.":"Add processed-food SKUs with MOQ, packaging, shelf life, certifications and export-market data."}/>;
-  return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:SPACE.base}}>{products.map(p=><Card key={p.id} style={{padding:SPACE.lg}}>
-    <div style={{display:"flex",justifyContent:"space-between",gap:SPACE.md,marginBottom:SPACE.md}}><Pill tone="neutral">{p.category}</Pill><Pill tone={p.verification_status==="verified"?"success":"warning"}>{p.verification_status}</Pill></div>
-    <div style={{fontSize:TYPE.heading.size,fontWeight:WEIGHT.bold,marginBottom:SPACE.xs}}>{p.name}</div>
-    <div style={{fontSize:TYPE.label.size,color:C.textDim,marginBottom:SPACE.base}}>{p.organizations?.name||"Seller"} · {p.country_of_origin||"Origin not set"}</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:SPACE.sm,fontSize:TYPE.label.size,color:C.textMid}}><div>MOQ: {p.moq||"—"} {p.moq_unit||""}</div><div>Lead: {p.lead_time_days?`${p.lead_time_days} days`:"—"}</div><div>Shelf life: {p.shelf_life||"—"}</div><div>Markets: {(p.export_markets||[]).length||0}</div></div>
-    {buyer&&<Btn full style={{marginTop:SPACE.base}}>Request Quote</Btn>}
-  </Card>)}</div>;
-}
-
-function AdminPortal({page,data,reload}) {
-  const {organizations,products,rfqs}=data;
-  if(page==="overview") return <><div style={{marginBottom:SPACE.xl}}><div style={{fontSize:TYPE.display.size,fontWeight:WEIGHT.bold}}>Cross-border food marketplace</div><div style={{fontSize:TYPE.body.size,color:C.textDim,marginTop:SPACE.xs}}>Launch vertical: processed foods. Platform architecture remains ready for broader food & agri trade.</div></div><KpiGrid items={[{label:"Seller organizations",value:organizations.filter(o=>o.type==="seller").length.toLocaleString("en-IN"),icon:"building",color:C.primary},{label:"Buyer organizations",value:organizations.filter(o=>o.type==="buyer").length.toLocaleString("en-IN"),icon:"users",color:C.blue},{label:"Products",value:products.length.toLocaleString("en-IN"),icon:"package",color:C.green},{label:"Open RFQs",value:rfqs.filter(r=>["open","quoted","negotiating"].includes(r.status)).length.toLocaleString("en-IN"),icon:"mail",color:C.amber}]}/><Card style={{padding:SPACE.xl}}><div style={{fontSize:TYPE.heading.size,fontWeight:WEIGHT.bold,marginBottom:SPACE.md}}>Trade corridor strategy</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:SPACE.base}}>{[["1","India sellers","Launch verified processed-food exporters"],["2","BRICS buyers","Build buyer demand and RFQ liquidity"],["3","BRICS ↔ BRICS","Open multi-country seller participation"],["4","Emerging markets","Expand beyond the initial corridor"]].map(([n,t,b])=><div key={n} style={{padding:SPACE.base,border:`1px solid ${C.border}`,borderRadius:RADIUS.md,background:C.surface}}><div style={{fontSize:TYPE.caption.size,color:C.primary,fontWeight:WEIGHT.bold}}>PHASE {n}</div><div style={{fontSize:TYPE.body.size,fontWeight:WEIGHT.bold,marginTop:SPACE.xs}}>{t}</div><div style={{fontSize:TYPE.label.size,color:C.textDim,marginTop:SPACE.xs}}>{b}</div></div>)}</div></Card></>;
-  if(page==="organizations") return organizations.length?<div style={{display:"flex",flexDirection:"column",gap:SPACE.md}}>{organizations.map(o=><Card key={o.id} style={{padding:SPACE.lg,display:"flex",justifyContent:"space-between",gap:SPACE.base,alignItems:"center"}}><div><div style={{fontSize:TYPE.body.size,fontWeight:WEIGHT.bold}}>{o.name}</div><div style={{fontSize:TYPE.label.size,color:C.textDim}}>{o.type} · {o.country||"Country not set"}</div></div><Pill tone={o.verification_status==="verified"?"success":"warning"}>{o.verification_status}</Pill></Card>)}</div>:<Empty icon="building" title="No organizations yet" body="Onboard the first seller and buyer organizations to start the marketplace."/>;
-  if(page==="products") return <ProductCards products={products}/>;
-  if(page==="rfqs") return rfqs.length?<div style={{display:"flex",flexDirection:"column",gap:SPACE.md}}>{rfqs.map(r=><Card key={r.id} style={{padding:SPACE.lg}}><div style={{display:"flex",justifyContent:"space-between",gap:SPACE.md}}><div><div style={{fontSize:TYPE.body.size,fontWeight:WEIGHT.bold}}>{r.products?.name||r.product_category||"Open food RFQ"}</div><div style={{fontSize:TYPE.label.size,color:C.textDim,marginTop:SPACE.xs}}>{r.quantity||"—"} {r.quantity_unit||""} · {r.destination_country||"Destination not set"}</div></div><Pill tone="primary">{r.status}</Pill></div></Card>)}</div>:<Empty icon="mail" title="No RFQs yet" body="Buyer requests will appear here once sourcing activity begins."/>;
-  return <><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:SPACE.base}}><div style={{fontSize:TYPE.display.size,fontWeight:WEIGHT.bold}}>Verification queue</div><Btn variant="secondary" onClick={reload}><Icon name="refresh" size={14}/> Refresh</Btn></div><Empty icon="verified" title="Verification layer ready" body="Seller organizations, product records and trade documents are structured for Epistable verification without presenting Epistable as a regulatory certifier."/></>;
-}
-
-function SellerPortal({page,data,profile}) {
-  const mine=data.products.filter(p=>!profile.organization_id||p.seller_org_id===profile.organization_id);
-  const myRfqs=data.rfqs.filter(r=>!profile.organization_id||r.seller_org_id===profile.organization_id);
-  if(page==="overview") return <><div style={{fontSize:TYPE.display.size,fontWeight:WEIGHT.bold,marginBottom:SPACE.xs}}>Seller command center</div><div style={{fontSize:TYPE.body.size,color:C.textDim,marginBottom:SPACE.xl}}>Manage products, compliance evidence and buyer demand from one export workspace.</div><KpiGrid items={[{label:"Products",value:mine.length.toLocaleString("en-IN"),icon:"package",color:C.primary},{label:"Buyer RFQs",value:myRfqs.length.toLocaleString("en-IN"),icon:"mail",color:C.amber},{label:"Verified products",value:mine.filter(p=>p.verification_status==="verified").length.toLocaleString("en-IN"),icon:"verified",color:C.green},{label:"Markets",value:new Set(mine.flatMap(p=>p.export_markets||[])).size.toLocaleString("en-IN"),icon:"location",color:C.blue}]}/><Card style={{padding:SPACE.xl}}><div style={{fontSize:TYPE.heading.size,fontWeight:WEIGHT.bold,marginBottom:SPACE.md}}>Buyer-ready profile checklist</div>{["Company and factory profile","Product catalogue","MOQ, packaging and shelf life","Certifications and trade documents","Export markets and lead time"].map((x,i)=><div key={x} style={{display:"flex",alignItems:"center",gap:SPACE.md,padding:`${SPACE.md}px 0`,borderBottom:i<4?`1px solid ${C.border}`:"none"}}><Icon name="check" size={16} color={C.green}/><span style={{fontSize:TYPE.body.size}}>{x}</span></div>)}</Card></>;
-  if(page==="products") return <ProductCards products={mine}/>;
-  if(page==="rfqs") return myRfqs.length?<div style={{display:"flex",flexDirection:"column",gap:SPACE.md}}>{myRfqs.map(r=><Card key={r.id} style={{padding:SPACE.lg}}><div style={{fontSize:TYPE.body.size,fontWeight:WEIGHT.bold}}>{r.products?.name||r.product_category}</div><div style={{fontSize:TYPE.label.size,color:C.textDim,marginTop:SPACE.xs}}>{r.quantity} {r.quantity_unit} · Ship to {r.destination_country||"—"}</div><div style={{marginTop:SPACE.md}}><Pill tone="primary">{r.status}</Pill></div></Card>)}</div>:<Empty icon="mail" title="No buyer RFQs yet" body="Relevant sourcing requests will appear here as buyer activity grows."/>;
-  if(page==="documents") return <Empty icon="file" title="Trade document workspace" body="Upload certifications, lab reports, COAs and supporting export documents against your organization or products."/>;
-  return <Empty icon="truck" title="Trade pipeline" body="Accepted quotes will progress from negotiation to order, fulfilment and transaction history here."/>;
-}
-
-function BuyerPortal({page,data}) {
-  const verified=data.products.filter(p=>p.verification_status==="verified"&&p.status==="active");
-  const [category,setCategory]=useState("all");
-  const visible=category==="all"?verified:verified.filter(p=>p.category===category);
-  if(page==="discover") return <><div style={{marginBottom:SPACE.xl}}><div style={{fontSize:TYPE.display.size,fontWeight:WEIGHT.bold}}>Source verified food suppliers</div><div style={{fontSize:TYPE.body.size,color:C.textDim,marginTop:SPACE.xs}}>Start with processed foods across the India–BRICS trade corridor.</div></div><Card style={{padding:SPACE.base,marginBottom:SPACE.xl}}><Sel label="Category" value={category} onChange={setCategory} options={[{value:"all",label:"All processed foods"},...FOOD_CATEGORIES.map(x=>({value:x,label:x}))]}/></Card><ProductCards products={visible} buyer/></>;
-  if(page==="suppliers") { const sellers=data.organizations.filter(o=>o.type==="seller"&&o.verification_status==="verified"); return sellers.length?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:SPACE.base}}>{sellers.map(s=><Card key={s.id} style={{padding:SPACE.lg}}><Pill tone="success">Verified seller</Pill><div style={{fontSize:TYPE.heading.size,fontWeight:WEIGHT.bold,marginTop:SPACE.md}}>{s.name}</div><div style={{fontSize:TYPE.label.size,color:C.textDim,marginTop:SPACE.xs}}>{s.city?`${s.city}, `:""}{s.country||""}</div><div style={{fontSize:TYPE.body.size,color:C.textMid,marginTop:SPACE.md}}>{s.description||"Verified processed-food supplier on Epistable."}</div></Card>)}</div>:<Empty icon="building" title="No verified sellers yet" body="Verified seller organizations will appear here as onboarding begins."/>; }
-  if(page==="rfqs") return <Empty icon="mail" title="Your RFQs" body="Create sourcing requests by product, quantity, destination and required date, then compare seller responses."/>;
-  if(page==="quotes") return <Empty icon="message" title="Quote comparison" body="Seller quotations will be compared here by price, lead time, Incoterm and verification evidence."/>;
-  return <Empty icon="package" title="Saved products" body="Shortlisted suppliers and products will appear here for procurement review."/>;
+export function Workspace({profile,access,api=marketplace,onLogout,signingOut}) {
+  const mode=portalFor(access),[page,setPage]=useState(()=>pageFromHash(mode)),[data,setData]=useState(null),[error,setError]=useState("");
+  const generation=useRef(0);
+  const reload=useCallback(async()=>{
+    const current=++generation.current;setError("");setData(null);
+    try {
+      const [organizations,products,rfqs,quotes,documents]=await Promise.all([api.organizations(),api.products(mode==="buyer"?{verified:true,status:"active"}:mode==="seller"?{sellerOrgId:access.org}:{}),api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:{}),api.quotes(),mode==="buyer"?Promise.resolve([]):api.documents(mode==="seller"?access.org:undefined)]);
+      if(current===generation.current)setData({organizations,products,rfqs,quotes,documents});
+    }catch(e){if(current===generation.current)setError(e.message||"Could not load your workspace.");}
+  },[api,mode,access.org]);
+  useEffect(()=>{reload();return()=>{generation.current++;};},[reload]);
+  useEffect(()=>{const change=()=>setPage(pageFromHash(mode));window.addEventListener("hashchange",change);return()=>window.removeEventListener("hashchange",change);},[mode]);
+  function navigate(next){window.location.hash="/"+mode+"/"+next;setPage(next);}
+  let content;
+  if(error)content=<><Heading title="Workspace unavailable"/><Notice error>{error}</Notice><Button onClick={reload}>Retry loading</Button></>;
+  else if(!data)content=<p role="status">Loading your workspace…</p>;
+  else if(page==="organizations")content=<Organisations organizations={data.organizations} api={api} onSaved={reload}/>;
+  else if(page==="access")content=<AccessManagement organizations={data.organizations} api={api} onSaved={reload}/>;
+  else if(page==="organization")content=<OwnOrganisation access={access} organizations={data.organizations} api={api} onSaved={reload}/>;
+  else if(page==="overview")content=<><Heading title={mode==="admin"?"Trade overview":"Your trade workspace"} description={mode==="admin"?"Manage participation and review readiness across Epistable.":"Manage your organisation, catalogue and buyer enquiries."}/><div className="mp-grid">{[["Organisations",data.organizations.length,mode==="admin"?"organizations":"organization"],["Products",data.products.length,"products"],["RFQs",data.rfqs.length,"rfqs"]].map(([label,count,target])=><article className="mp-card" key={label}><p className="mp-eyebrow">{label}</p><h2>{count}</h2><Button variant="secondary" onClick={()=>navigate(target)}>View {label.toLowerCase()}</Button></article>)}</div></>;
+  else content=<ResourceList key={page} page={page} mode={mode} data={data}/>;
+  return <Shell profile={profile} mode={mode} page={page} onNavigate={navigate} onLogout={onLogout} signingOut={signingOut}>{content}</Shell>;
 }
 
 export default function MarketplaceApp() {
-  const [profile,setProfile]=useState(null); const [loading,setLoading]=useState(true);
-  const [mode,setMode]=useState("admin"); const [page,setPage]=useState("overview");
-  const [data,setData]=useState({organizations:[],products:[],rfqs:[]}); const [loadError,setLoadError]=useState("");
-  async function reload(){ setLoadError(""); try{ const [organizations,products,rfqs]=await Promise.all([marketplace.organizations(),marketplace.products(),marketplace.rfqs()]); setData({organizations,products,rfqs}); }catch(e){ setLoadError(e?.message||"Could not load marketplace data."); } }
-  useEffect(()=>{ let live=true; getSessionProfile().then(p=>{if(live){setProfile(p); if(p){const m=portalFor(p);setMode(m);setPage(m==="buyer"?"discover":"overview");} setLoading(false);}}).catch(()=>{if(live)setLoading(false);}); return()=>{live=false;};},[]);
-  useEffect(()=>{if(profile)reload();},[profile]);
-  const content=useMemo(()=>{if(mode==="admin")return <AdminPortal page={page} data={data} reload={reload}/>; if(mode==="seller")return <SellerPortal page={page} data={data} profile={profile}/>; return <BuyerPortal page={page} data={data}/>;},[mode,page,data,profile]);
-  if(loading)return <Loader/>; if(!profile)return <Login onDone={p=>{setProfile(p);const m=portalFor(p);setMode(m);setPage(m==="buyer"?"discover":"overview");}}/>;
-  return <Shell profile={profile} mode={mode} setMode={setMode} page={page} setPage={setPage} onLogout={async()=>{await signOut();setProfile(null);}}>{loadError&&<div style={{padding:SPACE.md,marginBottom:SPACE.base,borderRadius:RADIUS.md,background:C.amberBg,border:`1px solid ${C.amberBorder}`,color:C.amber,fontSize:TYPE.label.size}}>{loadError}</div>}{content}</Shell>;
+  const [state,setState]=useState({loading:true}),[signingOut,setSigningOut]=useState(false),[logoutError,setLogoutError]=useState("");
+  const generation=useRef(0);
+  const refresh=useCallback(async(background=false)=>{
+    const current=++generation.current;if(background!==true)setState({loading:true});
+    try{const profile=await getSessionProfile();const access=profile?await marketplace.context():null;if(current===generation.current)setState(previous=>background===true&&previous.profile?.auth_user_id===profile?.auth_user_id&&previous.access?.role===access?.role&&previous.access?.org===access?.org?previous:{profile,access});}
+    catch(e){if(current===generation.current)setState({error:friendlyAuthError(e)});}
+  },[]);
+  useEffect(()=>{
+    refresh();let timer;
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event)=>{
+      // Defer Supabase calls until its auth callback has released the session lock.
+      if(["SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)){generation.current++;if(event==="SIGNED_OUT")setState({loading:true});clearTimeout(timer);timer=setTimeout(()=>refresh(true),0);}
+    });
+    const focused=()=>refresh(true);
+    window.addEventListener("focus",focused);
+    return()=>{generation.current++;clearTimeout(timer);subscription.unsubscribe();window.removeEventListener("focus",focused);};
+  },[refresh]);
+  async function logout(){setSigningOut(true);setLogoutError("");try{await signOut();generation.current++;setState({profile:null,access:null});}catch(e){setLogoutError(friendlyAuthError(e));}finally{setSigningOut(false);}}
+  const mode=portalFor(state.access);
+  return <div className="mp-root" style={theme}>{logoutError&&<Notice error>{logoutError}</Notice>}{state.loading?<div className="mp-login"><p role="status">Loading Epistable…</p></div>:state.error?<div className="mp-login"><section className="mp-card"><h1>Unable to open workspace</h1><Notice error>{state.error}</Notice><div className="mp-actions"><Button onClick={refresh}>Retry</Button><Button variant="secondary" onClick={logout} disabled={signingOut}>Sign out</Button></div></section></div>:!state.profile?<Login onSignedIn={refresh}/>:!mode?<div className="mp-login"><section className="mp-card"><h1>Marketplace access needed</h1><p>Your account is signed in. An Epistable administrator needs to assign your organisation and marketplace role.</p><div className="mp-actions"><Button onClick={refresh}>Refresh access</Button><Button variant="secondary" onClick={logout} disabled={signingOut}>Sign out</Button></div><p><a href="/legacy">Open existing workspace</a></p></section></div>:<Workspace key={state.profile.auth_user_id+":"+state.access.role+":"+state.access.org} profile={state.profile} access={state.access} onLogout={logout} signingOut={signingOut}/>}</div>;
 }
