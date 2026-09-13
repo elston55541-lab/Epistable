@@ -59,6 +59,6 @@ it('failed organisation save keeps entered values and supports retry',async()=>{
 });
 it('login submits by Enter and retains a readable failure',async()=>{
   signInWithEmail.mockRejectedValue(new Error('Email or password is incorrect.'));
-  render(<Login onSignedIn={vi.fn()}/>);const user=userEvent.setup();await user.type(screen.getByLabelText('Email *'),'qa@example.invalid');await user.type(screen.getByLabelText('Password *'),'test-only{Enter}');
+  render(<Login onSignedIn={vi.fn()}/>);const user=userEvent.setup();await user.type(screen.getByLabelText('Email'),'qa@example.invalid');await user.type(screen.getByLabelText('Password'),'test-only{Enter}');
   expect(await screen.findByRole('alert')).toHaveProperty('textContent','Email or password is incorrect.');expect(signInWithEmail).toHaveBeenCalledWith('qa@example.invalid','test-only');
 });

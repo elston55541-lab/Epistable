@@ -1,18 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase";
-import { friendlyAuthError, getSessionProfile, signInWithEmail, signOut } from "./lib/auth";
+import { friendlyAuthError, getSessionProfile, signOut } from "./lib/auth";
 import { marketplace } from "./lib/marketplace";
-import { Icon } from "./components/Icon";
+import { Login } from "./marketplace/Login";
 import { Shell, pageFromHash, portalFor, portals } from "./marketplace/Shell";
 import { AccessManagement, Organisations, OwnOrganisation } from "./marketplace/Organisations";
 import { Button, Empty, Field, Heading, Notice, Status, theme } from "./marketplace/ui";
 import "./marketplace/marketplace.css";
 
-export function Login({onSignedIn}) {
-  const [email,setEmail]=useState(""),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
-  async function submit(e){e.preventDefault();setBusy(true);setError("");try{await signInWithEmail(email,password);await onSignedIn();}catch(e){setError(friendlyAuthError(e));}finally{setBusy(false);}}
-  return <div className="mp-login"><section className="mp-card"><div className="mp-brand"><Icon name="verified" size={24}/><strong>Epistable</strong></div><h1>Food & Agri Trade</h1><p>Connect verified businesses across borders. Starting with Processed Foods.</p><form onSubmit={submit} className="mp-form"><fieldset disabled={busy}><legend>Sign in to your workspace</legend><Field label="Email" type="email" required autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/><Field label="Password" type="password" required autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/>{error&&<Notice error>{error}</Notice>}<Button type="submit">{busy?"Signing in…":"Sign in"}</Button></fieldset></form><p><small>Use your existing Epistable account. Your administrator assigns your buyer, seller or platform access.</small></p></section></div>;
-}
+export { Login };
 
 export function ResourceList({page,mode,data}) {
   const [search,setSearch]=useState("");
