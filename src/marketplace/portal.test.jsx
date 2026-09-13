@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { Shell, portalFor } from './Shell';
 import { OrganisationForm } from './Organisations';
 import MarketplaceApp, { Workspace, Login } from '../MarketplaceApp';
-import { getSessionProfile, signInWithEmail } from '../lib/auth';
+import { getSessionProfile, signInWithEmail, signOut } from '../lib/auth';
 import { marketplace } from '../lib/marketplace';
 
 vi.mock('../lib/auth',()=>({getSessionProfile:vi.fn(),signInWithEmail:vi.fn(),signOut:vi.fn(),friendlyAuthError:e=>e.message}));
-vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],marketplace:{context:vi.fn()}}));
+vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([])}}));
 vi.mock('../lib/supabase',()=>({supabase:{auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:vi.fn()}}})}}}));
 beforeEach(()=>vi.clearAllMocks());
 const profile={name:'Test User',email:'qa@example.invalid',auth_user_id:'user-1',role:'owner'};
@@ -22,10 +22,12 @@ describe.each([375,1280])('portal navigation at %ipx',width=>{
     const user=userEvent.setup();
     if(width<640){expect(screen.queryByRole('navigation')).toBeNull();await user.click(screen.getByRole('button',{name:'Menu'}));}
     expect(screen.getByRole('navigation')).toBeTruthy();
+    await user.click(screen.getByRole('button',{name:'Log out from navigation'}));
+    expect(onLogout).toHaveBeenCalledOnce();onLogout.mockClear();
     await user.click(screen.getByRole('link',{name:mode==='admin'?'Organisations':mode==='buyer'?'Your RFQs':'Product catalogue'}));
     expect(onNavigate).toHaveBeenCalledOnce();
     if(width<640)expect(screen.queryByRole('navigation')).toBeNull();
-    await user.click(screen.getByRole('button',{name:'Sign out'}));expect(onLogout).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button',{name:'Log out'}));expect(onLogout).toHaveBeenCalledOnce();
   });
 });
 it('Escape closes the mobile menu and restores focus',async()=>{
@@ -62,4 +64,17 @@ it.each([375,1280])('login at %ipx submits by Enter and retains a readable failu
   signInWithEmail.mockRejectedValue(new Error('Email or password is incorrect.'));
   render(<Login onSignedIn={vi.fn()}/>);const user=userEvent.setup();await user.type(screen.getByLabelText('Email'),'qa@example.invalid');await user.type(screen.getByLabelText('Password'),'test-only{Enter}');
   expect(await screen.findByRole('alert')).toHaveProperty('textContent','Email or password is incorrect.');expect(signInWithEmail).toHaveBeenCalledWith('qa@example.invalid','test-only');
+});
+
+it('admin logout ends the session and returns to login',async()=>{
+  getSessionProfile.mockResolvedValue(profile);marketplace.context.mockResolvedValue({role:'platform_admin',org:null});signOut.mockResolvedValue(undefined);
+  render(<MarketplaceApp/>);await screen.findByRole('heading',{name:'Trade overview'});
+  await userEvent.click(screen.getByRole('button',{name:'Log out',exact:true}));
+  expect(signOut).toHaveBeenCalledOnce();expect(await screen.findByRole('form',{name:'Sign in'})).toBeTruthy();expect(screen.queryByRole('navigation')).toBeNull();
+});
+it('failed admin logout keeps the session visible with an error',async()=>{
+  getSessionProfile.mockResolvedValue(profile);marketplace.context.mockResolvedValue({role:'platform_admin',org:null});signOut.mockRejectedValue(new Error('Unable to sign out. Try again.'));
+  render(<MarketplaceApp/>);await screen.findByRole('heading',{name:'Trade overview'});
+  await userEvent.click(screen.getByRole('button',{name:'Log out',exact:true}));
+  expect(await screen.findByRole('alert')).toHaveProperty('textContent','Unable to sign out. Try again.');expect(screen.getByRole('navigation')).toBeTruthy();
 });
