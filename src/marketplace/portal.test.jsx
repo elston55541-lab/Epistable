@@ -57,7 +57,8 @@ it('failed organisation save keeps entered values and supports retry',async()=>{
   await user.click(screen.getByRole('button',{name:'Save organisation'}));expect(await screen.findByRole('alert')).toHaveProperty('textContent','Save failed');expect(screen.getByLabelText('Organisation name *').value).toBe('Food Company');
   await user.click(screen.getByRole('button',{name:'Save organisation'}));await waitFor(()=>expect(save).toHaveBeenCalledTimes(2));
 });
-it('login submits by Enter and retains a readable failure',async()=>{
+it.each([375,1280])('login at %ipx submits by Enter and retains a readable failure',async width=>{
+  Object.defineProperty(window,'innerWidth',{configurable:true,value:width});
   signInWithEmail.mockRejectedValue(new Error('Email or password is incorrect.'));
   render(<Login onSignedIn={vi.fn()}/>);const user=userEvent.setup();await user.type(screen.getByLabelText('Email'),'qa@example.invalid');await user.type(screen.getByLabelText('Password'),'test-only{Enter}');
   expect(await screen.findByRole('alert')).toHaveProperty('textContent','Email or password is incorrect.');expect(signInWithEmail).toHaveBeenCalledWith('qa@example.invalid','test-only');
