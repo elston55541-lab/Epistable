@@ -363,7 +363,9 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
     </BuyerListView>;
   }
 
-  return <div className={"buyer-app"+(tradeOpen?" buyer-app-trade-open":"")} style={{minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:isMobile?"1fr":"274px minmax(0,1fr)"}}>
+  return <div className={"buyer-app"+(tradeOpen?" buyer-app-trade-open":"")} style={isMobile
+    ? {position:"fixed",inset:0,width:"100%",height:"100dvh",minHeight:0,overflow:"hidden",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:"1fr"}
+    : {minHeight:"100vh",fontFamily:FONT_STACK,color:C.text,display:"grid",gridTemplateColumns:"274px minmax(0,1fr)"}}>
     {!isMobile&&<aside className="buyer-sidebar" style={{position:"sticky",top:0,height:"100vh",padding:"28px 14px 16px",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:24}}>
       <div style={{padding:"0 16px 2px"}}><BuyerWordmark/></div>
       <nav style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -374,19 +376,25 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
         <button className="buyer-button" disabled={signingOut} onClick={onLogout} style={{...buttonBase,width:"100%",background:C.white,border:"1px solid "+C.redBorder,borderRadius:12,padding:"12px 14px",color:C.red,fontSize:14,fontWeight:700}}>{signingOut?"Logging out…":"Log out"}</button>
       </div>
     </aside>}
-    <main style={{minWidth:0}}>
-      <div className="buyer-topbar" style={{position:"sticky",top:0,zIndex:20,background:C.white,borderBottom:"1px solid "+C.border,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,.04)":"none",padding:isMobile?"22px 18px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18}}>
+    <main style={isMobile
+      ? {minWidth:0,minHeight:0,height:"100%",overflow:"hidden",display:"grid",gridTemplateRows:"auto minmax(0,1fr)"}
+      : {minWidth:0}}>
+      <div className="buyer-topbar" style={{position:isMobile?"relative":"sticky",top:0,zIndex:20,background:C.white,borderBottom:"1px solid "+C.border,boxShadow:isMobile?"0 8px 18px rgba(16,24,40,.04)":"none",padding:isMobile?"calc(14px + env(safe-area-inset-top)) 18px 14px":"15px 30px",display:"flex",alignItems:"center",gap:isMobile?10:18,flexShrink:0}}>
         {isMobile?<><div style={{flex:1,minWidth:0}}><BuyerWordmark compact/></div><button className="buyer-button" disabled={signingOut} onClick={onLogout} style={{...buttonBase,background:C.white,border:"1px solid "+C.redBorder,borderRadius:12,color:C.red,padding:"10px 14px",fontSize:13,fontWeight:700}}>{signingOut?"…":"Log out"}</button></>:<>
           <div style={{flex:"0 0 auto"}}><BuyerWordmark/></div><div style={{flex:1}}/>
           {canSearch&&<div style={{width:380,maxWidth:"48vw",position:"relative"}}><Icon name="search" size={18} color={C.textDim} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)"}}/><input aria-label="Search catalog" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products, suppliers, certifications" style={{width:"100%",padding:"13px 14px 13px 42px",background:"#f9fbfe",border:"1px solid "+C.border,borderRadius:999,fontSize:15,outline:0,boxSizing:"border-box",fontFamily:FONT_STACK,color:C.text}}/></div>}
           {canSearch&&<button className="buyer-button" onClick={()=>{setSearch("");setCategory("All");setSupplier("All");setSortBy("newest");}} aria-label="Refresh catalog" style={{...buttonBase,width:50,height:50,background:C.white,border:"1px solid "+C.border,borderRadius:999,color:C.textMid,display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="refresh" size={19}/></button>}
         </>}
       </div>
-      {isMobile&&canSearch&&<div style={{padding:"14px 18px 0"}}><div style={{position:"relative"}}><Icon name="search" size={17} color={C.textDim} style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)"}}/><input aria-label="Search catalog" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products or suppliers" style={{width:"100%",padding:"12px 12px 12px 39px",background:C.white,border:"1px solid "+C.border,borderRadius:13,fontSize:14,outline:0,boxSizing:"border-box",fontFamily:FONT_STACK}}/></div></div>}
-      {body}
+      {isMobile
+        ? <div className="buyer-mobile-scroll" style={{minHeight:0,overflowY:"auto",overflowX:"hidden",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}}>
+            {canSearch&&<div style={{padding:"14px 18px 0"}}><div style={{position:"relative"}}><Icon name="search" size={17} color={C.textDim} style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)"}}/><input aria-label="Search catalog" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products or suppliers" style={{width:"100%",padding:"12px 12px 12px 39px",background:C.white,border:"1px solid "+C.border,borderRadius:13,fontSize:14,outline:0,boxSizing:"border-box",fontFamily:FONT_STACK}}/></div></div>}
+            {body}
+          </div>
+        : body}
     </main>
 
-    {isMobile&&<nav className="buyer-mobile-nav" aria-label="Buyer navigation" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:140,background:C.white,borderTop:"1px solid "+C.border,borderLeft:0,borderRight:0,borderBottom:0,borderRadius:"18px 18px 0 0",boxShadow:"0 -10px 30px rgba(16,24,40,.14)",padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"hidden",transform:"translateZ(0)",WebkitTransform:"translateZ(0)",backfaceVisibility:"hidden"}}>
+    {isMobile&&<nav className="buyer-mobile-nav" aria-label="Buyer navigation" style={{position:"absolute",left:0,right:0,bottom:0,zIndex:140,background:C.white,borderTop:"1px solid "+C.border,borderLeft:0,borderRight:0,borderBottom:0,borderRadius:"18px 18px 0 0",boxShadow:"0 -10px 30px rgba(16,24,40,.14)",padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"hidden"}}>
       <span className="buyer-mobile-nav-indicator" aria-hidden="true" style={{transform:mobileNavIndicatorTransform}}/>
       {mobileNavItems.map(item=><button key={item.label} className={"buyer-button buyer-mobile-nav-item"+(item.active?" is-active":"")} onClick={item.action} style={{...buttonBase,minHeight:52,background:item.active?"transparent":"#f9fbfe",border:"1px solid "+(item.active?"transparent":"#eef2f7"),borderRadius:item.active?999:12,color:item.active?C.white:"#5c6678",fontSize:11,fontWeight:700,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"6px 4px",transform:"none"}}><Icon name={item.icon} size={17}/><span>{item.label}</span></button>)}
     </nav>}

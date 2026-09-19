@@ -55,10 +55,15 @@ it('buyer workspace uses the restored catalog shell and published products',asyn
   expect(client.products).toHaveBeenCalledWith({published:true});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
   const buyerNav=screen.getByRole('navigation',{name:'Buyer navigation'});
   expect(buyerNav).toBeTruthy();
-  expect(buyerNav.style.position).toBe('fixed');
+  expect(buyerNav.style.position).toBe('absolute');
   expect(buyerNav.style.bottom).toBe('0px');
   expect(buyerNav.style.left).toBe('0px');
   expect(buyerNav.style.right).toBe('0px');
+  const topbar=document.querySelector('.buyer-topbar');
+  const scrollArea=document.querySelector('.buyer-mobile-scroll');
+  expect(topbar.style.position).toBe('relative');
+  expect(scrollArea.style.overflowY).toBe('auto');
+  expect(scrollArea.style.overscrollBehavior).toBe('contain');
   expect(screen.getByRole('button',{name:'Catalog'}).style.transform).toBe('none');
   await userEvent.click(screen.getByRole('button',{name:'GPT'}));
   expect(screen.getByText('Trade GPT')).toBeTruthy();
