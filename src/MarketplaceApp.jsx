@@ -6,6 +6,7 @@ import { Login } from "./marketplace/Login";
 import { Shell, pageFromHash, portalFor } from "./marketplace/Shell";
 import { AccessManagement, Organisations, OwnOrganisation } from "./marketplace/Organisations";
 import { Workflows, Verification } from "./marketplace/Workflows";
+import { BuyerPortal } from "./marketplace/BuyerPortal";
 import { Button, Heading, Notice, theme } from "./marketplace/ui";
 import "./marketplace/marketplace.css";
 
@@ -24,6 +25,11 @@ export function Workspace({profile,access,api=marketplace,onLogout,signingOut}) 
   useEffect(()=>{reload();return()=>{generation.current++;};},[reload]);
   useEffect(()=>{const change=()=>setPage(pageFromHash(mode));window.addEventListener("hashchange",change);return()=>window.removeEventListener("hashchange",change);},[mode]);
   function navigate(next){window.location.hash="/"+mode+"/"+next;setPage(next);}
+  if(mode==="buyer"){
+    if(error)return <div className="buyer-app" style={{minHeight:"100vh",padding:24,fontFamily:"var(--mp-font)"}}><section className="mp-card"><h1>Buyer workspace unavailable</h1><Notice error>{error}</Notice><Button onClick={reload}>Retry loading</Button></section></div>;
+    if(!data)return <div className="buyer-app" style={{minHeight:"100vh",display:"grid",placeItems:"center"}}><p role="status">Loading buyer marketplace…</p></div>;
+    return <BuyerPortal profile={profile} access={access} data={data} api={api} onSaved={reload} onLogout={onLogout} signingOut={signingOut}/>;
+  }
   let content;
   if(error)content=<><Heading title="Workspace unavailable"/><Notice error>{error}</Notice><Button onClick={reload}>Retry loading</Button></>;
   else if(!data)content=<p role="status">Loading your workspace…</p>;
