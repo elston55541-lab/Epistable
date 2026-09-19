@@ -17,7 +17,7 @@ export function Workspace({profile,access,api=marketplace,onLogout,signingOut}) 
   const reload=useCallback(async()=>{
     const current=++generation.current;setError("");setData(null);
     try {
-      const [organizations,products,rfqs,quotes,documents,reviews]=await Promise.all([api.organizations(),api.products(mode==="buyer"?{verified:true,status:"active"}:mode==="seller"?{sellerOrgId:access.org}:{}),api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:{}),api.quotes(),mode==="buyer"?Promise.resolve([]):api.documents(mode==="seller"?access.org:undefined),mode==="admin"?api.reviews():Promise.resolve([])]);
+      const [organizations,products,rfqs,quotes,documents,reviews]=await Promise.all([api.organizations(),api.products(mode==="buyer"?{published:true}:mode==="seller"?{sellerOrgId:access.org}:{}),api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:{}),api.quotes(),api.documents(mode==="seller"?access.org:undefined),mode==="admin"?api.reviews():Promise.resolve([])]);
       if(current===generation.current)setData({organizations,products,rfqs,quotes,documents,reviews});
     }catch(e){if(current===generation.current)setError(e.message||"Could not load your workspace.");}
   },[api,mode,access.org]);
