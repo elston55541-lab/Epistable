@@ -58,7 +58,7 @@ function ProductCard({product,evidenceCount,saved,onSave,onOpen,onQuote,isMobile
   const image=productImage(product);
   return (
     <article className="buyer-product-card buyer-enter" style={{background:C.white,border:"1px solid "+C.border,borderRadius:isMobile?0:16,overflow:"hidden",minWidth:0,boxShadow:isMobile?"none":"0 10px 28px rgba(16,24,40,0.05)"}}>
-      <button onClick={onOpen} style={{...buttonBase,display:"block",width:"100%",border:0,padding:0,background:"#edf3fa",textAlign:"left",position:"relative"}}>
+      <div role="button" tabIndex={0} aria-label={"Open "+product.name} onClick={onOpen} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onOpen();}}} style={{display:"block",width:"100%",background:"#edf3fa",textAlign:"left",position:"relative",cursor:"pointer"}}>
         <div style={{height:isMobile?245:220,overflow:"hidden",background:"linear-gradient(135deg,#f7f9fc,#eaf0f8)"}}>
           {image
             ? <img className="buyer-image" src={image} alt={product.name} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
@@ -66,7 +66,7 @@ function ProductCard({product,evidenceCount,saved,onSave,onOpen,onQuote,isMobile
         </div>
         <div style={{position:"absolute",top:12,left:12}}><SellerTrust product={product}/></div>
         <button type="button" aria-label={saved?"Remove from saved":"Save product"} onClick={e=>{e.stopPropagation();onSave();}} style={{...buttonBase,position:"absolute",right:12,top:12,width:38,height:38,borderRadius:999,border:"1px solid rgba(255,255,255,.8)",background:"rgba(255,255,255,.94)",display:"flex",alignItems:"center",justifyContent:"center",color:saved?C.primary:C.textMid,boxShadow:"0 5px 16px rgba(16,24,40,.12)"}}><Icon name="check" size={17}/></button>
-      </button>
+      </div>
       <div style={{padding:isMobile?"20px 20px 22px":"18px 18px 20px"}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:.45,textTransform:"uppercase",color:C.primary,marginBottom:8}}>{product.category}</div>
         <h2 style={{margin:0,fontSize:isMobile?22:19,lineHeight:1.25,fontWeight:760,letterSpacing:-.2,color:C.text}}>{product.name}</h2>
