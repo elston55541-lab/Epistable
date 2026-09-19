@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductForm, RfqForm, QuoteForm, DocumentForm } from './TradeForms';
 import { quoteTotal, positive } from './validation';
-import { Verification } from './Workflows';
+import { Verification, Workflows } from './Workflows';
 
 it('calculates quote totals with exact decimal rounding',()=>{
   expect(quoteTotal('1.005','1')).toBe('1.01');expect(quoteTotal('0.1','0.2')).toBe('0.02');expect(quoteTotal('12.34','1000')).toBe('12340.00');
@@ -47,4 +47,18 @@ it('evidence rejects an insecure source without writing',async()=>{
 });
 it('admin review requires a reason and records the selected target',async()=>{
   const api={review:vi.fn()},saved=vi.fn();render(<Verification data={{organizations:[],documents:[],reviews:[],products:[{id:'p1',name:'Sauce',verification_status:'pending'}]}} api={api} onSaved={saved}/>);const user=userEvent.setup();await user.click(screen.getByRole('button',{name:'Review'}));await user.click(screen.getByRole('button',{name:'Save decision'}));expect(api.review).not.toHaveBeenCalled();await user.type(screen.getByLabelText('Review reason *'),'Checked specification');await user.click(screen.getByRole('button',{name:'Save decision'}));await waitFor(()=>expect(api.review).toHaveBeenCalledWith('product','p1','verified','Checked specification'));
+});
+
+it('buyer discovery keeps the previous compact marketplace card layout',()=>{
+  const data={
+    products:[{id:'p1',name:'Turmeric Powder',category:'Spices & Seasonings',country_of_origin:'India',moq:500,moq_unit:'kg',status:'active',cover_image_url:'https://example.invalid/turmeric.jpg',organizations:{name:'Demo Foods',verification_status:'verified'}}],
+    organizations:[],documents:[],rfqs:[],quotes:[]
+  };
+  render(<Workflows page="discover" mode="buyer" access={{org:'buyer-1',role:'buyer_member'}} data={data} api={{}} onSaved={()=>{}}/>);
+  expect(screen.getByRole('heading',{name:'Turmeric Powder'})).toBeTruthy();
+  expect(screen.queryByRole('img',{name:'Turmeric Powder'})).toBeNull();
+  expect(screen.getByText('Demo Foods')).toBeTruthy();
+  expect(screen.getByText('verified')).toBeTruthy();
+  expect(screen.getByRole('button',{name:'View details'})).toBeTruthy();
+  expect(screen.getByRole('button',{name:'Request a quote'})).toBeTruthy();
 });
