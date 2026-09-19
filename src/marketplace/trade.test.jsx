@@ -17,10 +17,20 @@ it('seller can save an incomplete named product draft',async()=>{
   fireEvent(draft.form,new SubmitEvent('submit',{bubbles:true,cancelable:true,submitter:draft}));
   await waitFor(()=>expect(save).toHaveBeenCalledOnce());expect(save.mock.calls[0][0]).toMatchObject({name:'Mango chutney',status:'draft',verification_status:'unverified',moq:null});
 });
-it('complete processed food submits for review with structured fields',async()=>{
+it('complete processed food publishes with structured fields and an image',async()=>{
   const save=vi.fn();render(<ProductForm onSave={save} onCancel={()=>{}}/>);const user=userEvent.setup();
   for(const [label,value] of [['Product name *','Chilli sauce'],['Country of origin *','India'],['Minimum order quantity (MOQ) *','100'],['Packaging formats *','500ml bottle, 12 bottle carton'],['Shelf life *','12 months'],['Storage requirements *','Store in a cool dry place']])await user.type(screen.getByLabelText(label),value);
-  await user.click(screen.getByRole('button',{name:'Submit for verification'}));await waitFor(()=>expect(save).toHaveBeenCalledOnce());expect(save.mock.calls[0][0]).toMatchObject({verification_status:'pending',status:'draft',packaging:['500ml bottle','12 bottle carton'],moq:'100'});
+  const file=new File(['image'],'sauce.jpg',{type:'image/jpeg'});await user.upload(screen.getByLabelText('Product images'),file);
+  await user.click(screen.getByRole('button',{name:'Publish product'}));await waitFor(()=>expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0][0]).toMatchObject({verification_status:'unverified',status:'active',packaging:['500ml bottle','12 bottle carton'],moq:'100'});
+  expect(save.mock.calls[0][0].__newImages).toHaveLength(1);
+});
+it('higher-risk health claims are held for Epistable review',async()=>{
+  const save=vi.fn();render(<ProductForm onSave={save} onCancel={()=>{}}/>);const user=userEvent.setup();
+  for(const [label,value] of [['Product name *','Herbal drink'],['Country of origin *','India'],['Minimum order quantity (MOQ) *','100'],['Packaging formats *','500ml bottle'],['Shelf life *','12 months'],['Storage requirements *','Store cool'],['Product description','A medicinal drink to cure cancer']])await user.type(screen.getByLabelText(label),value);
+  const file=new File(['image'],'drink.jpg',{type:'image/jpeg'});await user.upload(screen.getByLabelText('Product images'),file);
+  await user.click(screen.getByRole('button',{name:'Send for review'}));await waitFor(()=>expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0][0]).toMatchObject({verification_status:'pending',status:'draft',risk_status:'review_required'});
 });
 it('buyer RFQ preserves the selected product and seller',async()=>{
   const save=vi.fn();render(<RfqForm product={{id:'p1',seller_org_id:'seller1',name:'Sauce',category:'Sauces & Condiments',moq_unit:'carton'}} onSave={save} onCancel={()=>{}}/>);const user=userEvent.setup();
