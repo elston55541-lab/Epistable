@@ -4,9 +4,9 @@ import { Icon } from "../components/Icon";
 import { Button } from "./ui";
 
 export const portals = {
-  admin:{title:"Epistable Admin",nav:[["overview","Overview","chart"],["organizations","Organisations","building"],["access","Team access","users"],["products","Products","package"],["rfqs","RFQs","mail"],["verification","Verification","verified"]]},
-  seller:{title:"Seller Organisation",nav:[["overview","Overview","chart"],["organization","Organisation profile","building"],["products","Product catalogue","package"],["documents","Trade documents","file"],["rfqs","Buyer RFQs","mail"],["quotes","Your quotes","message"]]},
-  buyer:{title:"Buyer Organisation",nav:[["discover","Discover products","search"],["suppliers","Suppliers","building"],["organization","Organisation profile","user"],["rfqs","Your RFQs","mail"],["quotes","Received quotes","message"]]},
+  admin:{title:"Epistable Admin",nav:[["overview","Marketplace overview","chart"],["organizations","Trade organisations","building"],["access","Team access","users"],["products","Processed-food products","package"],["rfqs","Sourcing RFQs","mail"],["verification","Verification queue","verified"]]},
+  seller:{title:"Processed Food Seller",nav:[["overview","Seller overview","chart"],["organization","Company & export profile","building"],["products","Processed-food catalogue","package"],["documents","Certifications & documents","file"],["rfqs","Buyer sourcing RFQs","mail"],["quotes","Supplier quotes","message"]]},
+  buyer:{title:"Food Trade Buyer",nav:[["discover","Discover processed foods","search"],["suppliers","Verified food suppliers","building"],["organization","Buyer profile","user"],["rfqs","Sourcing RFQs","mail"],["quotes","Supplier quotes","message"]]},
 };
 export function portalFor(access) {
   if(access?.role==="platform_admin")return "admin";
@@ -40,7 +40,7 @@ export function Shell({profile,mode,page,onNavigate,onLogout,signingOut,children
     </header>
     {(!isMobile||open)&&<aside className="mp-sidebar"><p className="mp-eyebrow">{config.title}</p><nav id="marketplace-nav" aria-label={config.title}>
       {config.nav.map(([id,label,icon])=><a key={id} href={"#/"+mode+"/"+id} aria-current={id===page?"page":undefined} onClick={e=>{e.preventDefault();navigate(id);}}><Icon name={icon}/>{label}</a>)}
-    </nav><div className="mp-nav-logout"><Button variant="secondary" aria-label="Log out from navigation" disabled={signingOut} onClick={onLogout}>{signingOut?"Logging out…":"Log out"}</Button></div><div className="mp-sidebar-note"><Icon name="verified"/><p>Processed Foods<br/><small>Launch vertical</small></p></div></aside>}
+    </nav><div className="mp-nav-logout"><Button variant="secondary" aria-label="Log out from navigation" disabled={signingOut} onClick={onLogout}>{signingOut?"Logging out…":"Log out"}</Button></div><div className="mp-sidebar-note"><Icon name="verified"/><p>Processed Foods<br/><small>Verified cross-border trade</small></p></div></aside>}
     <main id="marketplace-content" tabIndex={-1} className="mp-content">{children}</main>
   </div>;
 }
