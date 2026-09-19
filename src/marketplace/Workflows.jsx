@@ -23,7 +23,22 @@ export function Workflows({page,mode,access,data,api,onSaved}) {
   const title=names[page];
   function open(type,record,extra={}){setSelected({type,record,id:crypto.randomUUID(),...extra});}
   async function saved(){setSelected(null);await onSaved();}
-  if(selected?.type==='product')return <><Heading title={selected.record?'Edit product':'Add a product'}/><ProductForm initial={selected.record} onCancel={()=>setSelected(null)} onSave={async values=>{if(selected.record)await api.updateProduct(selected.record.id,values);else await api.createProduct({...values,id:'PRD_'+selected.id,seller_org_id:access.org});await saved();}}/></>;
+  if(selected?.type==='product')return <><Heading title={selected.record?'Edit product':'Add a product'} description="Verified sellers can publish complete product listings immediately. Only higher-risk claims are held for Epistable review."/><ProductForm initial={selected.record} onCancel={()=>setSelected(null)} onSave={async values=>{
+    const {__existingImages=[],__newImages=[],__removedImages=[],...productValues}=values;
+    const productId=selected.record?.id||'PRD_'+selected.id;
+    let uploaded=[];
+    try {
+      if(!selected.record)await api.createProduct({...productValues,id:productId,seller_org_id:access.org,status:'draft',verification_status:productValues.verification_status==='pending'?'pending':'unverified',image_urls:[],cover_image_url:null});
+      if(__newImages.length)uploaded=await api.uploadProductImages(access.org,productId,__newImages);
+      const image_urls=[...__existingImages,...uploaded].slice(0,6);
+      await api.updateProduct(productId,{...productValues,image_urls,cover_image_url:image_urls[0]||null});
+      if(__removedImages.length)await api.removeProductImages(__removedImages);
+      await saved();
+    } catch(error) {
+      if(uploaded.length)try{await api.removeProductImages(uploaded);}catch{}
+      throw error;
+    }
+  }}/></>;
   if(selected?.type==='rfq')return <><Heading title="Processed-food sourcing request"/><RfqForm product={selected.product} initial={selected.record} onCancel={()=>setSelected(null)} onSave={async values=>{if(selected.record)await api.updateRfq(selected.record.id,values);else await api.createRfq({...values,id:'RFQ_'+selected.id,buyer_org_id:access.org});await saved();}}/></>;
   if(selected?.type==='quote')return <><Heading title="Respond to buyer RFQ"/><QuoteForm rfq={selected.rfq} initial={selected.record} onCancel={()=>setSelected(null)} onSave={async values=>{if(selected.record)await api.updateQuote(selected.record.id,values);else await api.createQuote({...values,id:'TQ_'+selected.id,seller_org_id:access.org});await saved();}}/></>;
   if(selected?.type==='document')return <><Heading title="Add certification or trade evidence"/><DocumentForm initial={selected.record} products={data.products} onCancel={()=>setSelected(null)} onSave={async values=>{if(selected.record)await api.updateDocument(selected.record.id,values);else await api.addDocument({...values,id:'DOC_'+selected.id,organization_id:access.org});await saved();}}/></>;
