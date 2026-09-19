@@ -13,6 +13,15 @@ export const FOOD_CERTIFICATIONS = [
   'GMP','Organic - NPOP','Organic - USDA','Organic - EU','Halal','Kosher','Non-GMO'
 ];
 
+const PRODUCT_REVIEW_PATTERN = /(cure|treat|prevent)\s+(cancer|diabetes|disease|infection)|medicinal|therapeutic|miracle\s+cure|guaranteed\s+weight\s+loss|fda\s+approved/i;
+
+export function productRequiresReview(product={}) {
+  const text=[product.name,product.description,product.dietary_attributes,product.certifications]
+    .flatMap(value=>Array.isArray(value)?value:[value])
+    .filter(Boolean).join(' ');
+  return PRODUCT_REVIEW_PATTERN.test(text);
+}
+
 export const TRADE_DOCUMENT_TYPES = [
   {value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'},
   {value:'food_safety',label:'Food safety certification'},
@@ -58,6 +67,7 @@ export const marketplace = {
     if(filters.category)q=q.eq('category',filters.category);
     if(filters.status)q=q.eq('status',filters.status);
     if(filters.verified)q=q.eq('verification_status','verified');
+    if(filters.published)q=q.eq('status','active');
     return data(await q);
   },
   async createProduct(input) {
@@ -65,6 +75,30 @@ export const marketplace = {
   },
   async updateProduct(productId,updates) {
     return data(await supabase.from('products').update(updates).eq('id',productId).select().single());
+  },
+  async uploadProductImages(sellerOrgId,productId,files=[]) {
+    const uploaded=[];
+    for(const file of files) {
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error('Use JPG, PNG or WebP product images.');
+      if(file.size>5*1024*1024) throw new Error('Each product image must be 5 MB or smaller.');
+      const ext=(file.name?.split('.').pop()||file.type.split('/')[1]||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+      const path=`${sellerOrgId}/${productId}/${crypto.randomUUID()}.${ext||'jpg'}`;
+      const result=await supabase.storage.from('product-images').upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+      if(result.error) throw result.error;
+      const publicResult=supabase.storage.from('product-images').getPublicUrl(path);
+      uploaded.push(publicResult.data.publicUrl);
+    }
+    return uploaded;
+  },
+  async removeProductImages(urls=[]) {
+    const marker='/storage/v1/object/public/product-images/';
+    const paths=urls.map(url=>{
+      const index=String(url).indexOf(marker);
+      return index<0?null:decodeURIComponent(String(url).slice(index+marker.length));
+    }).filter(Boolean);
+    if(!paths.length)return;
+    const result=await supabase.storage.from('product-images').remove(paths);
+    if(result.error) throw result.error;
   },
   async documents(organizationId,productId=null) {
     let q=supabase.from('trade_documents').select('*').order('created_at',{ascending:false});

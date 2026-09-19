@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FOOD_CATEGORIES, FOOD_CERTIFICATIONS, TRADE_DOCUMENT_TYPES } from '../lib/marketplace';
+import { useEffect, useState } from 'react';
+import { FOOD_CATEGORIES, FOOD_CERTIFICATIONS, TRADE_DOCUMENT_TYPES, productRequiresReview } from '../lib/marketplace';
 import { Button, Field, Notice } from './ui';
 import { days, futureDate, INCOTERMS, list, positive, quoteTotal, UNITS } from './validation';
 
@@ -18,21 +18,58 @@ const arrayFields=['packaging','export_markets','certifications','allergens','di
 export function ProductForm({initial,onSave,onCancel}) {
   const start={...productBlank,...initial};for(const key of arrayFields)if(Array.isArray(start[key]))start[key]=start[key].join(', ');
   const {values:v,change,busy,error,run}=useForm(start);
+  const originalImages=Array.isArray(initial?.image_urls)?initial.image_urls:[];
+  const [existingImages,setExistingImages]=useState(originalImages);
+  const [newImages,setNewImages]=useState([]);
+  const [imageError,setImageError]=useState('');
+  useEffect(()=>()=>newImages.forEach(item=>item.preview&&URL.revokeObjectURL?.(item.preview)),[newImages]);
+  const risk=productRequiresReview({...v,certifications:list(v.certifications),dietary_attributes:list(v.dietary_attributes)});
+  const totalImages=existingImages.length+newImages.length;
+
+  function addImages(e) {
+    const files=[...(e.target.files||[])];setImageError('');
+    if(totalImages+files.length>6){setImageError('Add up to 6 product images.');e.target.value='';return;}
+    const invalid=files.find(file=>!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024);
+    if(invalid){setImageError('Use JPG, PNG or WebP images up to 5 MB each.');e.target.value='';return;}
+    setNewImages(items=>[...items,...files.map(file=>({file,preview:URL.createObjectURL?.(file)||file.name}))]);e.target.value='';
+  }
+  function removeNew(index){setNewImages(items=>{if(items[index].preview)URL.revokeObjectURL?.(items[index].preview);return items.filter((_,i)=>i!==index);});}
   const submit=run(async e=>{
-    const review=e.nativeEvent.submitter?.value!=='draft';
+    const publish=e.nativeEvent.submitter?.value!=='draft';
     const data=Object.fromEntries(Object.keys(productBlank).map(k=>[k,String(v[k]??'').trim()]));
     if(!data.name||!data.category)throw new Error('Product name and category are required.');
     for(const key of arrayFields)data[key]=list(v[key]);
     data.moq=v.moq?positive(v.moq,'Minimum order'):null;data.capacity=v.capacity?positive(v.capacity,'Capacity'):null;data.lead_time_days=days(v.lead_time_days);
-    if(review&&(!data.country_of_origin||!data.moq||!data.packaging.length||!data.shelf_life||!data.storage_requirements))throw new Error('Complete origin, minimum order, packaging, shelf life and storage before submitting.');
-    await onSave({...data,status:'draft',verification_status:review?'pending':'unverified'});
+    if(publish&&(!data.country_of_origin||!data.moq||!data.packaging.length||!data.shelf_life||!data.storage_requirements))throw new Error('Complete origin, minimum order, packaging, shelf life and storage before publishing.');
+    if(publish&&totalImages===0)throw new Error('Add at least one product image before publishing.');
+    const requiresReview=publish&&productRequiresReview(data);
+    await onSave({
+      ...data,
+      status:publish&&!requiresReview?'active':'draft',
+      verification_status:requiresReview?'pending':'unverified',
+      risk_status:requiresReview?'review_required':'clear',
+      risk_reason:requiresReview?'Health or regulated claim requires manual review before publication':null,
+      __existingImages:existingImages,
+      __newImages:newImages.map(item=>item.file),
+      __removedImages:originalImages.filter(url=>!existingImages.includes(url))
+    });
   });
   return <form className="mp-card mp-form" onSubmit={submit}><fieldset disabled={busy}><legend>{initial?'Edit processed-food product':'Create processed-food product'}</legend>
-    {initial?.verification_status==='verified'&&<Notice>Editing returns this product to draft and removes it from buyer discovery until Epistable verifies it again.</Notice>}
+    <Notice>Product details are seller provided. Verified seller status and verified certification documents are shown separately to buyers.</Notice>
+    {risk&&<Notice>One or more health or regulated claims need Epistable review before this listing can go live. You can still save a draft and submit it for review.</Notice>}
+    <div className="mp-product-images">
+      <div className="mp-row"><div><strong>Product images</strong><p>Add up to 6 clear product or packaging images. The first image is used as the cover.</p></div><small>{totalImages}/6 images</small></div>
+      <input aria-label="Product images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={addImages}/>
+      {(existingImages.length>0||newImages.length>0)&&<div className="mp-image-grid">
+        {existingImages.map((url,index)=><figure className="mp-image-item" key={url}><img src={url} alt={`${v.name||'Product'} image ${index+1}`}/><figcaption>{index===0?'Cover image':'Product image'} <button type="button" onClick={()=>setExistingImages(images=>images.filter(item=>item!==url))}>Remove</button></figcaption></figure>)}
+        {newImages.map((item,index)=><figure className="mp-image-item" key={item.preview}><img src={item.preview} alt={item.file.name}/><figcaption>{existingImages.length===0&&index===0?'Cover image':'New image'} <button type="button" onClick={()=>removeNew(index)}>Remove</button></figcaption></figure>)}
+      </div>}
+      {imageError&&<Notice error>{imageError}</Notice>}
+    </div>
     <div className="mp-form-grid"><Field label="Product name" required maxLength={200} placeholder="e.g. Ground turmeric powder" value={v.name} onChange={change('name')}/><Field label="Processed-food category" options={[...new Set([...FOOD_CATEGORIES,v.category])]} value={v.category} onChange={change('category')}/><Field label="Country of origin" required value={v.country_of_origin} onChange={change('country_of_origin')}/><Field label="Minimum order quantity (MOQ)" type="number" min="0.000001" step="any" required value={v.moq??''} onChange={change('moq')}/><Field label="MOQ unit" options={UNITS} value={v.moq_unit} onChange={change('moq_unit')}/><Field label="Monthly supply capacity" type="number" min="0.000001" step="any" value={v.capacity??''} onChange={change('capacity')}/><Field label="Capacity unit" options={UNITS} value={v.capacity_unit} onChange={change('capacity_unit')}/><Field label="Production / dispatch lead time (days)" type="number" min="0" max="3650" step="1" value={v.lead_time_days??''} onChange={change('lead_time_days')}/><Field label="Packaging formats" required hint="Separate formats with commas, e.g. 500 g pouch, 5 kg food-service pack, 25 kg export carton." value={v.packaging} onChange={change('packaging')}/><Field label="Shelf life" required placeholder="e.g. 18 months from manufacture" value={v.shelf_life} onChange={change('shelf_life')}/></div>
     <Field label="Storage requirements" required placeholder="e.g. Store below 25°C in a cool, dry place" value={v.storage_requirements} onChange={change('storage_requirements')}/><Field label="Product description" multiline maxLength={5000} hint="Include format, processing method, grade, intended use and private-label capability where relevant." value={v.description} onChange={change('description')}/><Field label="Ingredients / composition" multiline hint="List ingredients in descending order and note additives or preservatives where applicable." value={v.ingredients} onChange={change('ingredients')}/>
-    <div className="mp-form-grid"><Field label="Allergens" hint="Comma-separated. Examples: milk, soy, peanuts, tree nuts, gluten, sesame. Use 'None declared' only when supported." value={v.allergens} onChange={change('allergens')}/><Field label="Dietary / product attributes" hint="Examples: vegan, vegetarian, gluten-free, non-GMO, no added sugar." value={v.dietary_attributes} onChange={change('dietary_attributes')}/><Field label="Food safety & market certifications" hint={'Comma-separated. Common examples: '+FOOD_CERTIFICATIONS.join(', ')+'. Upload evidence under Certifications & Documents.'} value={v.certifications} onChange={change('certifications')}/><Field label="Current / target export markets" hint="Comma-separated countries or regions where the product is already sold or prepared for export." value={v.export_markets} onChange={change('export_markets')}/></div>
-    {error&&<Notice error>{error}</Notice>}<Actions busy={busy} onCancel={onCancel} draft label="Submit for verification"/>
+    <div className="mp-form-grid"><Field label="Allergens" hint="Comma-separated. Examples: milk, soy, peanuts, tree nuts, gluten, sesame. Use 'None declared' only when supported." value={v.allergens} onChange={change('allergens')}/><Field label="Dietary / product attributes" hint="Examples: vegan, vegetarian, gluten-free, non-GMO, no added sugar." value={v.dietary_attributes} onChange={change('dietary_attributes')}/><Field label="Food safety & market certifications" hint={'Comma-separated. Claims are seller provided until supporting evidence is verified. Common examples: '+FOOD_CERTIFICATIONS.join(', ')+'.'} value={v.certifications} onChange={change('certifications')}/><Field label="Current / target export markets" hint="Comma-separated countries or regions where the product is already sold or prepared for export." value={v.export_markets} onChange={change('export_markets')}/></div>
+    {error&&<Notice error>{error}</Notice>}<Actions busy={busy} onCancel={onCancel} draft label={risk?'Send for review':'Publish product'}/>
   </fieldset></form>;
 }
 export function RfqForm({product,initial,onSave,onCancel}) {
