@@ -8,7 +8,7 @@ import { getSessionProfile, signInWithEmail, signOut } from '../lib/auth';
 import { marketplace } from '../lib/marketplace';
 
 vi.mock('../lib/auth',()=>({getSessionProfile:vi.fn(),signInWithEmail:vi.fn(),signOut:vi.fn(),friendlyAuthError:e=>e.message}));
-vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],FOOD_CERTIFICATIONS:['FSSAI','FSSC 22000'],TRADE_DOCUMENT_TYPES:[{value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'}],marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([])}}));
+vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],FOOD_CERTIFICATIONS:['FSSAI','FSSC 22000'],TRADE_DOCUMENT_TYPES:[{value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'}],productRequiresReview:()=>false,marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([])}}));
 vi.mock('../lib/supabase',()=>({supabase:{auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:vi.fn()}}})}}}));
 beforeEach(()=>vi.clearAllMocks());
 const profile={name:'Test User',email:'qa@example.invalid',auth_user_id:'user-1',role:'owner'};
@@ -50,7 +50,7 @@ it('database failure is distinct from an empty dashboard and can retry',async()=
 });
 it('buyer discovery explicitly requests active verified products',async()=>{
   const client=api();render(<Workspace profile={profile} access={{role:'buyer_member',org:'buyer-1'}} api={client} onLogout={()=>{}}/>);
-  await screen.findByRole('heading',{name:'Discover processed foods'});expect(client.products).toHaveBeenCalledWith({verified:true,status:'active'});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
+  await screen.findByRole('heading',{name:'Discover processed foods'});expect(client.products).toHaveBeenCalledWith({published:true});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
 });
 it('failed organisation save keeps entered values and supports retry',async()=>{
   const save=vi.fn().mockRejectedValueOnce(new Error('Save failed')).mockResolvedValueOnce({});
