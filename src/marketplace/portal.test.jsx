@@ -8,7 +8,7 @@ import { getSessionProfile, signInWithEmail, signOut } from '../lib/auth';
 import { marketplace } from '../lib/marketplace';
 
 vi.mock('../lib/auth',()=>({getSessionProfile:vi.fn(),signInWithEmail:vi.fn(),signOut:vi.fn(),friendlyAuthError:e=>e.message}));
-vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([])}}));
+vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],FOOD_CERTIFICATIONS:['FSSAI','FSSC 22000'],TRADE_DOCUMENT_TYPES:[{value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'}],marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([])}}));
 vi.mock('../lib/supabase',()=>({supabase:{auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:vi.fn()}}})}}}));
 beforeEach(()=>vi.clearAllMocks());
 const profile={name:'Test User',email:'qa@example.invalid',auth_user_id:'user-1',role:'owner'};
@@ -24,7 +24,7 @@ describe.each([375,1280])('portal navigation at %ipx',width=>{
     expect(screen.getByRole('navigation')).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'Log out from navigation'}));
     expect(onLogout).toHaveBeenCalledOnce();onLogout.mockClear();
-    await user.click(screen.getByRole('link',{name:mode==='admin'?'Organisations':mode==='buyer'?'Your RFQs':'Product catalogue'}));
+    await user.click(screen.getByRole('link',{name:mode==='admin'?'Trade organisations':mode==='buyer'?'Sourcing RFQs':'Processed-food catalogue'}));
     expect(onNavigate).toHaveBeenCalledOnce();
     if(width<640)expect(screen.queryByRole('navigation')).toBeNull();
     await user.click(screen.getByRole('button',{name:'Log out'}));expect(onLogout).toHaveBeenCalledOnce();
@@ -45,12 +45,12 @@ it('database failure is distinct from an empty dashboard and can retry',async()=
   const client=api();client.products.mockRejectedValueOnce(new Error('Connection failed'));
   render(<Workspace profile={profile} access={{role:'seller_admin',org:'seller-1'}} api={client} onLogout={()=>{}}/>);
   expect(await screen.findByRole('alert')).toHaveProperty('textContent','Connection failed');expect(screen.queryByText('No records yet')).toBeNull();
-  await userEvent.click(screen.getByRole('button',{name:'Retry loading'}));expect(await screen.findByRole('heading',{name:'Your trade workspace'})).toBeTruthy();
+  await userEvent.click(screen.getByRole('button',{name:'Retry loading'}));expect(await screen.findByRole('heading',{name:'Processed-food seller overview'})).toBeTruthy();
   expect(client.products).toHaveBeenLastCalledWith({sellerOrgId:'seller-1'});
 });
 it('buyer discovery explicitly requests active verified products',async()=>{
   const client=api();render(<Workspace profile={profile} access={{role:'buyer_member',org:'buyer-1'}} api={client} onLogout={()=>{}}/>);
-  await screen.findByRole('heading',{name:'Discover products'});expect(client.products).toHaveBeenCalledWith({verified:true,status:'active'});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
+  await screen.findByRole('heading',{name:'Discover processed foods'});expect(client.products).toHaveBeenCalledWith({verified:true,status:'active'});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
 });
 it('failed organisation save keeps entered values and supports retry',async()=>{
   const save=vi.fn().mockRejectedValueOnce(new Error('Save failed')).mockResolvedValueOnce({});
@@ -68,13 +68,13 @@ it.each([375,1280])('login at %ipx submits by Enter and retains a readable failu
 
 it('admin logout ends the session and returns to login',async()=>{
   getSessionProfile.mockResolvedValue(profile);marketplace.context.mockResolvedValue({role:'platform_admin',org:null});signOut.mockResolvedValue(undefined);
-  render(<MarketplaceApp/>);await screen.findByRole('heading',{name:'Trade overview'});
+  render(<MarketplaceApp/>);await screen.findByRole('heading',{name:'Food trade marketplace overview'});
   await userEvent.click(screen.getByRole('button',{name:'Log out',exact:true}));
   expect(signOut).toHaveBeenCalledOnce();expect(await screen.findByRole('form',{name:'Sign in'})).toBeTruthy();expect(screen.queryByRole('navigation')).toBeNull();
 });
 it('failed admin logout keeps the session visible with an error',async()=>{
   getSessionProfile.mockResolvedValue(profile);marketplace.context.mockResolvedValue({role:'platform_admin',org:null});signOut.mockRejectedValue(new Error('Unable to sign out. Try again.'));
-  render(<MarketplaceApp/>);await screen.findByRole('heading',{name:'Trade overview'});
+  render(<MarketplaceApp/>);await screen.findByRole('heading',{name:'Food trade marketplace overview'});
   await userEvent.click(screen.getByRole('button',{name:'Log out',exact:true}));
   expect(await screen.findByRole('alert')).toHaveProperty('textContent','Unable to sign out. Try again.');expect(screen.getByRole('navigation')).toBeTruthy();
 });

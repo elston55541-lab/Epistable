@@ -8,6 +8,29 @@ export const FOOD_CATEGORIES = [
   'Beverages','Bakery & Confectionery','Frozen & Processed Produce','Food Ingredients','Other Processed Foods'
 ];
 
+export const FOOD_CERTIFICATIONS = [
+  'FSSAI','FSSC 22000','BRCGS Food Safety','ISO 22000','HACCP','IFS Food','SQF',
+  'GMP','Organic - NPOP','Organic - USDA','Organic - EU','Halal','Kosher','Non-GMO'
+];
+
+export const TRADE_DOCUMENT_TYPES = [
+  {value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'},
+  {value:'food_safety',label:'Food safety certification'},
+  {value:'haccp_plan',label:'HACCP plan / certificate'},
+  {value:'organic_certificate',label:'Organic certificate'},
+  {value:'halal_certificate',label:'Halal certificate'},
+  {value:'kosher_certificate',label:'Kosher certificate'},
+  {value:'allergen_declaration',label:'Allergen declaration'},
+  {value:'lab_report',label:'Laboratory / microbiology report'},
+  {value:'product_specification',label:'Product specification sheet'},
+  {value:'nutrition_label',label:'Nutrition / label artwork'},
+  {value:'health_certificate',label:'Health / sanitary certificate'},
+  {value:'origin_certificate',label:'Certificate of origin'},
+  {value:'export_license',label:'Export registration / licence'},
+  {value:'business_registration',label:'Business registration'},
+  {value:'other',label:'Other trade evidence'}
+];
+
 export const marketplace = {
   async reviews() { return data(await supabase.from('marketplace_reviews').select('*').order('created_at',{ascending:false}).limit(100)); },
   async review(kind,targetId,decision,reason) {
