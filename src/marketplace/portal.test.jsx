@@ -48,9 +48,15 @@ it('database failure is distinct from an empty dashboard and can retry',async()=
   await userEvent.click(screen.getByRole('button',{name:'Retry loading'}));expect(await screen.findByRole('heading',{name:'Processed-food seller overview'})).toBeTruthy();
   expect(client.products).toHaveBeenLastCalledWith({sellerOrgId:'seller-1'});
 });
-it('buyer discovery explicitly requests active verified products',async()=>{
+it('buyer workspace uses the restored catalog shell and published products',async()=>{
+  Object.defineProperty(window,'innerWidth',{configurable:true,value:375});
   const client=api();render(<Workspace profile={profile} access={{role:'buyer_member',org:'buyer-1'}} api={client} onLogout={()=>{}}/>);
-  await screen.findByRole('heading',{name:'Discover processed foods'});expect(client.products).toHaveBeenCalledWith({published:true});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
+  await screen.findByRole('heading',{name:'Catalog'});
+  expect(client.products).toHaveBeenCalledWith({published:true});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
+  expect(screen.getByRole('navigation',{name:'Buyer navigation'})).toBeTruthy();
+  await userEvent.click(screen.getByRole('button',{name:'GPT'}));
+  expect(screen.getByText('Trade GPT')).toBeTruthy();
+  expect(screen.getByLabelText('Trade GPT request')).toBeTruthy();
 });
 it('failed organisation save keeps entered values and supports retry',async()=>{
   const save=vi.fn().mockRejectedValueOnce(new Error('Save failed')).mockResolvedValueOnce({});
