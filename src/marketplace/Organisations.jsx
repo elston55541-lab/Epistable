@@ -25,7 +25,7 @@ export function OrganisationForm({initial=blank,onSave,onCancel}) {
         <Field label="City" maxLength={100} value={form.city} onChange={change("city")}/>
         <Field label="Website" type="url" placeholder="https://company.com" maxLength={500} value={form.website} onChange={change("website")}/>
       </div>
-      <Field label="About your organisation" multiline maxLength={3000} value={form.description} onChange={change("description")} hint="Describe your business, products and export experience."/>
+      <Field label="About your organisation" multiline maxLength={3000} value={form.description} onChange={change("description")} hint={form.type==="seller"?"Describe your food manufacturing or export business, processed-food categories, production capability, markets served and relevant food-safety certifications.":"Describe your sourcing business, markets served, processed-food categories purchased and key compliance requirements."}/>
       {initial.verification_status==="verified"&&<Notice>Saving profile changes returns this organisation to review. Its products will be hidden from buyers until the organisation is verified again.</Notice>}
       {error&&<Notice error>{error}</Notice>}
       <div className="mp-actions"><Button type="submit">{busy?"Saving…":"Save organisation"}</Button>{onCancel&&<Button variant="secondary" onClick={onCancel}>Cancel</Button>}</div>
@@ -35,7 +35,7 @@ export function OrganisationForm({initial=blank,onSave,onCancel}) {
 export function Organisations({organizations,api,onSaved}) {
   const [creating,setCreating]=useState(false);
   async function save(values){await api.createOrganization(values);setCreating(false);await onSaved();}
-  return <><Heading title="Organisations" description="Manage the businesses participating in food and agri trade." action={!creating&&<Button icon="add" onClick={()=>setCreating(true)}>Add organisation</Button>}/>
+  return <><Heading title="Trade organisations" description="Manage processed-food manufacturers, exporters, importers, distributors and institutional buyers participating in Epistable." action={!creating&&<Button icon="add" onClick={()=>setCreating(true)}>Add organisation</Button>}/>
     {creating?<OrganisationForm onSave={save} onCancel={()=>setCreating(false)}/>:!organizations.length?
       <Empty title="Start with your first organisation" icon="building">Add a seller or buyer, then assign an existing account from Team access.</Empty>:
       <div className="mp-grid">{organizations.map(o=><article key={o.id} className="mp-card"><div className="mp-row"><span className="mp-eyebrow">{o.type}</span><Status value={o.verification_status}/></div><h2>{o.name}</h2><p>{[o.city,o.country].filter(Boolean).join(", ")||"Location not provided"}</p><p>{o.description||"Profile details have not been added yet."}</p></article>)}</div>}
@@ -46,7 +46,7 @@ export function OwnOrganisation({access,organizations,api,onSaved}) {
   const [saved,setSaved]=useState(false);
   if(!org)return <Empty title="Organisation unavailable" icon="building">Your organisation could not be loaded. Contact an Epistable administrator.</Empty>;
   const admin=access.role.endsWith("_admin");
-  return <><Heading title="Organisation profile" description="Keep your company details accurate for trade partners."/>
+  return <><Heading title="Company & trade profile" description={org.type==="seller"?"Present your food business, export capability and verification status to buyers.":"Keep your sourcing organisation and market details accurate for verified suppliers."}/>
     {saved&&<Notice>Organisation saved and submitted for review.</Notice>}
     {admin?<OrganisationForm key={org.id} initial={org} onSave={async values=>{await api.updateOrganization(org.id,{...values,verification_status:"pending"});setSaved(true);await onSaved();}}/>:
       <article className="mp-card"><Status value={org.verification_status}/><h2>{org.name}</h2><p>{org.country}</p><p>{org.description}</p><Notice>Your organisation administrator can update this profile.</Notice></article>}
