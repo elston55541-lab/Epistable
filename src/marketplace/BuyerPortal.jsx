@@ -284,11 +284,11 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
   ];
   const activeMobileNavIndex=Math.max(0,mobileNavItems.findIndex(item=>item.active));
   const mobileNavIndicatorTransform=[
-    "translateX(0) translateY(-18px)",
-    "translateX(calc(100% + 7px)) translateY(-18px)",
-    "translateX(calc(200% + 14px)) translateY(-18px)",
-    "translateX(calc(300% + 21px)) translateY(-18px)",
-  ][activeMobileNavIndex]||"translateX(0) translateY(-18px)";
+    "translateX(0)",
+    "translateX(calc(100% + 7px))",
+    "translateX(calc(200% + 14px))",
+    "translateX(calc(300% + 21px))",
+  ][activeMobileNavIndex]||"translateX(0)";
 
   const sidebarItems=[
     {label:"Trade GPT",icon:"bot",active:tradeOpen,action:()=>setTradeOpen(true)},
@@ -386,9 +386,9 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
       {body}
     </main>
 
-    {isMobile&&<nav className="buyer-mobile-nav" aria-label="Buyer navigation" style={{position:"fixed",left:10,right:10,bottom:"calc(10px + env(safe-area-inset-bottom))",zIndex:140,background:C.white,border:"1px solid "+C.border,borderRadius:18,boxShadow:"0 14px 34px rgba(16,24,40,.18)",padding:"8px 8px 7px",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"visible"}}>
+    {isMobile&&<nav className="buyer-mobile-nav" aria-label="Buyer navigation" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:140,background:C.white,borderTop:"1px solid "+C.border,borderLeft:0,borderRight:0,borderBottom:0,borderRadius:"18px 18px 0 0",boxShadow:"0 -10px 30px rgba(16,24,40,.14)",padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:7,overflow:"hidden",transform:"translateZ(0)",WebkitTransform:"translateZ(0)",backfaceVisibility:"hidden"}}>
       <span className="buyer-mobile-nav-indicator" aria-hidden="true" style={{transform:mobileNavIndicatorTransform}}/>
-      {mobileNavItems.map(item=><button key={item.label} className={"buyer-button buyer-mobile-nav-item"+(item.active?" is-active":"")} onClick={item.action} style={{...buttonBase,minHeight:item.active?58:52,background:item.active?"transparent":"#f9fbfe",border:"1px solid "+(item.active?"transparent":"#eef2f7"),borderRadius:item.active?999:12,color:item.active?C.white:"#5c6678",fontSize:11,fontWeight:700,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"6px 4px",transform:item.active?"translateY(-18px)":"none"}}><Icon name={item.icon} size={17}/><span>{item.label}</span></button>)}
+      {mobileNavItems.map(item=><button key={item.label} className={"buyer-button buyer-mobile-nav-item"+(item.active?" is-active":"")} onClick={item.action} style={{...buttonBase,minHeight:52,background:item.active?"transparent":"#f9fbfe",border:"1px solid "+(item.active?"transparent":"#eef2f7"),borderRadius:item.active?999:12,color:item.active?C.white:"#5c6678",fontSize:11,fontWeight:700,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"6px 4px",transform:"none"}}><Icon name={item.icon} size={17}/><span>{item.label}</span></button>)}
     </nav>}
 
     <TradeGPT open={tradeOpen} onClose={()=>setTradeOpen(false)} prompt={tradePrompt} setPrompt={setTradePrompt} recommendations={tradeRecommendations} onOpenProduct={p=>{setTradeOpen(false);setSelectedProduct(p);}} onApply={applyTradePrompt} isMobile={isMobile}/>
