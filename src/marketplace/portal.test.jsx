@@ -53,7 +53,13 @@ it('buyer workspace uses the restored catalog shell and published products',asyn
   const client=api();render(<Workspace profile={profile} access={{role:'buyer_member',org:'buyer-1'}} api={client} onLogout={()=>{}}/>);
   await screen.findByRole('heading',{name:'Catalog'});
   expect(client.products).toHaveBeenCalledWith({published:true});expect(client.rfqs).toHaveBeenCalledWith({buyerOrgId:'buyer-1'});
-  expect(screen.getByRole('navigation',{name:'Buyer navigation'})).toBeTruthy();
+  const buyerNav=screen.getByRole('navigation',{name:'Buyer navigation'});
+  expect(buyerNav).toBeTruthy();
+  expect(buyerNav.style.position).toBe('fixed');
+  expect(buyerNav.style.bottom).toBe('0px');
+  expect(buyerNav.style.left).toBe('0px');
+  expect(buyerNav.style.right).toBe('0px');
+  expect(screen.getByRole('button',{name:'Catalog'}).style.transform).toBe('none');
   await userEvent.click(screen.getByRole('button',{name:'GPT'}));
   expect(screen.getByText('Trade GPT')).toBeTruthy();
   expect(screen.getByLabelText('Trade GPT request')).toBeTruthy();
