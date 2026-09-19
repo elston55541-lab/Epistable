@@ -22,7 +22,7 @@ export function ProductForm({initial,onSave,onCancel}) {
   const [existingImages,setExistingImages]=useState(originalImages);
   const [newImages,setNewImages]=useState([]);
   const [imageError,setImageError]=useState('');
-  useEffect(()=>()=>newImages.forEach(item=>URL.revokeObjectURL(item.preview)),[newImages]);
+  useEffect(()=>()=>newImages.forEach(item=>item.preview&&URL.revokeObjectURL?.(item.preview)),[newImages]);
   const risk=productRequiresReview({...v,certifications:list(v.certifications),dietary_attributes:list(v.dietary_attributes)});
   const totalImages=existingImages.length+newImages.length;
 
@@ -31,9 +31,9 @@ export function ProductForm({initial,onSave,onCancel}) {
     if(totalImages+files.length>6){setImageError('Add up to 6 product images.');e.target.value='';return;}
     const invalid=files.find(file=>!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024);
     if(invalid){setImageError('Use JPG, PNG or WebP images up to 5 MB each.');e.target.value='';return;}
-    setNewImages(items=>[...items,...files.map(file=>({file,preview:URL.createObjectURL(file)}))]);e.target.value='';
+    setNewImages(items=>[...items,...files.map(file=>({file,preview:URL.createObjectURL?.(file)||file.name}))]);e.target.value='';
   }
-  function removeNew(index){setNewImages(items=>{URL.revokeObjectURL(items[index].preview);return items.filter((_,i)=>i!==index);});}
+  function removeNew(index){setNewImages(items=>{if(items[index].preview)URL.revokeObjectURL?.(items[index].preview);return items.filter((_,i)=>i!==index);});}
   const submit=run(async e=>{
     const publish=e.nativeEvent.submitter?.value!=='draft';
     const data=Object.fromEntries(Object.keys(productBlank).map(k=>[k,String(v[k]??'').trim()]));
