@@ -111,7 +111,7 @@ as $$
 declare ctx jsonb := epistable_private.context();
 declare q public.trade_quotes%rowtype;
 declare r public.rfqs%rowtype;
-declare order_id text;
+declare new_order_id text;
 declare now_ms bigint := ((extract(epoch from now())*1000)::bigint);
 begin
  if auth.uid() is null or ctx->>'role' not like 'buyer_%' then
@@ -147,24 +147,24 @@ begin
   update public.trade_quotes set status='rejected',updated_at=now_ms
    where rfq_id=q.rfq_id and id<>q.id and status in ('sent','revised','revision_requested');
   update public.rfqs set status='accepted' where id=q.rfq_id;
-  order_id := 'ORD_'||gen_random_uuid()::text;
+  new_order_id := 'ORD_'||gen_random_uuid()::text;
   insert into public.trade_orders(
     id,rfq_id,quote_id,buyer_org_id,seller_org_id,product_id,
     currency,total_amount,quantity,quantity_unit,incoterm,status,confirmed_at
   )
   values(
-    order_id,q.rfq_id,q.id,r.buyer_org_id,q.seller_org_id,r.product_id,
+    new_order_id,q.rfq_id,q.id,r.buyer_org_id,q.seller_org_id,r.product_id,
     q.currency,q.total_amount,q.quantity,q.quantity_unit,q.incoterm,'confirmed',now_ms
   )
   on conflict(quote_id) do update set updated_at=now_ms
-  returning id into order_id;
+  returning id into new_order_id;
 
   if not exists (
-    select 1 from public.trade_order_events
-    where order_id=order_id and event_type='order_confirmed'
+    select 1 from public.trade_order_events e
+    where e.order_id=new_order_id and e.event_type='order_confirmed'
   ) then
     insert into public.trade_order_events(order_id,event_type,actor_id,metadata)
-    values(order_id,'order_confirmed',auth.uid(),jsonb_build_object(
+    values(new_order_id,'order_confirmed',auth.uid(),jsonb_build_object(
       'quote_id',q.id,
       'rfq_id',q.rfq_id,
       'currency',q.currency,
@@ -174,8 +174,8 @@ begin
  elsif decision='revision_requested' then
   if r.seller_org_id is not null then update public.rfqs set status='negotiating' where id=q.rfq_id; end if;
  end if;
- return order_id;
-end $$;
+ return new_order_id;
+end $;
 
 revoke all on function public.decide_trade_quote(text,text,text) from public,anon;
 grant execute on function public.decide_trade_quote(text,text,text) to authenticated;
