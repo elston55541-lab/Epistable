@@ -112,6 +112,30 @@ export const marketplace = {
   async updateDocument(documentId,updates) {
     return data(await supabase.from('trade_documents').update(updates).eq('id',documentId).select().single());
   },
+  async uploadTradeEvidence(organizationId,documentId,file) {
+    if(!file)throw new Error('Choose a certificate or evidence file.');
+    if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Use PDF, JPG, PNG or WebP evidence files.');
+    if(file.size>10*1024*1024)throw new Error('Evidence files must be 10 MB or smaller.');
+    const ext=(file.name?.split('.').pop()||file.type.split('/')[1]||'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const path=`${organizationId}/${documentId}/${crypto.randomUUID()}.${ext||'bin'}`;
+    const result=await supabase.storage.from('trade-evidence').upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+    if(result.error)throw result.error;
+    return {storage_path:path,file_name:file.name||'Evidence file',mime_type:file.type,file_size:file.size};
+  },
+  async removeTradeEvidence(path) {
+    if(!path)return;
+    const result=await supabase.storage.from('trade-evidence').remove([path]);
+    if(result.error)throw result.error;
+  },
+  async evidenceUrl(document,expiresIn=300) {
+    if(document?.storage_path){
+      const result=await supabase.storage.from('trade-evidence').createSignedUrl(document.storage_path,expiresIn);
+      if(result.error)throw result.error;
+      return result.data.signedUrl;
+    }
+    if(document?.file_url?.startsWith('https://'))return document.file_url;
+    throw new Error('Evidence file is unavailable.');
+  },
   async rfqs({buyerOrgId,sellerOrgId}={}) {
     let q=supabase.from('rfqs').select('*, products(*)').order('created_at',{ascending:false});
     if(buyerOrgId)q=q.eq('buyer_org_id',buyerOrgId);
@@ -125,7 +149,7 @@ export const marketplace = {
     return data(await supabase.from('rfqs').update(updates).eq('id',rfqId).select().single());
   },
   async quotes(rfqId) {
-    let q=supabase.from('trade_quotes').select('*').order('created_at',{ascending:false});
+    let q=supabase.from('trade_quotes').select('*, organizations!trade_quotes_seller_org_id_fkey(*)').order('created_at',{ascending:false});
     if(rfqId)q=q.eq('rfq_id',rfqId);
     return data(await q);
   },
@@ -134,5 +158,30 @@ export const marketplace = {
   },
   async updateQuote(quoteId,updates) {
     return data(await supabase.from('trade_quotes').update(updates).eq('id',quoteId).select().single());
+  },
+  async decideQuote(quoteId,decision,message='') {
+    return data(await supabase.rpc('decide_trade_quote',{target_quote_id:quoteId,decision,message}));
+  },
+  async reviseQuote(quoteId,values) {
+    return data(await supabase.rpc('revise_trade_quote',{
+      target_quote_id:quoteId,
+      quote_currency:values.currency,
+      quote_unit_price:values.unit_price,
+      quote_quantity:values.quantity,
+      quote_quantity_unit:values.quantity_unit,
+      quote_incoterm:values.incoterm,
+      quote_lead_time_days:values.lead_time_days,
+      quote_validity_ts:values.validity_ts,
+      quote_notes:values.notes||null
+    }));
+  },
+  async orders({buyerOrgId,sellerOrgId}={}) {
+    let q=supabase.from('trade_orders').select('*, rfqs(*), trade_quotes(*)').order('created_at',{ascending:false});
+    if(buyerOrgId)q=q.eq('buyer_org_id',buyerOrgId);
+    if(sellerOrgId)q=q.eq('seller_org_id',sellerOrgId);
+    return data(await q);
+  },
+  async updateOrderStatus(orderId,status,note='') {
+    return data(await supabase.rpc('update_trade_order_status',{target_order_id:orderId,new_status:status,note}));
   }
 };
