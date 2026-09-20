@@ -11360,3 +11360,612 @@ select {
 }
 
 ```
+
+
+===== FILE: supabase/config.toml =====
+
+```toml
+[functions.accept-invite]
+verify_jwt = false
+
+```
+
+
+===== FILE: supabase/functions/accept-invite/index.ts =====
+
+```typescript
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
+};
+
+type InviteBody = {
+  email?: string;
+  password?: string;
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return json({ error: "Invite service is not configured" }, 500);
+
+  let body: InviteBody;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid request body" }, 400);
+  }
+
+  const email = body.email?.trim().toLowerCase();
+  const password = body.password || "";
+  if (!email || !password) return json({ error: "Email and password are required" }, 400);
+  if (password.length < 6) return json({ error: "Password must be at least 6 characters" }, 400);
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("email", email)
+    .in("status", ["pending", "inactive", "active"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (profileError) return json({ error: profileError.message }, 500);
+  if (!profile) return json({ error: "No pending invite found for this email" }, 404);
+  if (profile.status === "suspended") return json({ error: "Account suspended." }, 403);
+
+  let authUserId = profile.auth_user_id as string | null;
+
+  if (authUserId) {
+    const { error: updateError } = await admin.auth.admin.updateUserById(authUserId, {
+      password,
+      email_confirm: true
+    });
+    if (updateError) return json({ error: updateError.message }, 400);
+  } else {
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        epistable_profile_id: profile.id,
+        role: profile.role,
+        factory_id: profile.factory_id
+      }
+    });
+
+    if (createError) {
+      return json({
+        error: createError.message.includes("already")
+          ? "A login already exists for this email. Choose 'I Have Login' instead."
+          : createError.message
+      }, 400);
+    }
+
+    authUserId = created.user?.id || null;
+  }
+
+  if (!authUserId) return json({ error: "Could not create login" }, 500);
+
+  const { data: linkedProfile, error: linkError } = await admin
+    .from("profiles")
+    .update({
+      auth_user_id: authUserId,
+      status: "active",
+      last_active: Date.now()
+    })
+    .eq("id", profile.id)
+    .select()
+    .single();
+
+  if (linkError) return json({ error: linkError.message }, 500);
+
+  return json({ profile: linkedProfile });
+});
+
+```
+
+
+===== FILE: supabase/functions/admin-invite/index.ts =====
+
+```typescript
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return json({ error: "Invite service is not configured" }, 500);
+
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token) return json({ error: "Unauthorized" }, 401);
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
+  const caller = userData?.user;
+  if (userError || !caller) return json({ error: "Unauthorized" }, 401);
+
+  const { data: callerProfile, error: callerProfileError } = await admin
+    .from("profiles")
+    .select("id, role, status")
+    .eq("auth_user_id", caller.id)
+    .maybeSingle();
+
+  if (callerProfileError) return json({ error: "Unable to verify caller" }, 500);
+  if (!callerProfile || callerProfile.status !== "active" || !["owner", "admin"].includes(callerProfile.role)) {
+    return json({ error: "Forbidden" }, 403);
+  }
+
+  let body: { email?: string; name?: string; role?: string; factory_id?: string | null; factory_name?: string | null; redirect_to?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid request body" }, 400);
+  }
+
+  const email = body.email?.trim().toLowerCase();
+  const name = body.name?.trim() || "Epistable User";
+  const role = body.role?.trim() || "buyer";
+  const allowedRoles = ["owner", "admin", "manager", "inspector", "buyer"];
+
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) return json({ error: "Valid email is required" }, 400);
+  if (!allowedRoles.includes(role)) return json({ error: "Invalid role" }, 400);
+
+  const { data: existingProfile, error: existingProfileError } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingProfileError) return json({ error: existingProfileError.message }, 500);
+  if (existingProfile?.status === "suspended") return json({ error: "Account suspended" }, 403);
+  if (existingProfile?.auth_user_id) return json({ error: "A login already exists for this email" }, 409);
+
+  let profile = existingProfile;
+  if (!profile) {
+    const id = crypto.randomUUID();
+    const { data, error } = await admin
+      .from("profiles")
+      .insert({
+        id,
+        name,
+        email,
+        role,
+        factory_id: body.factory_id ?? null,
+        factory_name: body.factory_name ?? null,
+        status: "pending",
+        created_at: Date.now(),
+      })
+      .select()
+      .single();
+    if (error) return json({ error: error.message }, 500);
+    profile = data;
+  } else {
+    const { data, error } = await admin
+      .from("profiles")
+      .update({
+        name,
+        role,
+        factory_id: body.factory_id ?? existingProfile.factory_id ?? null,
+        factory_name: body.factory_name ?? existingProfile.factory_name ?? null,
+        status: "pending",
+      })
+      .eq("id", existingProfile.id)
+      .select()
+      .single();
+    if (error) return json({ error: error.message }, 500);
+    profile = data;
+  }
+
+  const options: Record<string, unknown> = {
+    data: {
+      epistable_profile_id: profile.id,
+      role: profile.role,
+      factory_id: profile.factory_id,
+    },
+  };
+  if (body.redirect_to) options.redirectTo = body.redirect_to;
+
+  const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, options);
+  if (inviteError) return json({ error: inviteError.message }, 400);
+
+  const invitedUserId = inviteData?.user?.id;
+  if (!invitedUserId) return json({ error: "Invite sent but user id was not returned" }, 500);
+
+  const { data: linkedProfile, error: linkError } = await admin
+    .from("profiles")
+    .update({ auth_user_id: invitedUserId, status: "pending" })
+    .eq("id", profile.id)
+    .select()
+    .single();
+
+  if (linkError) return json({ error: linkError.message }, 500);
+
+  return json({
+    ok: true,
+    invited: true,
+    profile: {
+      id: linkedProfile.id,
+      email: linkedProfile.email,
+      role: linkedProfile.role,
+      status: linkedProfile.status,
+      auth_user_id: linkedProfile.auth_user_id,
+    },
+  });
+});
+
+```
+
+
+===== FILE: supabase/tests/marketplace_access.sql =====
+
+```sql
+-- Run after the marketplace access migration, as postgres. All fixtures roll back.
+begin;
+
+-- Complete trade fixtures; these defaults and all records are rolled back.
+alter table public.products alter country_of_origin set default 'India', alter moq set default 1, alter moq_unit set default 'kg', alter packaging set default '["1kg pouch"]'::jsonb, alter shelf_life set default '12 months', alter storage_requirements set default 'Cool and dry';
+alter table public.rfqs alter quantity set default 1, alter quantity_unit set default 'kg', alter destination_country set default 'India';
+alter table public.trade_quotes alter quantity set default 1, alter quantity_unit set default 'kg', alter unit_price set default 1, alter total_amount set default 1, alter incoterm set default 'FOB', alter validity_ts set default (extract(epoch from now()+interval '30 days')*1000)::bigint;
+
+
+create temporary table test_actors(label text,id uuid default gen_random_uuid());
+insert into test_actors(label) values ('seller_a'),('seller_b'),('buyer_a'),('buyer_b'),('legacy_admin'),('pending'),('suspended'),('platform');
+insert into auth.users(id,email) select id,'phase0-'||id||'@example.invalid' from test_actors;
+insert into public.profiles(id,auth_user_id,name,email,role,status)
+select id::text,id,'Phase 0 test','phase0-'||id||'@example.invalid','admin',
+case label when 'pending' then 'pending' when 'suspended' then 'suspended' else 'active' end from test_actors;
+insert into public.organizations(id,type,name,verification_status) values
+('phase0_sa','seller','Test seller A','verified'),('phase0_sb','seller','Test seller B','unverified'),
+('phase0_ba','buyer','Test buyer A','unverified'),('phase0_bb','buyer','Test buyer B','unverified');
+insert into epistable_private.marketplace_access(auth_user_id,organization_id,access_role)
+select id,case when label in ('seller_a','pending','suspended') then 'phase0_sa' when label='seller_b' then 'phase0_sb' when label='buyer_a' then 'phase0_ba' when label='buyer_b' then 'phase0_bb' end,
+case when label='platform' then 'platform_admin' when label like 'buyer%' then 'buyer_admin' else 'seller_admin' end
+from test_actors where label<>'legacy_admin';
+insert into public.products(id,seller_org_id,name,category,status,verification_status) values
+('phase0_pa','phase0_sa','Verified','Spices','active','verified'),
+('phase0_draft','phase0_sa','Draft','Spices','draft','unverified'),
+('phase0_pb','phase0_sb','Other seller','Spices','active','verified');
+insert into public.trade_documents(id,organization_id,product_id,document_type,title,visibility,verification_status,expires_at) values
+('phase0_doc','phase0_sa','phase0_pa','coa','Verified','buyers','verified',null),
+('phase0_private','phase0_sa','phase0_pa','coa','Private','private','verified',null),
+('phase0_expired','phase0_sa','phase0_pa','coa','Expired','buyers','verified',1);
+insert into public.rfqs(id,buyer_org_id,seller_org_id,product_id,status) values
+('phase0_r','phase0_ba','phase0_sa','phase0_pa','open'),
+('phase0_r2','phase0_bb','phase0_sb','phase0_pb','open'),
+('phase0_rd','phase0_ba','phase0_sa','phase0_pa','draft'),
+('phase0_ro','phase0_ba',null,null,'open');
+insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values
+('phase0_q','phase0_r','phase0_sa','sent'),('phase0_qd','phase0_r','phase0_sa','draft'),
+('phase0_qb','phase0_ro','phase0_sb','sent');
+
+create function pg_temp.assert_true(ok boolean, label text) returns void language plpgsql as $$
+begin if ok is distinct from true then raise exception 'FAIL: %',label; end if; end $$;
+create function pg_temp.denied(stmt text) returns boolean language plpgsql as $$
+begin execute stmt; return false; exception when insufficient_privilege or check_violation then return true; end $$;
+grant select on test_actors to authenticated,anon;
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='buyer_a'),true);
+set local role authenticated;
+select pg_temp.assert_true(((select count(*) from public.products where id like 'phase0_%')=1), 'buyer sees only verified active products of verified sellers');
+select pg_temp.assert_true(((select count(*) from public.trade_documents where id like 'phase0_%')=1), 'private and expired documents hidden');
+select pg_temp.assert_true(((select count(*) from public.rfqs where id like 'phase0_%')=3), 'buyer sees own RFQs');
+select pg_temp.assert_true(((select count(*) from public.trade_quotes where id like 'phase0_%')=2), 'buyer sees received quotes but no drafts');
+select pg_temp.assert_true((pg_temp.denied($q$insert into public.rfqs(id,buyer_org_id,status) values ('phase0_bad','phase0_bb','open')$q$)), 'cannot forge buyer');
+select pg_temp.assert_true((pg_temp.denied($q$insert into public.products(id,seller_org_id,name,category) values ('phase0_badp','phase0_sa','Bad','Spices')$q$)), 'buyer cannot create seller product');
+insert into public.rfqs(id,buyer_org_id,seller_org_id,product_id,status) values ('phase0_created','phase0_ba','phase0_sa','phase0_pa','open');
+select pg_temp.assert_true(((select count(*) from public.rfqs where id='phase0_created')=1), 'own RFQ insert works');
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='seller_a'),true);
+set local role authenticated;
+select pg_temp.assert_true(((select count(*) from public.products where id like 'phase0_%')=2), 'seller sees own drafts only');
+select pg_temp.assert_true(((select count(*) from public.trade_documents where id like 'phase0_%')=3), 'seller sees own private evidence');
+select pg_temp.assert_true(((select count(*) from public.rfqs where id='phase0_r2')=0), 'other targeted RFQ hidden');
+select pg_temp.assert_true(((select count(*) from public.rfqs where id='phase0_rd')=0), 'buyer draft hidden');
+select pg_temp.assert_true(((select count(*) from public.trade_quotes where id='phase0_qb')=0), 'competitor quote hidden on open RFQ');
+select pg_temp.assert_true((pg_temp.denied($q$insert into public.products(id,seller_org_id,name,category,verification_status) values ('phase0_fake','phase0_sa','Fake','Spices','verified')$q$)), 'seller cannot self verify');
+select pg_temp.assert_true((pg_temp.denied($q$update public.organizations set verification_status='verified' where id='phase0_sa'$q$)), 'seller cannot approve organization');
+select pg_temp.assert_true((pg_temp.denied($q$update public.products set seller_org_id='phase0_sb',status='draft',verification_status='pending' where id='phase0_pa'$q$)), 'seller cannot reassign product');
+select pg_temp.assert_true((pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values ('phase0_badq','phase0_r2','phase0_sa','sent')$q$)), 'seller cannot quote another seller targeted RFQ');
+select pg_temp.assert_true((pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values ('phase0_badq','phase0_r','phase0_sa','accepted')$q$)), 'seller cannot forge accepted quote');
+insert into public.products(id,seller_org_id,name,category) values ('phase0_newp','phase0_sa','New','Spices');
+select pg_temp.assert_true(((select count(*) from public.products where id='phase0_newp')=1), 'own product insert works');
+insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values ('phase0_newq','phase0_created','phase0_sa','draft');
+update public.trade_quotes set status='sent' where id='phase0_newq';
+select pg_temp.assert_true(((select status from public.trade_quotes where id='phase0_newq')='sent'), 'seller can submit draft quote');
+update public.trade_quotes set notes='tampered' where id='phase0_newq';
+select pg_temp.assert_true(((select notes from public.trade_quotes where id='phase0_newq') is null), 'sent quote immutable for seller');
+select pg_temp.assert_true((pg_temp.denied($q$insert into epistable_private.marketplace_access(auth_user_id,access_role) values (auth.uid(),'platform_admin')$q$)), 'membership privilege escalation blocked');
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='legacy_admin'),true);
+set local role authenticated;
+select pg_temp.assert_true((public.marketplace_context() is null), 'legacy_admin no context');
+select pg_temp.assert_true(((select count(*) from public.products where id like 'phase0_%')=0), 'legacy_admin no product access');
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='pending'),true);
+set local role authenticated;
+select pg_temp.assert_true((public.marketplace_context() is null), 'pending no context');
+select pg_temp.assert_true(((select count(*) from public.products where id like 'phase0_%')=0), 'pending no product access');
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='suspended'),true);
+set local role authenticated;
+select pg_temp.assert_true((public.marketplace_context() is null), 'suspended no context');
+select pg_temp.assert_true(((select count(*) from public.products where id like 'phase0_%')=0), 'suspended no product access');
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='buyer_b'),true);
+set local role authenticated;
+select pg_temp.assert_true(((select count(*) from public.rfqs where id='phase0_r')=0), 'buyer tenant isolation');
+select pg_temp.assert_true(((select count(*) from public.trade_quotes where id='phase0_q')=0), 'buyer cannot read other quotes');
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='platform'),true);
+set local role authenticated;
+select pg_temp.assert_true(((select count(*) from public.products where id like 'phase0_%')=4), 'platform admin sees all products');
+update public.products set status='active',verification_status='verified' where id='phase0_newp';
+select pg_temp.assert_true(((select verification_status from public.products where id='phase0_newp')='verified'), 'platform admin verifies');
+reset role;
+set local role anon;
+select pg_temp.assert_true((pg_temp.denied('select * from public.products')), 'anonymous table access denied');
+select pg_temp.assert_true((pg_temp.denied('select public.marketplace_context()')), 'anonymous context denied');
+reset role;
+
+
+reset role;
+update public.profiles set organization_id='phase0_sa',organization_role='platform_admin' where auth_user_id=(select id from test_actors where label='legacy_admin');
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='legacy_admin'),true);
+select set_config('request.jwt.claims','{"user_metadata":{"role":"platform_admin","organization_id":"phase0_sa"}}',true);
+set local role authenticated;
+select pg_temp.assert_true(public.marketplace_context() is null,'profile fields and editable metadata cannot grant marketplace access');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='seller_a'),true);
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.denied($q$update public.trade_documents set verification_status='verified' where id='phase0_private'$q$),'seller cannot verify evidence');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.trade_documents(id,organization_id,product_id,document_type,title) values ('phase0_crossdoc','phase0_sa','phase0_pb','coa','Invalid')$q$),'cross organization product document link blocked');
+update public.products set name='tampered' where id='phase0_pb';
+delete from public.products where id='phase0_newp';
+select pg_temp.assert_true((select count(*) from public.products where id='phase0_newp')=1,'seller cannot delete evidence');
+reset role;
+select pg_temp.assert_true((select name from public.products where id='phase0_pb')='Other seller','cross tenant update affects zero rows');
+select set_config('request.jwt.claim.sub','',true);
+select set_config('request.jwt.claims','{}',true);
+set local role authenticated;
+select pg_temp.assert_true(public.marketplace_context() is null,'authenticated database role without user identity has no authority');
+reset role;
+
+rollback;
+
+```
+
+
+===== FILE: supabase/tests/marketplace_organisations.sql =====
+
+```sql
+-- Run after the marketplace access migration, as postgres. All fixtures roll back.
+begin;
+
+-- Complete trade fixtures; these defaults and all records are rolled back.
+alter table public.products alter country_of_origin set default 'India', alter moq set default 1, alter moq_unit set default 'kg', alter packaging set default '["1kg pouch"]'::jsonb, alter shelf_life set default '12 months', alter storage_requirements set default 'Cool and dry';
+alter table public.rfqs alter quantity set default 1, alter quantity_unit set default 'kg', alter destination_country set default 'India';
+alter table public.trade_quotes alter quantity set default 1, alter quantity_unit set default 'kg', alter unit_price set default 1, alter total_amount set default 1, alter incoterm set default 'FOB', alter validity_ts set default (extract(epoch from now()+interval '30 days')*1000)::bigint;
+
+
+create temporary table test_actors(label text,id uuid default gen_random_uuid());
+insert into test_actors(label) values ('seller_a'),('seller_b'),('buyer_a'),('buyer_b'),('legacy_admin'),('pending'),('suspended'),('platform');
+insert into auth.users(id,email) select id,'phase0-'||id||'@example.invalid' from test_actors;
+insert into public.profiles(id,auth_user_id,name,email,role,status)
+select id::text,id,'Phase 0 test','phase0-'||id||'@example.invalid','admin',
+case label when 'pending' then 'pending' when 'suspended' then 'suspended' else 'active' end from test_actors;
+insert into public.organizations(id,type,name,verification_status) values
+('phase0_sa','seller','Test seller A','verified'),('phase0_sb','seller','Test seller B','unverified'),
+('phase0_ba','buyer','Test buyer A','unverified'),('phase0_bb','buyer','Test buyer B','unverified');
+insert into epistable_private.marketplace_access(auth_user_id,organization_id,access_role)
+select id,case when label in ('seller_a','pending','suspended') then 'phase0_sa' when label='seller_b' then 'phase0_sb' when label='buyer_a' then 'phase0_ba' when label='buyer_b' then 'phase0_bb' end,
+case when label='platform' then 'platform_admin' when label like 'buyer%' then 'buyer_admin' else 'seller_admin' end
+from test_actors where label<>'legacy_admin';
+insert into public.products(id,seller_org_id,name,category,status,verification_status) values
+('phase0_pa','phase0_sa','Verified','Spices','active','verified'),
+('phase0_draft','phase0_sa','Draft','Spices','draft','unverified'),
+('phase0_pb','phase0_sb','Other seller','Spices','active','verified');
+insert into public.trade_documents(id,organization_id,product_id,document_type,title,visibility,verification_status,expires_at) values
+('phase0_doc','phase0_sa','phase0_pa','coa','Verified','buyers','verified',null),
+('phase0_private','phase0_sa','phase0_pa','coa','Private','private','verified',null),
+('phase0_expired','phase0_sa','phase0_pa','coa','Expired','buyers','verified',1);
+insert into public.rfqs(id,buyer_org_id,seller_org_id,product_id,status) values
+('phase0_r','phase0_ba','phase0_sa','phase0_pa','open'),
+('phase0_r2','phase0_bb','phase0_sb','phase0_pb','open'),
+('phase0_rd','phase0_ba','phase0_sa','phase0_pa','draft'),
+('phase0_ro','phase0_ba',null,null,'open');
+insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values
+('phase0_q','phase0_r','phase0_sa','sent'),('phase0_qd','phase0_r','phase0_sa','draft'),
+('phase0_qb','phase0_ro','phase0_sb','sent');
+
+create function pg_temp.assert_true(ok boolean, label text) returns void language plpgsql as $$
+begin if ok is distinct from true then raise exception 'FAIL: %',label; end if; end $$;
+create function pg_temp.denied(stmt text) returns boolean language plpgsql as $$
+begin execute stmt; return false; exception when insufficient_privilege or check_violation then return true; end $$;
+grant select on test_actors to authenticated,anon;
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='legacy_admin'),true);
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.denied('select public.marketplace_accounts()'),'legacy admin cannot list accounts');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access(auth.uid(),'phase0_sa','seller_admin')$q$),'legacy admin cannot self assign');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='seller_a'),true);
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.denied('select public.marketplace_accounts()'),'seller cannot list accounts');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access(auth.uid(),'phase0_sb','seller_admin')$q$),'seller cannot move self');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='platform'),true);
+set local role authenticated;
+select pg_temp.assert_true(jsonb_array_length(public.marketplace_accounts())>=8,'platform can list linked accounts');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access((select id from test_actors where label='legacy_admin'),'phase0_sa','buyer_admin')$q$),'mismatched org role blocked');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access((select id from test_actors where label='legacy_admin'),'phase0_sa','platform_admin')$q$),'cannot grant platform role');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access((select id from test_actors where label='pending'),'phase0_sa','seller_member')$q$),'pending account blocked');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access(auth.uid(),'phase0_sa','seller_admin')$q$),'platform assignment protected');
+select public.assign_marketplace_access((select id from test_actors where label='legacy_admin'),'phase0_sa','seller_member');
+reset role;
+select pg_temp.assert_true((select role from public.profiles where auth_user_id=(select id from test_actors where label='legacy_admin'))='admin','legacy role unchanged');
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='legacy_admin'),true);
+set local role authenticated;
+select pg_temp.assert_true(public.marketplace_context()->>'role'='seller_member','assigned member gets context');
+select pg_temp.assert_true(pg_temp.denied($q$update public.organizations set name='Tampered',verification_status='pending' where id='phase0_sa'$q$) or (select name from public.organizations where id='phase0_sa')='Test seller A','member cannot edit org');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='platform'),true);
+set local role authenticated;
+select public.assign_marketplace_access((select id from test_actors where label='legacy_admin'),'phase0_ba','buyer_admin');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='legacy_admin'),true);
+set local role authenticated;
+select pg_temp.assert_true(public.marketplace_context()->>'org'='phase0_ba','reassignment replaces old org');
+select pg_temp.assert_true((select count(*) from public.products where id='phase0_draft')=0,'old seller draft access revoked');
+reset role;
+set local role anon;
+select pg_temp.assert_true(pg_temp.denied('select public.marketplace_accounts()'),'anonymous list denied');
+select pg_temp.assert_true(pg_temp.denied($q$select public.assign_marketplace_access(null,null,null)$q$),'anonymous assignment denied');
+reset role;
+rollback;
+
+```
+
+
+===== FILE: supabase/tests/marketplace_trade_workflows.sql =====
+
+```sql
+-- Run after the marketplace access migration, as postgres. All fixtures roll back.
+begin;
+
+-- Complete trade fixtures; these defaults and all records are rolled back.
+alter table public.products alter country_of_origin set default 'India', alter moq set default 1, alter moq_unit set default 'kg', alter packaging set default '["1kg pouch"]'::jsonb, alter shelf_life set default '12 months', alter storage_requirements set default 'Cool and dry';
+alter table public.rfqs alter quantity set default 1, alter quantity_unit set default 'kg', alter destination_country set default 'India';
+alter table public.trade_quotes alter quantity set default 1, alter quantity_unit set default 'kg', alter unit_price set default 1, alter total_amount set default 1, alter incoterm set default 'FOB', alter validity_ts set default (extract(epoch from now()+interval '30 days')*1000)::bigint;
+
+
+create temporary table test_actors(label text,id uuid default gen_random_uuid());
+insert into test_actors(label) values ('seller_a'),('seller_b'),('buyer_a'),('buyer_b'),('legacy_admin'),('pending'),('suspended'),('platform');
+insert into auth.users(id,email) select id,'phase0-'||id||'@example.invalid' from test_actors;
+insert into public.profiles(id,auth_user_id,name,email,role,status)
+select id::text,id,'Phase 0 test','phase0-'||id||'@example.invalid','admin',
+case label when 'pending' then 'pending' when 'suspended' then 'suspended' else 'active' end from test_actors;
+insert into public.organizations(id,type,name,verification_status) values
+('phase0_sa','seller','Test seller A','verified'),('phase0_sb','seller','Test seller B','unverified'),
+('phase0_ba','buyer','Test buyer A','unverified'),('phase0_bb','buyer','Test buyer B','unverified');
+insert into epistable_private.marketplace_access(auth_user_id,organization_id,access_role)
+select id,case when label in ('seller_a','pending','suspended') then 'phase0_sa' when label='seller_b' then 'phase0_sb' when label='buyer_a' then 'phase0_ba' when label='buyer_b' then 'phase0_bb' end,
+case when label='platform' then 'platform_admin' when label like 'buyer%' then 'buyer_admin' else 'seller_admin' end
+from test_actors where label<>'legacy_admin';
+insert into public.products(id,seller_org_id,name,category,status,verification_status) values
+('phase0_pa','phase0_sa','Verified','Spices','active','verified'),
+('phase0_draft','phase0_sa','Draft','Spices','draft','unverified'),
+('phase0_pb','phase0_sb','Other seller','Spices','active','verified');
+insert into public.trade_documents(id,organization_id,product_id,document_type,title,visibility,verification_status,expires_at) values
+('phase0_doc','phase0_sa','phase0_pa','coa','Verified','buyers','verified',null),
+('phase0_private','phase0_sa','phase0_pa','coa','Private','private','verified',null),
+('phase0_expired','phase0_sa','phase0_pa','coa','Expired','buyers','verified',1);
+insert into public.rfqs(id,buyer_org_id,seller_org_id,product_id,status) values
+('phase0_r','phase0_ba','phase0_sa','phase0_pa','open'),
+('phase0_r2','phase0_bb','phase0_sb','phase0_pb','open'),
+('phase0_rd','phase0_ba','phase0_sa','phase0_pa','draft'),
+('phase0_ro','phase0_ba',null,null,'open');
+insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values
+('phase0_q','phase0_r','phase0_sa','sent'),('phase0_qd','phase0_r','phase0_sa','draft'),
+('phase0_qb','phase0_ro','phase0_sb','sent');
+
+create function pg_temp.assert_true(ok boolean, label text) returns void language plpgsql as $$
+begin if ok is distinct from true then raise exception 'FAIL: %',label; end if; end $$;
+create function pg_temp.denied(stmt text) returns boolean language plpgsql as $$
+begin execute stmt; return false; exception when insufficient_privilege or check_violation or unique_violation then return true; end $$;
+grant select on test_actors to authenticated,anon;
+
+
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='seller_a'),true);
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.products(id,seller_org_id,name,category,moq) values('phase0_negative','phase0_sa','Invalid','Spices',-1)$q$),'negative minimum order blocked');
+select pg_temp.assert_true(pg_temp.denied($q$update public.products set country_of_origin=null,verification_status='pending',status='draft' where id='phase0_draft'$q$),'incomplete product submission blocked');
+update public.products set verification_status='pending',review_note='I verified myself' where id='phase0_draft';
+select pg_temp.assert_true((select review_note from public.products where id='phase0_draft') is null,'member cannot forge review reason');
+select pg_temp.assert_true((select count(*) from public.marketplace_reviews where target_id='phase0_draft' and decision='pending')=1,'submission history recorded');
+select pg_temp.assert_true(pg_temp.denied($q$select public.review_marketplace_record('product','phase0_draft','verified','Self approval')$q$),'seller review RPC denied');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status,total_amount) values('phase0_badtotal','phase0_ro','phase0_sa','sent',900)$q$),'incorrect quote total blocked');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status,total_amount) values('phase0_nulltotal','phase0_ro','phase0_sa','sent',null)$q$),'missing quote total blocked');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status,validity_ts) values('phase0_oldquote','phase0_ro','phase0_sa','sent',1)$q$),'expired quote submission blocked');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.trade_quotes(id,rfq_id,seller_org_id,status) values('phase0_duplicate','phase0_r','phase0_sa','sent')$q$),'duplicate submitted seller quote blocked');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.trade_documents(id,organization_id,document_type,title,file_url) values('phase0_badurl','phase0_sa','coa','Unsafe','javascript:alert(1)')$q$),'unsafe evidence URL blocked');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='buyer_a'),true);
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.rfqs(id,buyer_org_id,status,quantity) values('phase0_zero','phase0_ba','open',0)$q$),'zero RFQ quantity blocked');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.rfqs(id,buyer_org_id,status,destination_country) values('phase0_missingdest','phase0_ba','open',null)$q$),'missing destination blocked');
+select pg_temp.assert_true(pg_temp.denied($q$insert into public.rfqs(id,buyer_org_id,seller_org_id,product_id,status) values('phase0_hiddenproduct','phase0_ba','phase0_sb','phase0_pb','open')$q$),'buyer cannot target hidden product');
+select pg_temp.assert_true((select count(*) from public.marketplace_reviews where target_id='phase0_draft')=0,'buyer cannot read seller review history');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='platform'),true);
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.denied($q$select public.review_marketplace_record('product','phase0_draft','verified',' ')$q$),'review reason required');
+select public.review_marketplace_record('product','phase0_draft','verified','Checked product specification and supporting evidence');
+select pg_temp.assert_true((select status='active' and verification_status='verified' from public.products where id='phase0_draft'),'approval publishes product');
+select pg_temp.assert_true((select count(*) from public.marketplace_reviews where target_id='phase0_draft' and decision='verified' and reason='Checked product specification and supporting evidence')=1,'approval history persisted');
+select pg_temp.assert_true(pg_temp.denied($q$select public.review_marketplace_record('product','phase0_draft','rejected','Stale decision')$q$),'stale review rejected');
+select pg_temp.assert_true(pg_temp.denied($q$update public.marketplace_reviews set reason='Tampered' where target_id='phase0_draft'$q$),'review history immutable even for platform client');
+select pg_temp.assert_true(pg_temp.denied($q$select public.review_marketplace_record('document','phase0_expired','verified','Expired evidence')$q$),'expired document approval blocked');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='seller_a'),true);
+set local role authenticated;
+update public.products set name='Edited food',status='draft',verification_status='pending' where id='phase0_draft';
+select pg_temp.assert_true((select review_note from public.products where id='phase0_draft') is null,'editing clears old review reason');
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from test_actors where label='buyer_a'),true);
+set local role authenticated;
+select pg_temp.assert_true((select count(*) from public.products where id='phase0_draft')=0,'edited product hidden until reviewed again');
+reset role;
+set local role anon;
+select pg_temp.assert_true(pg_temp.denied('select * from public.marketplace_reviews'),'anonymous history denied');
+select pg_temp.assert_true(pg_temp.denied($q$select public.review_marketplace_record('product','phase0_draft','verified','Anonymous')$q$),'anonymous review denied');
+reset role;
+rollback;
+
+```
