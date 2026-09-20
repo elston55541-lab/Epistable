@@ -21,7 +21,7 @@ export function Workspace({profile,access,api=marketplace,onLogout,signingOut}) 
       const [organizations,products,rfqs,quotes,documents,reviews,orders]=await Promise.all([
         api.organizations(),
         api.products(mode==="buyer"?{published:true}:mode==="seller"?{sellerOrgId:access.org}:{}),
-        api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:mode==="seller"?{sellerOrgId:access.org}:{}),
+        api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:{}),
         api.quotes(),
         api.documents(mode==="seller"?access.org:undefined),
         mode==="admin"?api.reviews():Promise.resolve([]),
