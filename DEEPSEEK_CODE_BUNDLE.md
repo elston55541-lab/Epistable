@@ -14704,3 +14704,1203 @@ comment on table public.readiness_roadmaps is
   'Generated or manual export-readiness roadmap linked to an exporter profile.';
 
 ```
+
+
+===== FILE: supabase/migrations/202605240002_export_readiness_schema_hardening.sql =====
+
+```sql
+-- Export readiness schema hardening.
+-- Adds reusable certification specs, multi-market requirements, roadmap history,
+-- and renewal hooks without rewriting the previous foundation migration.
+
+create table if not exists public.certifications (
+  id text primary key,
+  code text not null unique,
+  name text not null,
+  description text,
+  evidence_type text not null
+    check (evidence_type in (
+      'government_registration',
+      'management_system_cert',
+      'product_test_report',
+      'responsible_sourcing_audit',
+      'shipment_document',
+      'operational_record',
+      'training_record',
+      'policy_document'
+    )),
+  renewal_period_months integer,
+  scope_description text,
+  issuing_authority_type text not null default 'external'
+    check (issuing_authority_type in ('government', 'accredited_body', 'lab', 'export_council', 'self', 'external')),
+  metadata jsonb not null default '{}'::jsonb,
+  active boolean not null default true,
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+alter table public.certifications enable row level security;
+
+create policy "certifications read active" on public.certifications
+  for select using (active or public.is_owner());
+
+create policy "certifications owner writes" on public.certifications
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+alter table public.export_requirements
+  add column if not exists certification_id text references public.certifications(id),
+  add column if not exists destination_markets text[] not null default '{}'::text[],
+  add column if not exists evidence_lifecycle_type text,
+  add column if not exists product_category text,
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+alter table public.readiness_evidence
+  add column if not exists evidence_lifecycle_type text,
+  add column if not exists verification_reason text,
+  add column if not exists next_check_at bigint;
+
+alter table public.readiness_roadmaps
+  add column if not exists model_version text,
+  add column if not exists input_snapshot jsonb not null default '{}'::jsonb,
+  add column if not exists output jsonb not null default '{}'::jsonb,
+  add column if not exists is_current boolean not null default true,
+  add column if not exists superseded_by text references public.readiness_roadmaps(id) on delete set null,
+  add column if not exists generation_cost_usd numeric(8,4),
+  add column if not exists generation_duration_ms integer;
+
+alter table public.certification_bodies
+  add column if not exists slug text,
+  add column if not exists legal_name text,
+  add column if not exists accreditation_number text,
+  add column if not exists accreditation_authority text,
+  add column if not exists hq_country text,
+  add column if not exists status text not null default 'active'
+    check (status in ('active', 'inactive', 'pending_review')),
+  add column if not exists featured_until bigint;
+
+update public.certification_bodies
+set slug = lower(regexp_replace(id, '^body_', ''))
+where slug is null;
+
+create unique index if not exists certifications_code_uidx on public.certifications(code);
+create unique index if not exists certification_bodies_slug_uidx on public.certification_bodies(slug) where slug is not null;
+create index if not exists certifications_active_type_idx on public.certifications(active, evidence_type);
+create index if not exists export_requirements_certification_idx on public.export_requirements(certification_id, active);
+create index if not exists export_requirements_destination_markets_gin_idx on public.export_requirements using gin(destination_markets);
+create index if not exists readiness_evidence_next_check_idx on public.readiness_evidence(factory_id, next_check_at, status);
+create index if not exists readiness_roadmaps_current_profile_idx on public.readiness_roadmaps(profile_id, is_current) where is_current = true;
+
+insert into public.certifications (
+  id, code, name, description, evidence_type, renewal_period_months,
+  scope_description, issuing_authority_type, metadata
+) values
+  (
+    'cert_iec',
+    'iec',
+    'Importer Exporter Code (IEC)',
+    'DGFT-issued registration required for Indian import/export activity.',
+    'government_registration',
+    null,
+    'Exporter registration for India.',
+    'government',
+    '{"authority":"DGFT","country":"India"}'::jsonb
+  ),
+  (
+    'cert_iso_9001',
+    'iso_9001',
+    'ISO 9001 Quality Management System',
+    'Quality management system certification used by buyers to assess process maturity.',
+    'management_system_cert',
+    36,
+    'Factory or company quality management system scope.',
+    'accredited_body',
+    '{"standard_family":"ISO"}'::jsonb
+  ),
+  (
+    'cert_astm_stone',
+    'astm_stone_test_report',
+    'ASTM Dimensional Stone Test Report',
+    'Product test evidence for dimensional stone supplied to ASTM-oriented buyers.',
+    'product_test_report',
+    null,
+    'Material/sample test report for stone type and buyer specification.',
+    'lab',
+    '{"market_family":"US","sector":"stone"}'::jsonb
+  ),
+  (
+    'cert_en_ce_stone',
+    'en_ce_stone_evidence',
+    'EN / CE Evidence for Construction Stone',
+    'EN standard evidence and CE-related documentation where applicable for construction stone products.',
+    'product_test_report',
+    null,
+    'Product technical evidence, test reports, and declaration/performance documentation where applicable.',
+    'lab',
+    '{"market_family":"EU","sector":"stone"}'::jsonb
+  ),
+  (
+    'cert_responsible_sourcing',
+    'responsible_sourcing_due_diligence',
+    'Responsible Sourcing and Due Diligence Evidence',
+    'Social, origin, and ethical sourcing evidence requested by many international buyers.',
+    'responsible_sourcing_audit',
+    12,
+    'Supply-chain, quarry/source, social-audit, or buyer due-diligence evidence.',
+    'external',
+    '{"themes":["origin","social","ethical sourcing"]}'::jsonb
+  ),
+  (
+    'cert_silica_environment',
+    'silica_environmental_compliance',
+    'Silica Dust and Environmental Compliance Evidence',
+    'Operational evidence for worker safety, dust control, water/waste, and environmental compliance.',
+    'operational_record',
+    12,
+    'Factory operational records and local compliance evidence.',
+    'self',
+    '{"themes":["worker safety","environment","operations"]}'::jsonb
+  ),
+  (
+    'cert_origin_gsp',
+    'certificate_of_origin_gsp',
+    'Certificate of Origin / Preferential Origin Documents',
+    'Shipment or exporter documentation proving origin and, where applicable, preferential origin eligibility.',
+    'shipment_document',
+    null,
+    'Per-shipment origin documentation.',
+    'export_council',
+    '{"themes":["shipment documentation","origin"]}'::jsonb
+  ),
+  (
+    'cert_packaging_labeling',
+    'export_packaging_labeling',
+    'Export Packaging and Labelling Evidence',
+    'Packing, labelling, handling, and wood-packaging evidence for export shipments.',
+    'shipment_document',
+    null,
+    'Packaging photos, packing list, crate labels, and fumigation/ISPM evidence where applicable.',
+    'self',
+    '{"themes":["packaging","shipment readiness"]}'::jsonb
+  )
+on conflict (id) do update set
+  code=excluded.code,
+  name=excluded.name,
+  description=excluded.description,
+  evidence_type=excluded.evidence_type,
+  renewal_period_months=excluded.renewal_period_months,
+  scope_description=excluded.scope_description,
+  issuing_authority_type=excluded.issuing_authority_type,
+  metadata=excluded.metadata,
+  active=true,
+  updated_at=(extract(epoch from now()) * 1000)::bigint;
+
+update public.export_requirements
+set
+  certification_id = case id
+    when 'stone_any_any_iec' then 'cert_iec'
+    when 'stone_any_any_iso_9001' then 'cert_iso_9001'
+    when 'stone_granite_us_astm' then 'cert_astm_stone'
+    when 'stone_marble_us_astm' then 'cert_astm_stone'
+    when 'stone_any_eu_en_ce_evidence' then 'cert_en_ce_stone'
+    when 'stone_any_eu_responsible_sourcing' then 'cert_responsible_sourcing'
+    when 'stone_any_any_silica_environment' then 'cert_silica_environment'
+    when 'stone_any_any_origin_gsp' then 'cert_origin_gsp'
+    when 'stone_any_any_packaging_labeling' then 'cert_packaging_labeling'
+    else certification_id
+  end,
+  destination_markets = case
+    when destination_market is null or destination_market = 'any' then '{"GLOBAL"}'::text[]
+    else array[destination_market]
+  end,
+  evidence_lifecycle_type = case id
+    when 'stone_any_any_iec' then 'government_registration'
+    when 'stone_any_any_iso_9001' then 'management_system_cert'
+    when 'stone_granite_us_astm' then 'product_test_report'
+    when 'stone_marble_us_astm' then 'product_test_report'
+    when 'stone_any_eu_en_ce_evidence' then 'product_test_report'
+    when 'stone_any_eu_responsible_sourcing' then 'responsible_sourcing_audit'
+    when 'stone_any_any_silica_environment' then 'operational_record'
+    when 'stone_any_any_origin_gsp' then 'shipment_document'
+    when 'stone_any_any_packaging_labeling' then 'shipment_document'
+    else evidence_lifecycle_type
+  end,
+  product_category = case
+    when sector = 'stone' then 'dimensional_stone'
+    else product_category
+  end
+where certification_id is null
+   or destination_markets = '{}'::text[]
+   or evidence_lifecycle_type is null
+   or product_category is null;
+
+update public.readiness_evidence e
+set
+  evidence_lifecycle_type = coalesce(e.evidence_lifecycle_type, r.evidence_lifecycle_type),
+  next_check_at = coalesce(
+    e.next_check_at,
+    case
+      when e.expires_at is not null and e.issued_at is not null
+        then greatest(e.issued_at, e.expires_at - 60 * 86400000)
+      when e.expires_at is not null
+        then e.expires_at - 60 * 86400000
+      else null
+    end
+  )
+from public.export_requirements r
+where r.id = e.requirement_id;
+
+create table if not exists public.certification_body_certifications (
+  body_id text not null references public.certification_bodies(id) on delete cascade,
+  certification_id text not null references public.certifications(id) on delete cascade,
+  is_primary boolean not null default false,
+  scope_notes text,
+  primary key (body_id, certification_id)
+);
+
+alter table public.certification_body_certifications enable row level security;
+
+create policy "certification body certifications read active" on public.certification_body_certifications
+  for select using (
+    public.is_owner()
+    or exists (
+      select 1 from public.certification_bodies b
+      where b.id = certification_body_certifications.body_id
+        and b.active
+        and b.status = 'active'
+    )
+  );
+
+create policy "certification body certifications owner writes" on public.certification_body_certifications
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+insert into public.certification_body_certifications (body_id, certification_id, is_primary, scope_notes) values
+  ('body_dgft', 'cert_iec', true, 'Official IEC route.'),
+  ('body_sgs', 'cert_iso_9001', true, 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_bureau_veritas', 'cert_iso_9001', true, 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_intertek', 'cert_iso_9001', true, 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_tuv_nord', 'cert_iso_9001', true, 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_cdos_jaipur', 'cert_astm_stone', true, 'Potential stone lab testing route; confirm accepted methods.'),
+  ('body_cdos_jaipur', 'cert_en_ce_stone', true, 'Potential stone lab testing route; confirm accepted methods.'),
+  ('body_sgs', 'cert_en_ce_stone', false, 'Potential EU evidence support; verify scope.'),
+  ('body_bureau_veritas', 'cert_en_ce_stone', false, 'Potential EU evidence support; verify scope.'),
+  ('body_intertek', 'cert_en_ce_stone', false, 'Potential EU evidence support; verify scope.'),
+  ('body_capexil', 'cert_origin_gsp', true, 'Potential origin/export documentation guidance; verify route.')
+on conflict (body_id, certification_id) do update set
+  is_primary=excluded.is_primary,
+  scope_notes=excluded.scope_notes;
+
+create or replace view public.export_requirement_catalog
+with (security_invoker = true) as
+select
+  r.*,
+  c.code as certification_code,
+  c.name as certification_name,
+  c.evidence_type as certification_evidence_type,
+  c.renewal_period_months as certification_renewal_period_months,
+  c.issuing_authority_type
+from public.export_requirements r
+left join public.certifications c on c.id = r.certification_id
+where r.active;
+
+comment on table public.certifications is
+  'Reusable master records for certifications, registrations, lab reports, shipment documents, and operational compliance evidence.';
+
+comment on column public.export_requirements.certification_id is
+  'Reusable certification/specification referenced by this applicability rule.';
+
+comment on column public.export_requirements.destination_markets is
+  'Markets where this requirement applies. GLOBAL means market-independent.';
+
+comment on column public.export_requirements.evidence_lifecycle_type is
+  'Lifecycle category used by UI, AI roadmaps, renewal reminders, and verification workflows.';
+
+comment on column public.readiness_evidence.next_check_at is
+  'Future reminder/check timestamp, usually before expires_at, for renewal workflows.';
+
+comment on table public.certification_body_certifications is
+  'Normalized mapping from certification bodies/labs/portals to reusable certification specs.';
+
+comment on view public.export_requirement_catalog is
+  'Joined active export requirements with reusable certification metadata for UI and AI roadmap generation.';
+
+```
+
+
+===== FILE: supabase/migrations/202605240005_revert_out_of_scope_readiness.sql =====
+
+```sql
+-- Reversal of out-of-scope migrations 202605240003 and 202605240004.
+-- These objects were created in PRs that violated the original Export Readiness
+-- brief scope. They can be reintroduced later in dedicated, scoped PRs.
+
+-- 202605240004_exporter_profile_leads.sql
+drop function if exists public.create_public_exporter_profile_lead(
+  text,
+  text,
+  text,
+  text,
+  text[],
+  text
+);
+
+drop policy if exists "exporter profile leads own factory read" on public.exporter_profile_leads;
+drop policy if exists "exporter profile leads own factory update" on public.exporter_profile_leads;
+drop policy if exists "exporter profile leads owner delete" on public.exporter_profile_leads;
+
+alter table if exists public.exporter_profile_leads disable row level security;
+
+drop index if exists public.exporter_profile_leads_factory_status_idx;
+drop table if exists public.exporter_profile_leads;
+
+-- 202605240003_public_exporter_readiness.sql
+drop function if exists public.get_public_exporter_readiness(text);
+
+```
+
+
+===== FILE: supabase/migrations/202605240006_factory_evidence_storage.sql =====
+
+```sql
+-- Factory Evidence storage bucket for Export Readiness uploads.
+-- File path convention: {factory_id}/{requirement_id}/{timestamp}-{sanitized_filename}
+-- Bucket is private. Reads happen via short-lived signed URLs generated by the app.
+
+-- ── Bucket ────────────────────────────────────────────────────────────────
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'factory_evidence',
+  'factory_evidence',
+  false,
+  10485760,
+  array['application/pdf','image/jpeg','image/png','image/webp']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- ── Policies on storage.objects (scoped by bucket_id) ─────────────────────
+
+drop policy if exists "factory_evidence read" on storage.objects;
+drop policy if exists "factory_evidence insert" on storage.objects;
+drop policy if exists "factory_evidence update" on storage.objects;
+drop policy if exists "factory_evidence delete" on storage.objects;
+
+create policy "factory_evidence read"
+  on storage.objects for select
+  using (
+    bucket_id = 'factory_evidence'
+    and (
+      public.is_owner()
+      or public.same_factory((storage.foldername(name))[1])
+    )
+  );
+
+create policy "factory_evidence insert"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'factory_evidence'
+    and (
+      public.is_owner()
+      or (
+        public.current_profile_role() in ('admin', 'manager')
+        and public.same_factory((storage.foldername(name))[1])
+      )
+    )
+  );
+
+create policy "factory_evidence update"
+  on storage.objects for update
+  using (
+    bucket_id = 'factory_evidence'
+    and (
+      public.is_owner()
+      or (
+        public.current_profile_role() in ('admin', 'manager')
+        and public.same_factory((storage.foldername(name))[1])
+      )
+    )
+  )
+  with check (
+    bucket_id = 'factory_evidence'
+    and (
+      public.is_owner()
+      or (
+        public.current_profile_role() in ('admin', 'manager')
+        and public.same_factory((storage.foldername(name))[1])
+      )
+    )
+  );
+
+create policy "factory_evidence delete"
+  on storage.objects for delete
+  using (
+    bucket_id = 'factory_evidence'
+    and (
+      public.is_owner()
+      or (
+        public.current_profile_role() in ('admin', 'manager')
+        and public.same_factory((storage.foldername(name))[1])
+      )
+    )
+  );
+
+comment on policy "factory_evidence read" on storage.objects is
+  'Factory members read their own factory evidence files. Platform owner reads all.';
+comment on policy "factory_evidence insert" on storage.objects is
+  'Admin and manager roles in the same factory can upload. Owner can upload anywhere.';
+
+```
+
+
+===== FILE: supabase/migrations/20260913142135_processed_foods_marketplace_core.sql =====
+
+```sql
+create table if not exists public.organizations (
+  id text primary key,
+  type text not null check (type in ('buyer','seller')),
+  name text not null,
+  country text,
+  city text,
+  website text,
+  description text,
+  verification_status text not null default 'unverified' check (verification_status in ('unverified','pending','verified','rejected')),
+  created_at bigint not null default ((extract(epoch from now())*1000)::bigint)
+);
+
+create table if not exists public.products (
+  id text primary key,
+  seller_org_id text not null references public.organizations(id) on delete cascade,
+  name text not null,
+  category text not null,
+  description text,
+  ingredients text,
+  country_of_origin text,
+  moq numeric,
+  moq_unit text,
+  capacity numeric,
+  capacity_unit text,
+  packaging jsonb not null default '[]'::jsonb,
+  shelf_life text,
+  storage_requirements text,
+  lead_time_days integer,
+  export_markets jsonb not null default '[]'::jsonb,
+  certifications jsonb not null default '[]'::jsonb,
+  allergens jsonb not null default '[]'::jsonb,
+  dietary_attributes jsonb not null default '[]'::jsonb,
+  verification_status text not null default 'unverified' check (verification_status in ('unverified','pending','verified','rejected')),
+  status text not null default 'draft' check (status in ('draft','active','inactive')),
+  created_at bigint not null default ((extract(epoch from now())*1000)::bigint)
+);
+
+create table if not exists public.trade_documents (
+  id text primary key,
+  organization_id text not null references public.organizations(id) on delete cascade,
+  product_id text references public.products(id) on delete cascade,
+  document_type text not null,
+  title text not null,
+  issuer text,
+  reference_number text,
+  issued_at bigint,
+  expires_at bigint,
+  file_url text,
+  visibility text not null default 'buyers' check (visibility in ('public','buyers','private')),
+  verification_status text not null default 'pending' check (verification_status in ('pending','verified','rejected','expired')),
+  created_at bigint not null default ((extract(epoch from now())*1000)::bigint)
+);
+
+create table if not exists public.rfqs (
+  id text primary key,
+  buyer_org_id text not null references public.organizations(id),
+  seller_org_id text references public.organizations(id),
+  product_id text references public.products(id),
+  product_category text,
+  quantity numeric,
+  quantity_unit text,
+  destination_country text,
+  destination_city text,
+  required_by bigint,
+  requirements text,
+  status text not null default 'open' check (status in ('draft','open','quoted','negotiating','accepted','closed','cancelled')),
+  created_at bigint not null default ((extract(epoch from now())*1000)::bigint)
+);
+
+create table if not exists public.trade_quotes (
+  id text primary key,
+  rfq_id text not null references public.rfqs(id) on delete cascade,
+  seller_org_id text not null references public.organizations(id),
+  currency text not null default 'USD',
+  unit_price numeric,
+  quantity numeric,
+  quantity_unit text,
+  total_amount numeric,
+  incoterm text,
+  lead_time_days integer,
+  validity_ts bigint,
+  notes text,
+  status text not null default 'sent' check (status in ('draft','sent','accepted','revision_requested','revised','expired','rejected')),
+  created_at bigint not null default ((extract(epoch from now())*1000)::bigint)
+);
+
+alter table public.profiles add column if not exists organization_id text references public.organizations(id);
+alter table public.profiles add column if not exists organization_role text;
+
+alter table public.organizations enable row level security;
+alter table public.products enable row level security;
+alter table public.trade_documents enable row level security;
+alter table public.rfqs enable row level security;
+alter table public.trade_quotes enable row level security;
+
+create index if not exists products_seller_org_idx on public.products(seller_org_id);
+create index if not exists products_category_idx on public.products(category);
+create index if not exists rfqs_buyer_org_idx on public.rfqs(buyer_org_id);
+create index if not exists rfqs_seller_org_idx on public.rfqs(seller_org_id);
+create index if not exists trade_quotes_rfq_idx on public.trade_quotes(rfq_id);
+
+```
+
+
+===== FILE: supabase/migrations/20260913154327_marketplace_access_foundation.sql =====
+
+```sql
+-- Marketplace authority is explicit; legacy profile.role and editable JWT metadata
+-- never grant marketplace privileges. Existing auth and legacy policies are untouched.
+create schema epistable_private;
+revoke all on schema epistable_private from public, anon, authenticated;
+grant usage on schema epistable_private to authenticated;
+create table epistable_private.marketplace_access (
+  auth_user_id uuid primary key references auth.users(id) on delete cascade,
+  organization_id text references public.organizations(id),
+  access_role text not null check (access_role in ('platform_admin','seller_admin','seller_member','buyer_admin','buyer_member')),
+  check ((access_role = 'platform_admin') = (organization_id is null))
+);
+alter table epistable_private.marketplace_access enable row level security;
+revoke all on epistable_private.marketplace_access from public, anon, authenticated;
+create index marketplace_access_org_idx on epistable_private.marketplace_access(organization_id);
+
+-- One-time bootstrap; later owner/admin invites do not confer marketplace access.
+insert into epistable_private.marketplace_access(auth_user_id,access_role)
+select auth_user_id,'platform_admin' from public.profiles
+where role='owner' and status='active' and auth_user_id is not null;
+
+-- Narrow read-only helper avoids recursion through legacy profile policies.
+create function epistable_private.context()
+returns jsonb language sql stable security definer set search_path = ''
+as $$
+ select jsonb_build_object('org',a.organization_id,'role',a.access_role)
+ from epistable_private.marketplace_access a
+ join public.profiles p on p.auth_user_id=a.auth_user_id
+ left join public.organizations o on o.id=a.organization_id
+ where auth.uid() is not null and a.auth_user_id=auth.uid() and p.status='active'
+ and (a.access_role='platform_admin'
+   or (a.access_role like 'seller_%' and o.type='seller')
+   or (a.access_role like 'buyer_%' and o.type='buyer'))
+$$;
+revoke all on function epistable_private.context() from public, anon, authenticated;
+grant execute on function epistable_private.context() to authenticated;
+
+-- Safe session description for Phase 1 clients. Invoker only, no input identity.
+create function public.marketplace_context()
+returns jsonb language sql stable security invoker set search_path = ''
+as $$ select epistable_private.context() $$;
+revoke all on function public.marketplace_context() from public, anon;
+grant execute on function public.marketplace_context() to authenticated;
+
+-- These five tables previously had no policies. Preserve default deny for anon.
+revoke all on public.organizations,public.products,public.trade_documents,public.rfqs,public.trade_quotes from public,anon,authenticated;
+grant select,insert,update,delete on public.organizations,public.products,public.trade_documents,public.rfqs,public.trade_quotes to authenticated;
+
+create policy marketplace_org_read on public.organizations for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or id=(select epistable_private.context()->>'org')
+ or ((select epistable_private.context()->>'role') like 'buyer_%' and type='seller' and verification_status='verified')
+);
+create policy marketplace_org_insert on public.organizations for insert to authenticated with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+);
+create policy marketplace_org_update on public.organizations for update to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') in ('seller_admin','buyer_admin'))
+) with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') in ('seller_admin','buyer_admin'))
+);
+
+create policy marketplace_product_read on public.products for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or seller_org_id=(select epistable_private.context()->>'org')
+ or ((select epistable_private.context()->>'role') like 'buyer_%' and status='active' and verification_status='verified'
+ and exists(select 1 from public.organizations o where o.id=seller_org_id and o.type='seller' and o.verification_status='verified'))
+);
+create policy marketplace_product_insert on public.products for insert to authenticated with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%'
+ and verification_status in ('unverified','pending') and status='draft')
+);
+create policy marketplace_product_update on public.products for update to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%')
+) with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%'
+ and verification_status in ('unverified','pending') and status in ('draft','inactive'))
+);
+
+create policy marketplace_document_read on public.trade_documents for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or organization_id=(select epistable_private.context()->>'org')
+ or ((select epistable_private.context()->>'role') like 'buyer_%' and visibility in ('buyers','public')
+ and verification_status='verified' and (expires_at is null or expires_at > extract(epoch from now())*1000)
+ and exists(select 1 from public.organizations o where o.id=organization_id and o.type='seller' and o.verification_status='verified')
+ and (product_id is null or exists(select 1 from public.products p where p.id=product_id)))
+);
+create policy marketplace_document_insert on public.trade_documents for insert to authenticated with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (organization_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%' and verification_status='pending')
+);
+create policy marketplace_document_update on public.trade_documents for update to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (organization_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%')
+) with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (organization_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%' and verification_status='pending')
+);
+
+create policy marketplace_rfq_read on public.rfqs for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or buyer_org_id=(select epistable_private.context()->>'org')
+ or ((select epistable_private.context()->>'role') like 'seller_%' and status not in ('draft','cancelled')
+ and (seller_org_id=(select epistable_private.context()->>'org') or (seller_org_id is null and status='open')))
+);
+create policy marketplace_rfq_insert on public.rfqs for insert to authenticated with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (buyer_org_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'buyer_%' and status in ('draft','open'))
+);
+-- Submitted RFQs and quote decisions need controlled transition APIs in Phase 5.
+create policy marketplace_rfq_update on public.rfqs for update to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (buyer_org_id=(select epistable_private.context()->>'org') and status='draft')
+) with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (buyer_org_id=(select epistable_private.context()->>'org') and status in ('draft','open','cancelled'))
+);
+
+create policy marketplace_quote_read on public.trade_quotes for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or seller_org_id=(select epistable_private.context()->>'org')
+ or (status<>'draft' and exists(select 1 from public.rfqs r where r.id=rfq_id and r.buyer_org_id=(select epistable_private.context()->>'org')))
+);
+create policy marketplace_quote_insert on public.trade_quotes for insert to authenticated with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%'
+ and status in ('draft','sent') and exists(select 1 from public.rfqs r where r.id=rfq_id and r.status='open'
+ and (r.seller_org_id is null or r.seller_org_id=trade_quotes.seller_org_id)))
+);
+create policy marketplace_quote_update on public.trade_quotes for update to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and status='draft')
+) with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and status in ('draft','sent')
+ and exists(select 1 from public.rfqs r where r.id=rfq_id and r.status='open' and (r.seller_org_id is null or r.seller_org_id=trade_quotes.seller_org_id)))
+);
+-- No DELETE policy: preserve trade evidence; status changes provide archival.
+-- Row ownership and review metadata must not be reassigned by members.
+create function epistable_private.guard_marketplace_update()
+returns trigger language plpgsql security invoker set search_path = ''
+as $$
+begin
+ if (epistable_private.context()->>'role') is distinct from 'platform_admin' then
+   if new.id is distinct from old.id or new.created_at is distinct from old.created_at then
+     raise exception 'Record identity is immutable' using errcode='42501';
+   end if;
+   if TG_TABLE_NAME='organizations' then
+     if new.type is distinct from old.type then raise exception 'Organization type is immutable' using errcode='42501'; end if;
+     if new.verification_status not in ('unverified','pending') then
+       raise exception 'Profile changes require verification review' using errcode='42501';
+     end if;
+   elsif TG_TABLE_NAME='products' then
+     if new.seller_org_id is distinct from old.seller_org_id then raise exception 'Seller is immutable' using errcode='42501'; end if;
+   elsif TG_TABLE_NAME='trade_documents' then
+     if new.organization_id is distinct from old.organization_id then raise exception 'Organization is immutable' using errcode='42501'; end if;
+   elsif TG_TABLE_NAME='rfqs' then
+     if new.buyer_org_id is distinct from old.buyer_org_id then raise exception 'Buyer is immutable' using errcode='42501'; end if;
+   elsif TG_TABLE_NAME='trade_quotes' then
+     if new.seller_org_id is distinct from old.seller_org_id or new.rfq_id is distinct from old.rfq_id then raise exception 'Quote parties are immutable' using errcode='42501'; end if;
+   end if;
+ end if;
+ return new;
+end
+$$;
+revoke all on function epistable_private.guard_marketplace_update() from public,anon,authenticated;
+
+create trigger marketplace_update_guard before update on public.organizations for each row execute function epistable_private.guard_marketplace_update();
+
+create trigger marketplace_update_guard before update on public.products for each row execute function epistable_private.guard_marketplace_update();
+
+create trigger marketplace_update_guard before update on public.trade_documents for each row execute function epistable_private.guard_marketplace_update();
+
+create trigger marketplace_update_guard before update on public.rfqs for each row execute function epistable_private.guard_marketplace_update();
+
+create trigger marketplace_update_guard before update on public.trade_quotes for each row execute function epistable_private.guard_marketplace_update();
+
+-- Enforce relationships even for platform admins; FK alone only checks existence.
+create function epistable_private.validate_marketplace_links()
+returns trigger language plpgsql security invoker set search_path = ''
+as $$
+begin
+ if TG_TABLE_NAME='products' then
+   if not exists(select 1 from public.organizations where id=new.seller_org_id and type='seller') then raise exception 'Product needs a seller organization' using errcode='23514'; end if;
+ elsif TG_TABLE_NAME='trade_documents' then
+   if new.product_id is not null and not exists(select 1 from public.products where id=new.product_id and seller_org_id=new.organization_id) then raise exception 'Document product must belong to its organization' using errcode='23514'; end if;
+ elsif TG_TABLE_NAME='rfqs' then
+   if not exists(select 1 from public.organizations where id=new.buyer_org_id and type='buyer') then raise exception 'RFQ needs a buyer organization' using errcode='23514'; end if;
+   if new.seller_org_id is not null and not exists(select 1 from public.organizations where id=new.seller_org_id and type='seller') then raise exception 'RFQ seller must be a seller organization' using errcode='23514'; end if;
+   if new.product_id is not null and (new.seller_org_id is null or not exists(select 1 from public.products where id=new.product_id and seller_org_id=new.seller_org_id)) then raise exception 'RFQ product must belong to target seller' using errcode='23514'; end if;
+ end if;
+ return new;
+end
+$$;
+revoke all on function epistable_private.validate_marketplace_links() from public,anon,authenticated;
+
+create trigger marketplace_link_guard before insert or update on public.products for each row execute function epistable_private.validate_marketplace_links();
+
+create trigger marketplace_link_guard before insert or update on public.trade_documents for each row execute function epistable_private.validate_marketplace_links();
+
+create trigger marketplace_link_guard before insert or update on public.rfqs for each row execute function epistable_private.validate_marketplace_links();
+
+create index if not exists profiles_organization_id_idx on public.profiles(organization_id);
+create index if not exists trade_documents_organization_id_idx on public.trade_documents(organization_id);
+create index if not exists trade_documents_product_id_idx on public.trade_documents(product_id);
+create index if not exists rfqs_product_id_idx on public.rfqs(product_id);
+create index if not exists trade_quotes_seller_org_id_idx on public.trade_quotes(seller_org_id);
+grant usage on schema epistable_private to service_role;
+grant select,insert,update,delete on epistable_private.marketplace_access to service_role;
+
+```
+
+
+===== FILE: supabase/migrations/20260913161333_marketplace_organisation_management.sql =====
+
+```sql
+-- Organization administration uses existing Auth users; it never sends invitations.
+create function epistable_private.marketplace_accounts()
+returns jsonb language plpgsql stable security definer set search_path=''
+as $$
+begin
+ if auth.uid() is null or (epistable_private.context()->>'role') is distinct from 'platform_admin' then
+  raise exception 'Platform administrator required' using errcode='42501';
+ end if;
+ return coalesce((select jsonb_agg(jsonb_build_object(
+  'id',p.auth_user_id,'name',p.name,'email',p.email,'status',p.status,
+  'organization_id',a.organization_id,'access_role',a.access_role) order by p.name)
+ from public.profiles p left join epistable_private.marketplace_access a on a.auth_user_id=p.auth_user_id
+ where p.auth_user_id is not null),'[]'::jsonb);
+end $$;
+
+create function epistable_private.assign_marketplace_access(target_user uuid,target_org text,target_role text)
+returns void language plpgsql security definer set search_path=''
+as $$
+declare org_type text;
+begin
+ if auth.uid() is null or (epistable_private.context()->>'role') is distinct from 'platform_admin' then
+  raise exception 'Platform administrator required' using errcode='42501';
+ end if;
+ if exists(select 1 from epistable_private.marketplace_access where auth_user_id=target_user and access_role='platform_admin') then
+  raise exception 'Platform administrator access cannot be changed here' using errcode='42501';
+ end if;
+ if not exists(select 1 from public.profiles where auth_user_id=target_user and status='active') then
+  raise exception 'Choose an active linked account' using errcode='23514';
+ end if;
+ select type into org_type from public.organizations where id=target_org;
+ if org_type is null or target_role is null or target_role not in ('seller_admin','seller_member','buyer_admin','buyer_member')
+   or split_part(target_role,'_',1)<>org_type then
+  raise exception 'Role must match the organisation type' using errcode='23514';
+ end if;
+ insert into epistable_private.marketplace_access(auth_user_id,organization_id,access_role)
+ values(target_user,target_org,target_role)
+ on conflict(auth_user_id) do update set organization_id=excluded.organization_id,access_role=excluded.access_role;
+ -- Compatibility fields: marketplace policies continue to trust ONLY the private access table.
+ update public.profiles set organization_id=target_org,organization_role=target_role where auth_user_id=target_user;
+end $$;
+revoke all on function epistable_private.marketplace_accounts() from public,anon,authenticated;
+revoke all on function epistable_private.assign_marketplace_access(uuid,text,text) from public,anon,authenticated;
+grant execute on function epistable_private.marketplace_accounts() to authenticated;
+grant execute on function epistable_private.assign_marketplace_access(uuid,text,text) to authenticated;
+
+create function public.marketplace_accounts()
+returns jsonb language sql stable security invoker set search_path=''
+as $$ select epistable_private.marketplace_accounts() $$;
+create function public.assign_marketplace_access(target_user uuid,target_org text,target_role text)
+returns void language sql security invoker set search_path=''
+as $$ select epistable_private.assign_marketplace_access(target_user,target_org,target_role) $$;
+revoke all on function public.marketplace_accounts() from public,anon;
+revoke all on function public.assign_marketplace_access(uuid,text,text) from public,anon;
+grant execute on function public.marketplace_accounts() to authenticated;
+grant execute on function public.assign_marketplace_access(uuid,text,text) to authenticated;
+
+```
+
+
+===== FILE: supabase/migrations/20260913163014_marketplace_trade_workflows.sql =====
+
+```sql
+-- Marketplace-only validation and immutable verification history.
+alter table public.organizations add column review_note text;
+alter table public.products add column review_note text;
+alter table public.trade_documents add column review_note text;
+
+alter table public.products add constraint products_positive_trade_values check (
+ (moq is null or (moq>0 and moq<1e12)) and (capacity is null or (capacity>0 and capacity<1e12)) and
+ (lead_time_days is null or lead_time_days between 0 and 3650));
+alter table public.rfqs add constraint rfqs_valid_quantity check (
+ (quantity is null or (quantity>0 and quantity<1e12)) and
+ (status='draft' or status='cancelled' or (quantity is not null and nullif(trim(quantity_unit),'') is not null and nullif(trim(destination_country),'') is not null)));
+alter table public.trade_quotes add constraint trade_quotes_valid_terms check (
+ (quantity is null or (quantity>0 and quantity<1e12)) and
+ (unit_price is null or (unit_price>0 and unit_price<1e12)) and
+ (total_amount is null or (total_amount>0 and total_amount<1e24)) and
+ (lead_time_days is null or lead_time_days between 0 and 3650) and
+ (status='draft' or (quantity is not null and unit_price is not null and total_amount is not null and currency is not null and incoterm is not null and total_amount=round(quantity*unit_price,2)
+  and currency ~ '^[A-Z]{3}$' and nullif(trim(quantity_unit),'') is not null and validity_ts is not null
+  and incoterm in ('EXW','FCA','CPT','CIP','DAP','DPU','DDP','FAS','FOB','CFR','CIF'))));
+create unique index trade_quotes_one_per_seller_rfq on public.trade_quotes(rfq_id,seller_org_id) where status<>'draft';
+
+create table public.marketplace_reviews (
+ id uuid primary key default gen_random_uuid(),
+ organization_id text not null references public.organizations(id),
+ target_kind text not null check(target_kind in ('organization','product','document')),
+ target_id text not null,
+ decision text not null,
+ reason text,
+ reviewer_id uuid references auth.users(id),
+ snapshot jsonb not null,
+ created_at timestamptz not null default now()
+);
+alter table public.marketplace_reviews enable row level security;
+revoke all on public.marketplace_reviews from public,anon,authenticated;
+grant select on public.marketplace_reviews to authenticated;
+create policy marketplace_reviews_read on public.marketplace_reviews for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin' or organization_id=(select epistable_private.context()->>'org'));
+create index marketplace_reviews_org_created on public.marketplace_reviews(organization_id,created_at desc);
+create index marketplace_reviews_reviewer on public.marketplace_reviews(reviewer_id);
+
+create function epistable_private.validate_trade_submission() returns trigger language plpgsql security invoker set search_path=''
+as $$
+declare ctx jsonb := epistable_private.context();
+begin
+ if tg_table_name in ('organizations','products','trade_documents') and ctx->>'role' is distinct from 'platform_admin' then
+  new.review_note := null;
+ end if;
+ if tg_table_name='products' then
+  if new.verification_status in ('pending','verified') and
+   (nullif(trim(new.name),'') is null or nullif(trim(new.category),'') is null or nullif(trim(new.country_of_origin),'') is null
+    or new.moq is null or new.packaging is null or nullif(trim(new.moq_unit),'') is null or jsonb_array_length(new.packaging)=0
+    or nullif(trim(new.shelf_life),'') is null or nullif(trim(new.storage_requirements),'') is null) then
+   raise exception 'Complete origin, minimum order, packaging, shelf life and storage before submitting a product' using errcode='23514';
+  end if;
+ elsif tg_table_name='rfqs' then
+  if new.status='open' and (tg_op='INSERT' or old.status='draft') then
+   if new.required_by is not null and new.required_by<=extract(epoch from now())*1000 then
+    raise exception 'Required date must be in the future' using errcode='23514';
+   end if;
+   if ctx->>'role' in ('buyer_admin','buyer_member') and new.product_id is not null and not exists(
+    select 1 from public.products p join public.organizations o on o.id=p.seller_org_id
+    where p.id=new.product_id and p.status='active' and p.verification_status='verified' and o.verification_status='verified') then
+    raise exception 'Choose an active verified product from a verified seller' using errcode='23514';
+   end if;
+  end if;
+ elsif tg_table_name='trade_quotes' then
+  if new.status='sent' and ctx->>'role' in ('seller_admin','seller_member') and not exists(select 1 from public.organizations where id=new.seller_org_id and verification_status='verified') then
+   raise exception 'Your organisation must be verified before sending quotes' using errcode='23514';
+  end if;
+  if new.status='sent' and (tg_op='INSERT' or old.status='draft') and
+   (new.validity_ts is null or new.validity_ts<=extract(epoch from now())*1000) then
+   raise exception 'Quote validity must be in the future' using errcode='23514';
+  end if;
+ elsif tg_table_name='trade_documents' then
+  if new.file_url is not null and new.file_url !~ '^https://' then
+   raise exception 'Evidence source must be an HTTPS URL' using errcode='23514';
+  end if;
+  if new.expires_at is not null and new.issued_at is not null and new.expires_at<=new.issued_at then
+   raise exception 'Expiry must follow issue date' using errcode='23514';
+  end if;
+ end if;
+ return new;
+end $$;
+revoke all on function epistable_private.validate_trade_submission() from public,anon,authenticated;
+create trigger validate_trade_submission before insert or update on public.organizations for each row execute function epistable_private.validate_trade_submission();
+create trigger validate_trade_submission before insert or update on public.products for each row execute function epistable_private.validate_trade_submission();
+create trigger validate_trade_submission before insert or update on public.trade_documents for each row execute function epistable_private.validate_trade_submission();
+create trigger validate_trade_submission before insert or update on public.rfqs for each row execute function epistable_private.validate_trade_submission();
+create trigger validate_trade_submission before insert or update on public.trade_quotes for each row execute function epistable_private.validate_trade_submission();
+
+create function epistable_private.record_marketplace_review() returns trigger language plpgsql security definer set search_path=''
+as $$
+begin
+ -- Ordinary writes still pass table RLS. The trigger can only append history.
+ if auth.uid() is null then return new; end if;
+ if tg_op='INSERT' or new.verification_status is distinct from old.verification_status then
+  insert into public.marketplace_reviews(organization_id,target_kind,target_id,decision,reason,reviewer_id,snapshot)
+  values(case tg_table_name when 'organizations' then new.id when 'products' then to_jsonb(new)->>'seller_org_id' else to_jsonb(new)->>'organization_id' end,
+  case tg_table_name when 'organizations' then 'organization' when 'products' then 'product' else 'document' end,
+  new.id,new.verification_status,new.review_note,auth.uid(),to_jsonb(new));
+ end if;
+ return new;
+end $$;
+revoke all on function epistable_private.record_marketplace_review() from public,anon,authenticated;
+create trigger record_marketplace_review after insert or update on public.organizations for each row execute function epistable_private.record_marketplace_review();
+create trigger record_marketplace_review after insert or update on public.products for each row execute function epistable_private.record_marketplace_review();
+create trigger record_marketplace_review after insert or update on public.trade_documents for each row execute function epistable_private.record_marketplace_review();
+
+create function public.review_marketplace_record(target_kind text,target_id text,decision text,reason text)
+returns void language plpgsql security invoker set search_path=''
+as $$
+declare changed integer;
+begin
+ if auth.uid() is null or (epistable_private.context()->>'role') is distinct from 'platform_admin' then
+  raise exception 'Platform administrator required' using errcode='42501';
+ end if;
+ if decision is null or decision not in ('verified','rejected') or nullif(trim(reason),'') is null or length(reason)>4000 then
+  raise exception 'Choose approve or reject and give a review reason' using errcode='23514';
+ end if;
+ if target_kind='organization' then
+  update public.organizations set verification_status=decision,review_note=trim(reason) where id=target_id
+   and verification_status in ('pending','unverified')
+   and (decision='rejected' or nullif(trim(country),'') is not null);
+ elsif target_kind='product' then
+  update public.products p set verification_status=decision,review_note=trim(reason),status=case when decision='verified' then 'active' else 'draft' end
+   where p.id=target_id and p.verification_status='pending'
+   and (decision='rejected' or exists(select 1 from public.organizations o where o.id=p.seller_org_id and o.verification_status='verified'));
+ elsif target_kind='document' then
+  update public.trade_documents set verification_status=decision,review_note=trim(reason)
+   where id=target_id and verification_status='pending'
+   and (decision='rejected' or (file_url ~ '^https://' and (expires_at is null or expires_at>extract(epoch from now())*1000)));
+ else raise exception 'Unknown review target' using errcode='23514';
+ end if;
+ get diagnostics changed=row_count;
+ if changed<>1 then raise exception 'Record changed or is not ready for this review. Refresh and check its details.' using errcode='23514'; end if;
+end $$;
+revoke all on function public.review_marketplace_record(text,text,text,text) from public,anon;
+grant execute on function public.review_marketplace_record(text,text,text,text) to authenticated;
+
+```
+
+
+===== FILE: supabase/migrations/20260919170000_seller_publish_product_images.sql =====
+
+```sql
+-- Seller self-publishing, product images, and risk-based review for processed foods.
+
+alter table public.products
+  add column if not exists image_urls jsonb not null default '[]'::jsonb,
+  add column if not exists cover_image_url text,
+  add column if not exists risk_status text not null default 'clear',
+  add column if not exists risk_reason text;
+
+alter table public.products drop constraint if exists products_risk_status_check;
+alter table public.products add constraint products_risk_status_check
+  check (risk_status in ('clear','review_required','blocked'));
+
+alter table public.products drop constraint if exists products_image_urls_array;
+alter table public.products add constraint products_image_urls_array
+  check (jsonb_typeof(image_urls)='array' and jsonb_array_length(image_urls)<=6);
+
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values ('product-images','product-images',true,5242880,array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set
+  public=excluded.public,
+  file_size_limit=excluded.file_size_limit,
+  allowed_mime_types=excluded.allowed_mime_types;
+
+drop policy if exists product_images_insert on storage.objects;
+drop policy if exists product_images_update on storage.objects;
+drop policy if exists product_images_delete on storage.objects;
+drop policy if exists product_images_select on storage.objects;
+
+create policy product_images_select on storage.objects
+for select to authenticated using (bucket_id='product-images');
+
+create policy product_images_insert on storage.objects
+for insert to authenticated with check (
+  bucket_id='product-images'
+  and (select public.marketplace_context()->>'role') in ('seller_admin','seller_member')
+  and (storage.foldername(name))[1]=(select public.marketplace_context()->>'org')
+);
+
+create policy product_images_update on storage.objects
+for update to authenticated using (
+  bucket_id='product-images'
+  and (select public.marketplace_context()->>'role') in ('seller_admin','seller_member')
+  and (storage.foldername(name))[1]=(select public.marketplace_context()->>'org')
+) with check (
+  bucket_id='product-images'
+  and (storage.foldername(name))[1]=(select public.marketplace_context()->>'org')
+);
+
+create policy product_images_delete on storage.objects
+for delete to authenticated using (
+  bucket_id='product-images'
+  and (select public.marketplace_context()->>'role') in ('seller_admin','seller_member')
+  and (storage.foldername(name))[1]=(select public.marketplace_context()->>'org')
+);
+
+create or replace function epistable_private.product_requires_review(
+  product_name text,
+  product_description text,
+  dietary jsonb,
+  certifications jsonb
+) returns boolean
+language sql immutable set search_path=''
+as $$
+  select lower(
+    coalesce(product_name,'') || ' ' ||
+    coalesce(product_description,'') || ' ' ||
+    coalesce(dietary::text,'') || ' ' ||
+    coalesce(certifications::text,'')
+  ) ~ '(cure|treat|prevent)[[:space:]]+(cancer|diabetes|disease|infection)|medicinal|therapeutic|miracle[[:space:]]+cure|guaranteed[[:space:]]+weight[[:space:]]+loss|fda[[:space:]]+approved';
+$$;
+revoke all on function epistable_private.product_requires_review(text,text,jsonb,jsonb) from public,anon,authenticated;
+
+drop policy if exists marketplace_product_read on public.products;
+create policy marketplace_product_read on public.products for select to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or seller_org_id=(select epistable_private.context()->>'org')
+ or ((select epistable_private.context()->>'role') like 'buyer_%' and status='active'
+ and exists(select 1 from public.organizations o where o.id=seller_org_id and o.type='seller' and o.verification_status='verified'))
+);
+
+drop policy if exists marketplace_product_insert on public.products;
+create policy marketplace_product_insert on public.products for insert to authenticated with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (
+   seller_org_id=(select epistable_private.context()->>'org')
+   and (select epistable_private.context()->>'role') like 'seller_%'
+   and verification_status in ('unverified','pending')
+   and status in ('draft','active')
+ )
+);
+
+drop policy if exists marketplace_product_update on public.products;
+create policy marketplace_product_update on public.products for update to authenticated using (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (seller_org_id=(select epistable_private.context()->>'org') and (select epistable_private.context()->>'role') like 'seller_%')
+) with check (
+ (select epistable_private.context()->>'role')='platform_admin'
+ or (
+   seller_org_id=(select epistable_private.context()->>'org')
+   and (select epistable_private.context()->>'role') like 'seller_%'
+   and verification_status in ('unverified','pending')
+   and status in ('draft','active','inactive')
+ )
+);
+
+create or replace function epistable_private.validate_trade_submission() returns trigger
+language plpgsql security invoker set search_path=''
+as $$
+declare ctx jsonb := epistable_private.context();
+declare seller_is_verified boolean;
+begin
+ if tg_table_name in ('organizations','products','trade_documents') and ctx->>'role' is distinct from 'platform_admin' then
+  new.review_note := null;
+ end if;
+
+ if tg_table_name='products' then
+  if new.verification_status in ('pending','verified') or new.status='active' then
+   if nullif(trim(new.name),'') is null or nullif(trim(new.category),'') is null or nullif(trim(new.country_of_origin),'') is null
+    or new.moq is null or new.packaging is null or nullif(trim(new.moq_unit),'') is null or jsonb_array_length(new.packaging)=0
+    or nullif(trim(new.shelf_life),'') is null or nullif(trim(new.storage_requirements),'') is null then
+    raise exception 'Complete origin, minimum order, packaging, shelf life and storage before publishing a product' using errcode='23514';
+   end if;
+  end if;
+
+  if ctx->>'role' in ('seller_admin','seller_member') and new.status='active' then
+   select verification_status='verified' into seller_is_verified from public.organizations where id=new.seller_org_id;
+   if coalesce(seller_is_verified,false) is not true then
+    raise exception 'Your seller organisation must be verified before publishing products' using errcode='23514';
+   end if;
+   if jsonb_array_length(coalesce(new.image_urls,'[]'::jsonb))=0 then
+    raise exception 'Add at least one product image before publishing' using errcode='23514';
+   end if;
+   if epistable_private.product_requires_review(new.name,new.description,new.dietary_attributes,new.certifications) then
+    raise exception 'This listing contains a health or regulated claim that needs Epistable review before publication' using errcode='23514';
+   end if;
+   new.verification_status := 'unverified';
+   new.risk_status := 'clear';
+   new.risk_reason := null;
+  elsif new.verification_status='pending' and epistable_private.product_requires_review(new.name,new.description,new.dietary_attributes,new.certifications) then
+   new.risk_status := 'review_required';
+   new.risk_reason := 'Health or regulated claim requires manual review before publication';
+  end if;
+
+ elsif tg_table_name='rfqs' then
+  if new.status='open' and (tg_op='INSERT' or old.status='draft') then
+   if new.required_by is not null and new.required_by<=extract(epoch from now())*1000 then
+    raise exception 'Required date must be in the future' using errcode='23514';
+   end if;
+   if ctx->>'role' in ('buyer_admin','buyer_member') and new.product_id is not null and not exists(
+    select 1 from public.products p join public.organizations o on o.id=p.seller_org_id
+    where p.id=new.product_id and p.status='active' and o.verification_status='verified') then
+    raise exception 'Choose a published product from a verified seller' using errcode='23514';
+   end if;
+  end if;
+ elsif tg_table_name='trade_quotes' then
+  if new.status='sent' and ctx->>'role' in ('seller_admin','seller_member') and not exists(select 1 from public.organizations where id=new.seller_org_id and verification_status='verified') then
+   raise exception 'Your organisation must be verified before sending quotes' using errcode='23514';
+  end if;
+  if new.status='sent' and (tg_op='INSERT' or old.status='draft') and
+   (new.validity_ts is null or new.validity_ts<=extract(epoch from now())*1000) then
+   raise exception 'Quote validity must be in the future' using errcode='23514';
+  end if;
+ elsif tg_table_name='trade_documents' then
+  if new.file_url is not null and new.file_url !~ '^https://' then
+   raise exception 'Evidence source must be an HTTPS URL' using errcode='23514';
+  end if;
+  if new.expires_at is not null and new.issued_at is not null and new.expires_at<=new.issued_at then
+   raise exception 'Expiry must follow issue date' using errcode='23514';
+  end if;
+ end if;
+ return new;
+end $$;
+revoke all on function epistable_private.validate_trade_submission() from public,anon,authenticated;
+
+create or replace function public.review_marketplace_record(target_kind text,target_id text,decision text,reason text)
+returns void language plpgsql security invoker set search_path=''
+as $$
+declare changed integer;
+begin
+ if auth.uid() is null or (epistable_private.context()->>'role') is distinct from 'platform_admin' then
+  raise exception 'Platform administrator required' using errcode='42501';
+ end if;
+ if decision is null or decision not in ('verified','rejected') or nullif(trim(reason),'') is null or length(reason)>4000 then
+  raise exception 'Choose approve or reject and give a review reason' using errcode='23514';
+ end if;
+ if target_kind='organization' then
+  update public.organizations set verification_status=decision,review_note=trim(reason) where id=target_id
+   and verification_status in ('pending','unverified')
+   and (decision='rejected' or nullif(trim(country),'') is not null);
+ elsif target_kind='product' then
+  update public.products p set
+    verification_status=decision,
+    review_note=trim(reason),
+    status=case when decision='verified' then 'active' else 'draft' end,
+    risk_status=case when decision='verified' then 'clear' else 'blocked' end,
+    risk_reason=case when decision='verified' then null else trim(reason) end
+   where p.id=target_id and p.verification_status='pending'
+   and (decision='rejected' or exists(select 1 from public.organizations o where o.id=p.seller_org_id and o.verification_status='verified'));
+ elsif target_kind='document' then
+  update public.trade_documents set verification_status=decision,review_note=trim(reason)
+   where id=target_id and verification_status='pending'
+   and (decision='rejected' or (file_url ~ '^https://' and (expires_at is null or expires_at>extract(epoch from now())*1000)));
+ else raise exception 'Unknown review target' using errcode='23514';
+ end if;
+ get diagnostics changed=row_count;
+ if changed<>1 then raise exception 'Record changed or is not ready for this review. Refresh and check its details.' using errcode='23514'; end if;
+end $$;
+revoke all on function public.review_marketplace_record(text,text,text,text) from public,anon;
+grant execute on function public.review_marketplace_record(text,text,text,text) to authenticated;
+
+```
