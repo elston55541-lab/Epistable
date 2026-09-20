@@ -97,6 +97,19 @@ Architecture must therefore store country/currency/market attributes generically
 
 Build the marketplace and trade data first. Once transaction data exists, add optional financial infrastructure such as payment protection, trade credit, invoice financing, purchase-order financing, insurance and logistics integrations through appropriately regulated partners. Epistable should not represent itself as a lender unless it becomes appropriately authorised.
 
+### Finance-readiness data captured now
+
+The transaction layer should already build the evidence base that regulated finance partners may later use. Accepted orders therefore preserve:
+
+- Agreed order value, currency, quantity and Incoterm
+- Purchase-order reference, issue date, value and payment terms when supplied
+- Invoice reference, amount, issue/due dates and invoice status when supplied
+- Payment status, amount paid and payment timestamp when verified
+- Operational milestone timestamps from confirmation through production, inspection, dispatch, delivery and completion
+- An append-only order-event history for transaction provenance and future underwriting/audit integrations
+
+These fields are infrastructure, not a lending decision or credit score. Finance eligibility and underwriting remain the responsibility of appropriately regulated finance partners.
+
 ## Product principle
 
 Epistable is not another B2B listing portal. The product should progressively connect four layers:
