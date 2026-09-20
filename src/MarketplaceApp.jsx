@@ -18,8 +18,16 @@ export function Workspace({profile,access,api=marketplace,onLogout,signingOut}) 
   const reload=useCallback(async()=>{
     const current=++generation.current;setError("");setData(null);
     try {
-      const [organizations,products,rfqs,quotes,documents,reviews]=await Promise.all([api.organizations(),api.products(mode==="buyer"?{published:true}:mode==="seller"?{sellerOrgId:access.org}:{}),api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:{}),api.quotes(),api.documents(mode==="seller"?access.org:undefined),mode==="admin"?api.reviews():Promise.resolve([])]);
-      if(current===generation.current)setData({organizations,products,rfqs,quotes,documents,reviews});
+      const [organizations,products,rfqs,quotes,documents,reviews,orders]=await Promise.all([
+        api.organizations(),
+        api.products(mode==="buyer"?{published:true}:mode==="seller"?{sellerOrgId:access.org}:{}),
+        api.rfqs(mode==="buyer"?{buyerOrgId:access.org}:mode==="seller"?{sellerOrgId:access.org}:{}),
+        api.quotes(),
+        api.documents(mode==="seller"?access.org:undefined),
+        mode==="admin"?api.reviews():Promise.resolve([]),
+        api.orders(mode==="buyer"?{buyerOrgId:access.org}:mode==="seller"?{sellerOrgId:access.org}:{})
+      ]);
+      if(current===generation.current)setData({organizations,products,rfqs,quotes,documents,reviews,orders});
     }catch(e){if(current===generation.current)setError(e.message||"Could not load your workspace.");}
   },[api,mode,access.org]);
   useEffect(()=>{reload();return()=>{generation.current++;};},[reload]);
@@ -62,5 +70,5 @@ export default function MarketplaceApp() {
   },[refresh]);
   async function logout(){setSigningOut(true);setLogoutError("");try{await signOut();generation.current++;setState({profile:null,access:null});}catch(e){setLogoutError(friendlyAuthError(e));}finally{setSigningOut(false);}}
   const mode=portalFor(state.access);
-  return <div className="mp-root" style={theme}>{logoutError&&<Notice error>{logoutError}</Notice>}{state.loading?<div className="mp-login"><p role="status">Loading Epistable…</p></div>:state.error?<div className="mp-login"><section className="mp-card"><h1>Unable to open workspace</h1><Notice error>{state.error}</Notice><div className="mp-actions"><Button onClick={refresh}>Retry</Button><Button variant="secondary" onClick={logout} disabled={signingOut}>Sign out</Button></div></section></div>:!state.profile?<Login onSignedIn={refresh}/>:!mode?<div className="mp-login"><section className="mp-card"><h1>Marketplace access needed</h1><p>Your account is signed in. Epistable Food & Agri trade uses dedicated processed-food Seller and Buyer workspaces. An Epistable administrator needs to assign your organisation and access.</p><div className="mp-actions"><Button onClick={refresh}>Refresh access</Button><Button variant="secondary" onClick={logout} disabled={signingOut}>Sign out</Button></div><p><a href="/legacy">Open legacy stone workspace</a></p></section></div>:<Workspace key={state.profile.auth_user_id+":"+state.access.role+":"+state.access.org} profile={state.profile} access={state.access} onLogout={logout} signingOut={signingOut}/>}</div>;
+  return <div className="mp-root" style={theme}>{logoutError&&<Notice error>{logoutError}</Notice>}{state.loading?<div className="mp-login"><p role="status">Loading Epistable…</p></div>:state.error?<div className="mp-login"><section className="mp-card"><h1>Unable to open workspace</h1><Notice error>{state.error}</Notice><div className="mp-actions"><Button onClick={refresh}>Retry</Button><Button variant="secondary" onClick={logout} disabled={signingOut}>Sign out</Button></div></section></div>:!state.profile?<Login onSignedIn={refresh}/>:!mode?<div className="mp-login"><section className="mp-card"><h1>{state.profile?.organization_id?"Marketplace application under review":"Marketplace access needed"}</h1><p>{state.profile?.organization_id?"Your organisation has been submitted to Epistable. Access to the Buyer or Seller workspace is granted automatically after an administrator verifies the organisation.":"Your account is signed in. Epistable Food & Agri trade uses dedicated processed-food Seller and Buyer workspaces. An Epistable administrator needs to assign your organisation and access."}</p><div className="mp-actions"><Button onClick={refresh}>Refresh access</Button><Button variant="secondary" onClick={logout} disabled={signingOut}>Sign out</Button></div>{!state.profile?.organization_id&&<p><a href="/legacy">Open legacy stone workspace</a></p>}</section></div>:<Workspace key={state.profile.auth_user_id+":"+state.access.role+":"+state.access.org} profile={state.profile} access={state.access} onLogout={logout} signingOut={signingOut}/>}</div>;
 }
