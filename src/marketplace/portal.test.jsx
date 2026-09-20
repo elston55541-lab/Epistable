@@ -8,11 +8,11 @@ import { getSessionProfile, signInWithEmail, signOut } from '../lib/auth';
 import { marketplace } from '../lib/marketplace';
 
 vi.mock('../lib/auth',()=>({getSessionProfile:vi.fn(),signInWithEmail:vi.fn(),signOut:vi.fn(),friendlyAuthError:e=>e.message}));
-vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],FOOD_CERTIFICATIONS:['FSSAI','FSSC 22000'],TRADE_DOCUMENT_TYPES:[{value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'}],productRequiresReview:()=>false,marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([])}}));
+vi.mock('../lib/marketplace',()=>({FOOD_CATEGORIES:['Spices & Seasonings'],FOOD_CERTIFICATIONS:['FSSAI','FSSC 22000'],TRADE_DOCUMENT_TYPES:[{value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'}],productRequiresReview:()=>false,marketplace:{context:vi.fn(),organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),reviews:vi.fn().mockResolvedValue([]),orders:vi.fn().mockResolvedValue([])}}));
 vi.mock('../lib/supabase',()=>({supabase:{auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe:vi.fn()}}})}}}));
 beforeEach(()=>vi.clearAllMocks());
 const profile={name:'Test User',email:'qa@example.invalid',auth_user_id:'user-1',role:'owner'};
-const api=()=>({organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([])});
+const api=()=>({organizations:vi.fn().mockResolvedValue([]),products:vi.fn().mockResolvedValue([]),rfqs:vi.fn().mockResolvedValue([]),quotes:vi.fn().mockResolvedValue([]),documents:vi.fn().mockResolvedValue([]),orders:vi.fn().mockResolvedValue([])});
 
 describe.each([375,1280])('portal navigation at %ipx',width=>{
   it.each(['admin','buyer','seller'])('%s exposes navigation and sign out',async mode=>{
