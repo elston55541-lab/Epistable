@@ -86,7 +86,19 @@ function ProductCard({product,evidenceCount,saved,onSave,onOpen,onQuote,isMobile
   );
 }
 
-function ProductDetail({product,documents,onClose,onQuote,isMobile}) {
+function EvidenceAction({document,api}) {
+  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+  async function open(){
+    setBusy(true);setError("");
+    try{const url=await api.evidenceUrl(document);window.open(url,"_blank","noopener,noreferrer");}
+    catch(e){setError(e.message||"Could not open evidence.");}
+    finally{setBusy(false);}
+  }
+  if(!document.storage_path&&!document.file_url)return null;
+  return <span style={{display:"inline-flex",alignItems:"center",gap:8}}><button className="buyer-button" onClick={open} disabled={busy} style={{...buttonBase,border:0,background:"transparent",padding:0,color:C.primary,fontSize:12,fontWeight:750}}>{busy?"Opening…":"Open evidence"}</button>{error&&<small style={{color:C.red}}>{error}</small>}</span>;
+}
+
+function ProductDetail({product,documents,api,onClose,onQuote,isMobile}) {
   const images=Array.isArray(product.image_urls)&&product.image_urls.length ? product.image_urls : productImage(product) ? [productImage(product)] : [];
   const evidence=documents.filter(d=>d.product_id===product.id&&d.verification_status==="verified");
   const rows=[
@@ -122,7 +134,7 @@ function ProductDetail({product,documents,onClose,onQuote,isMobile}) {
         <div style={{marginTop:28}}>
           <h2 style={{fontSize:18,margin:"0 0 12px"}}>Certification & evidence</h2>
           {Array.isArray(product.certifications)&&product.certifications.length>0&&<div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>{product.certifications.map(c=><Badge key={c}>{c} · seller claim</Badge>)}</div>}
-          {evidence.length?<div style={{display:"grid",gap:8}}>{evidence.map(d=><div key={d.id} style={{padding:"12px 14px",border:"1px solid "+C.greenBorder,background:C.greenBg,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><span style={{fontSize:13,fontWeight:700,color:C.text}}>{d.title}</span><Badge tone="success"><Icon name="verified" size={12}/> Verified</Badge></div>)}</div>:<p style={{fontSize:13,color:C.textDim}}>No product-specific documents have been independently verified yet.</p>}
+          {evidence.length?<div style={{display:"grid",gap:8}}>{evidence.map(d=><div key={d.id} style={{padding:"12px 14px",border:"1px solid "+C.greenBorder,background:C.greenBg,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><span style={{fontSize:13,fontWeight:700,color:C.text}}>{d.title}<span style={{display:"block",marginTop:5}}><EvidenceAction document={d} api={api}/></span></span><Badge tone="success"><Icon name="verified" size={12}/> Verified</Badge></div>)}</div>:<p style={{fontSize:13,color:C.textDim}}>No product-specific documents have been independently verified yet.</p>}
         </div>
         <button className="buyer-button" onClick={onQuote} style={{...buttonBase,width:"100%",marginTop:28,background:C.primary,border:"1px solid "+C.primary,borderRadius:12,padding:"15px 16px",color:C.white,fontSize:15,fontWeight:750}}>Request Quote</button>
       </div>
@@ -191,6 +203,8 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
   const [quoteProduct,setQuoteProduct]=useState(null);
   const [quoteBusy,setQuoteBusy]=useState(false);
   const [quoteError,setQuoteError]=useState("");
+  const [quoteActionBusy,setQuoteActionBusy]=useState("");
+  const [quoteActionError,setQuoteActionError]=useState("");
 
   const buyerOrg=data.organizations.find(o=>o.id===access.org);
   const products=(data.products||[]).filter(p=>p.status==="active");
@@ -274,6 +288,20 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
     finally{setQuoteBusy(false);}
   }
 
+  async function decideQuote(quote,decision) {
+    let message="";
+    if(decision==="revision_requested"){
+      message=window.prompt("What should the supplier revise?","")||"";
+      if(!message.trim())return;
+    } else if(decision==="rejected") {
+      message=window.prompt("Optional reason for rejecting this quote:","")||"";
+    }
+    setQuoteActionBusy(quote.id);setQuoteActionError("");
+    try{await api.decideQuote(quote.id,decision,message.trim());await onSaved();}
+    catch(e){setQuoteActionError(e.message||"Could not update this quote.");}
+    finally{setQuoteActionBusy("");}
+  }
+
   const buyerInitials=(profile.name||profile.email||"Buyer").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
   const canSearch=["all","saved","trade"].includes(viewMode);
   const mobileNavItems=[
@@ -341,18 +369,33 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
     </div>;
   } else if(viewMode==="quotes"||viewMode==="requirements") {
     body=<BuyerListView isMobile={isMobile} title={viewMode==="quotes"?"My Quotes":"My Requirements"} subtitle={viewMode==="quotes"?"RFQs and supplier responses in one place.":"Your active and past sourcing requirements."}>
+      {quoteActionError&&<div role="alert" style={{padding:"10px 12px",background:C.redBg,border:"1px solid "+C.redBorder,color:C.red,borderRadius:10,marginBottom:12}}>{quoteActionError}</div>}
       <div style={{display:"grid",gap:12}}>{(data.rfqs||[]).length?(data.rfqs||[]).map(r=>{
         const responses=(data.quotes||[]).filter(q=>q.rfq_id===r.id);
         return <article key={r.id} style={{padding:"18px",border:"1px solid "+C.border,borderRadius:14,background:C.white}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start"}}><div><div style={{fontSize:11,fontWeight:800,textTransform:"uppercase",color:C.primary}}>{r.product_category||"Processed food"}</div><h2 style={{fontSize:18,margin:"5px 0"}}>{r.products?.name||r.product_category||"Sourcing request"}</h2><div style={{fontSize:13,color:C.textDim}}>{r.quantity} {r.quantity_unit} · {r.destination_country}</div></div><Badge tone={r.status==="open"?"success":"neutral"}>{r.status}</Badge></div>
           <div style={{fontSize:13,color:C.textMid,marginTop:14}}>{responses.length} supplier response{responses.length===1?"":"s"}</div>
+          {viewMode==="quotes"&&responses.length>0&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(230px,1fr))",gap:10,marginTop:14}}>
+            {responses.map(q=><div key={q.id} style={{border:"1px solid "+C.border,borderRadius:12,padding:14,background:"#fbfcfe"}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><strong style={{fontSize:14}}>{q.organizations?.name||"Supplier"}</strong><Badge tone={q.status==="accepted"?"success":"neutral"}>{q.status.replaceAll("_"," ")}</Badge></div>
+              <div style={{fontSize:20,fontWeight:800,color:C.text,marginTop:12}}>{q.currency} {q.total_amount}</div>
+              <div style={{fontSize:12,color:C.textDim,lineHeight:1.7,marginTop:7}}>{q.currency} {q.unit_price} / {q.quantity_unit}<br/>{q.quantity} {q.quantity_unit} · {q.incoterm||"Incoterm n/a"}<br/>{q.lead_time_days!=null?q.lead_time_days+" days lead time":"Lead time not specified"}{q.revision_number>1?<><br/>Revision {q.revision_number}</>:null}</div>
+              {q.notes&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.55,marginTop:9}}>{q.notes}</div>}
+              {q.buyer_message&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.55,marginTop:9}}>Buyer note: {q.buyer_message}</div>}
+              {["sent","revised"].includes(q.status)&&<div style={{display:"flex",gap:7,flexWrap:"wrap",marginTop:13}}>
+                <button className="buyer-button" disabled={quoteActionBusy===q.id} onClick={()=>decideQuote(q,"accepted")} style={{...buttonBase,border:"1px solid "+C.primary,background:C.primary,color:C.white,borderRadius:9,padding:"9px 11px",fontSize:12,fontWeight:750}}>Accept</button>
+                <button className="buyer-button" disabled={quoteActionBusy===q.id} onClick={()=>decideQuote(q,"revision_requested")} style={{...buttonBase,border:"1px solid "+C.border,background:C.white,color:C.textMid,borderRadius:9,padding:"9px 11px",fontSize:12,fontWeight:700}}>Request changes</button>
+                <button className="buyer-button" disabled={quoteActionBusy===q.id} onClick={()=>decideQuote(q,"rejected")} style={{...buttonBase,border:"1px solid "+C.redBorder,background:C.white,color:C.red,borderRadius:9,padding:"9px 11px",fontSize:12,fontWeight:700}}>Reject</button>
+              </div>}
+            </div>)}
+          </div>}
         </article>;
       }):<div style={{padding:"36px",border:"1px dashed "+C.border,borderRadius:14,textAlign:"center",color:C.textDim}}>No sourcing requests yet.</div>}</div>
     </BuyerListView>;
   } else if(viewMode==="orders") {
-    const accepted=(data.quotes||[]).filter(q=>q.status==="accepted");
-    body=<BuyerListView isMobile={isMobile} title="My Orders" subtitle="Accepted supplier quotes appear here.">
-      <div style={{display:"grid",gap:12}}>{accepted.length?accepted.map(q=><article key={q.id} style={{padding:"18px",border:"1px solid "+C.border,borderRadius:14,background:C.white}}><div style={{display:"flex",justifyContent:"space-between",gap:12}}><strong>{q.currency} {q.total_amount}</strong><Badge tone="success">accepted</Badge></div><div style={{fontSize:13,color:C.textDim,marginTop:8}}>{q.quantity} {q.quantity_unit} · {q.incoterm}</div></article>):<div style={{padding:"36px",border:"1px dashed "+C.border,borderRadius:14,textAlign:"center",color:C.textDim}}>No accepted orders yet.</div>}</div>
+    const orders=data.orders||[];
+    body=<BuyerListView isMobile={isMobile} title="My Orders" subtitle="Accepted supplier quotes progress here as trade orders.">
+      <div style={{display:"grid",gap:12}}>{orders.length?orders.map(order=><article key={order.id} style={{padding:"18px",border:"1px solid "+C.border,borderRadius:14,background:C.white}}><div style={{display:"flex",justifyContent:"space-between",gap:12}}><div><strong>{order.currency} {order.total_amount}</strong><div style={{fontSize:12,color:C.textDim,marginTop:4}}>{order.id}</div></div><Badge tone={["delivered","completed"].includes(order.status)?"success":"neutral"}>{order.status.replaceAll("_"," ")}</Badge></div><div style={{fontSize:13,color:C.textDim,marginTop:8}}>{order.quantity} {order.quantity_unit} · {order.incoterm||"Incoterm not specified"}</div>{order.status_note&&<div style={{fontSize:13,color:C.textMid,marginTop:8}}>{order.status_note}</div>}</article>):<div style={{padding:"36px",border:"1px dashed "+C.border,borderRadius:14,textAlign:"center",color:C.textDim}}>No accepted orders yet.</div>}</div>
     </BuyerListView>;
   } else if(viewMode==="profile") {
     body=<BuyerListView isMobile={isMobile} title="Profile" subtitle="Your buyer organisation details.">
@@ -400,7 +443,7 @@ export function BuyerPortal({profile,access,data,api,onSaved,onLogout,signingOut
     </nav>}
 
     <TradeGPT open={tradeOpen} onClose={()=>setTradeOpen(false)} prompt={tradePrompt} setPrompt={setTradePrompt} recommendations={tradeRecommendations} onOpenProduct={p=>{setTradeOpen(false);setSelectedProduct(p);}} onApply={applyTradePrompt} isMobile={isMobile}/>
-    {selectedProduct&&<ProductDetail product={selectedProduct} documents={documents} onClose={()=>setSelectedProduct(null)} onQuote={()=>{setQuoteProduct(selectedProduct);setSelectedProduct(null);}} isMobile={isMobile}/>}
+    {selectedProduct&&<ProductDetail product={selectedProduct} documents={documents} api={api} onClose={()=>setSelectedProduct(null)} onQuote={()=>{setQuoteProduct(selectedProduct);setSelectedProduct(null);}} isMobile={isMobile}/>}
     {quoteProduct&&<div className="buyer-trade-overlay" style={{position:"fixed",inset:0,zIndex:320,background:"rgba(6,18,45,.52)",display:"flex",alignItems:isMobile?"stretch":"center",justifyContent:"center",padding:isMobile?0:24}} onClick={()=>!quoteBusy&&setQuoteProduct(null)}>
       <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:760,maxHeight:isMobile?"100%":"calc(100dvh - 48px)",overflowY:"auto",background:C.white,borderRadius:isMobile?0:18,padding:isMobile?"16px 16px 110px":"20px",boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"flex-end"}}><button className="buyer-button" aria-label="Close RFQ" onClick={()=>setQuoteProduct(null)} style={{...buttonBase,width:36,height:36,border:0,borderRadius:10,background:C.surface,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close"/></button></div>
