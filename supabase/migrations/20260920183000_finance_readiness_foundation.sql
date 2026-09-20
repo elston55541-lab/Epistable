@@ -175,7 +175,7 @@ begin
   if r.seller_org_id is not null then update public.rfqs set status='negotiating' where id=q.rfq_id; end if;
  end if;
  return new_order_id;
-end $;
+end $$;
 
 revoke all on function public.decide_trade_quote(text,text,text) from public,anon;
 grant execute on function public.decide_trade_quote(text,text,text) to authenticated;
