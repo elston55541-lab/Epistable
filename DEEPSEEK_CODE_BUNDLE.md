@@ -7945,3 +7945,722 @@ export function useBP() {
 }
 
 ```
+
+
+===== FILE: src/lib/auth.js =====
+
+```javascript
+import { supabase } from "./supabase";
+import { requireData } from "./supabaseSafe";
+
+async function loadProfileForAuthUser(userId, fallbackEmail) {
+  const profileRows = requireData(
+    await supabase
+      .from("profiles")
+      .select("*")
+      .eq("auth_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1),
+    "Could not load Epistable profile"
+  );
+
+  let profile = profileRows?.[0] || null;
+
+  // Backward-compatible fallback for older seeded records that may not have
+  // auth_user_id populated yet.
+  if (!profile && fallbackEmail) {
+    const fallbackRows = requireData(
+      await supabase
+        .from("profiles")
+        .select("*")
+        .eq("email", fallbackEmail.trim().toLowerCase())
+        .order("created_at", { ascending: false })
+        .limit(1),
+      "Could not load Epistable profile"
+    );
+    profile = fallbackRows?.[0] || null;
+  }
+
+  if (!profile) throw new Error("No Epistable profile is linked to this login");
+  if (profile.status === "suspended") throw new Error("Account suspended.");
+  return profile;
+}
+
+export async function signInWithEmail(email, password) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const auth = requireData(
+    await withTimeout(
+      supabase.auth.signInWithPassword({ email: normalizedEmail, password }),
+      "Login took too long. Please check your connection and try again."
+    ),
+    "Could not sign in"
+  );
+
+  const userId = auth.user?.id;
+  if (!userId) throw new Error("Signed in without a user profile");
+
+  const profile = await loadProfileForAuthUser(userId, normalizedEmail);
+
+  return { auth, profile };
+}
+
+export async function signOut() {
+  requireData(await supabase.auth.signOut(), "Could not sign out");
+}
+
+export async function getSession() {
+  return requireData(await supabase.auth.getSession(), "Could not load session").session;
+}
+
+export async function getSessionProfile() {
+  const session = await getSession();
+  const user = session?.user;
+  if (!user?.id) return null;
+  return loadProfileForAuthUser(user.id, user.email);
+}
+
+export async function acceptInviteWithPassword(email, password, mode = "signup") {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (mode === "signup") {
+    const inviteResult = requireData(
+      await withTimeout(
+        supabase.functions.invoke("accept-invite", {
+          body: { email: normalizedEmail, password }
+        }),
+        "Invite setup took too long. Please try again."
+      ),
+      "Could not create invite login"
+    );
+    if (!inviteResult?.profile?.id) throw new Error("No pending invite found for this email.");
+  }
+
+  const auth = requireData(
+    await withTimeout(
+      supabase.auth.signInWithPassword({ email: normalizedEmail, password }),
+      "Supabase Auth took too long. Please try again."
+    ),
+    "Could not sign in"
+  );
+
+  const profile = mode === "signin"
+    ? requireData(
+        await withTimeout(supabase.rpc("accept_profile_invite"), "Invite linking took too long. Please try again."),
+        "Could not link invite"
+      )
+    : await loadProfileForAuthUser(auth.user?.id, normalizedEmail);
+
+  return { auth, profile: profile?.[0] || profile };
+}
+
+export function friendlyAuthError(error, context = "login") {
+  const raw = String(error?.message || error || "").trim();
+  const msg = raw.toLowerCase();
+  if (!raw) return context === "invite" ? "Could not accept invite. Please try again." : "Could not sign in. Please try again.";
+  if (msg.includes("invalid login credentials")) return "Email or password is incorrect.";
+  if (msg.includes("email not confirmed")) return "Your email is not confirmed yet. Open the confirmation email, then try again.";
+  if (msg.includes("rate limit")) return "Too many attempts. Wait a few minutes, then try again.";
+  if (msg.includes("no epistable profile") || msg.includes("no pending invite")) return context === "invite"
+    ? "No pending Epistable invite was found for this email. Ask the factory admin to create access first."
+    : "This login is not linked to an Epistable profile yet. Ask the admin to link this email.";
+  if (msg.includes("account suspended")) return "This account is suspended. Contact your administrator.";
+  if (msg.includes("fetch") || msg.includes("network") || msg.includes("took too long")) return "Connection timed out. Check your internet and try again.";
+  if (msg.includes("already registered") || msg.includes("user already registered")) return "This email already has a login. Choose “I Have Login” and enter the existing password.";
+  return raw;
+}
+
+function withTimeout(promise, message, ms = 15000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ]);
+}
+
+```
+
+
+===== FILE: src/lib/db.js =====
+
+```javascript
+import { supabase } from "./supabase";
+import { maybeOne, requireData, rows } from "./supabaseSafe";
+
+const byCreatedDesc = { ascending: false };
+const byTsDesc = { ascending: false };
+
+export const DB = {
+  async getProfileByAuthUserId(authUserId) {
+    return maybeOne(await supabase.from("profiles").select("*").eq("auth_user_id", authUserId).maybeSingle());
+  },
+
+  async getFac(id) {
+    return maybeOne(await supabase.from("factories").select().eq("id", id).maybeSingle());
+  },
+
+  async updFac(id, updates) {
+    return requireData(await supabase.from("factories").update(updates).eq("id", id).select().single());
+  },
+
+  async allFacs() {
+    return rows(await supabase.from("factories").select().order("created_at", byCreatedDesc));
+  },
+
+  async facUsers(factoryId) {
+    return rows(await supabase.from("profiles").select().eq("factory_id", factoryId));
+  },
+
+  async allUsers() {
+    return rows(await supabase.from("profiles").select().order("created_at", byCreatedDesc));
+  },
+
+  async facInsps(factoryId) {
+    return rows(await supabase.from("inspections").select().eq("factory_id", factoryId).order("ts", byTsDesc).limit(300));
+  },
+
+  async userInsps(userId) {
+    return rows(await supabase.from("inspections").select().eq("user_id", userId).order("ts", byTsDesc).limit(200));
+  },
+
+  async allInsps() {
+    return rows(await supabase.from("inspections").select().order("ts", byTsDesc));
+  },
+};
+
+```
+
+
+===== FILE: src/lib/domain.js =====
+
+```javascript
+import { COLOR, SHADOW } from "./tokens";
+
+export const C = {
+  ...COLOR,
+  primaryD: COLOR.primaryMid,
+  teal: COLOR.accent,
+  blue2: COLOR.blue,
+  blue2Bg: COLOR.blueBg,
+  blue2Border: COLOR.blueBorder,
+  shadow: SHADOW.card,
+};
+
+export const STONES = [
+  {id:"makrana",label:"Makrana White"},{id:"black",label:"Black Granite"},
+  {id:"green",label:"Rainforest Green"},{id:"yellow",label:"Jaisalmer Yellow"},
+  {id:"pink",label:"Udaipur Pink"},{id:"kota",label:"Kota Brown"},
+  {id:"carrara",label:"Carrara White"},{id:"red",label:"Indian Red Granite"},
+];
+
+export const DEFECTS = [
+  {id:"crack",label:"Crack",color:C.red},
+  {id:"stain",label:"Stain",color:C.amber},{id:"pit",label:"Pitting",color:C.red},
+  {id:"chip",label:"Edge Chip",color:C.amber},{id:"vein",label:"Vein Issue",color:C.blue2},
+  {id:"polish",label:"Polish Issue",color:C.amber},{id:"thin",label:"Thin Spot",color:C.purple},
+];
+
+export const GRADES = [
+  {id:"Premium",label:"PREMIUM",color:C.green,bg:C.greenBg,border:C.greenBorder,emoji:"🏆",price:850},
+  {id:"Standard",label:"STANDARD",color:C.amber,bg:C.amberBg,border:C.amberBorder,emoji:"✅",price:480},
+  {id:"Commercial",label:"COMMERCIAL",color:C.blue2,bg:C.blue2Bg,border:C.blue2Border,emoji:"🏢",price:320},
+  {id:"Rejected",label:"REJECT",color:C.red,bg:C.redBg,border:C.redBorder,emoji:"❌",price:0},
+];
+
+export const PLANS = {
+  Starter:{label:"Starter",scansIncluded:100,pricePerScan:5,monthlyFee:299},
+  Pro:{label:"Pro",scansIncluded:500,pricePerScan:3,monthlyFee:999},
+  Enterprise:{label:"Enterprise",scansIncluded:2000,pricePerScan:1.5,monthlyFee:2999},
+};
+
+export const genId = p => p+"-"+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
+export const fmtT = ts => new Date(ts).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+export const fmtD = ts => new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+export const curMon = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
+export const fmtMoney = (n, { compact = false } = {}) => {
+  const v = Number(n) || 0;
+  if (compact && v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+  return `₹${v.toLocaleString("en-IN")}`;
+};
+export const calcBill = (plan,scans) => {
+  const p=PLANS[plan]||PLANS.Starter;
+  const ov=Math.max(0,scans-p.scansIncluded);
+  return {monthlyFee:p.monthlyFee,includedScans:p.scansIncluded,overageScans:ov,overageCharge:Math.round(ov*p.pricePerScan),pricePerScan:p.pricePerScan,total:p.monthlyFee+Math.round(ov*p.pricePerScan)};
+};
+export const gradeConf = g => GRADES.find(x=>x.id===g)||GRADES[1];
+export const slabQrUrl = slabId => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent("https://epistable.pages.dev/slab/"+slabId)}`;
+
+```
+
+
+===== FILE: src/lib/marketplace.js =====
+
+```javascript
+import { supabase } from './supabase';
+
+const data = (r) => { if (r.error) throw r.error; return r.data; };
+const id = (prefix) => `${prefix}_${crypto.randomUUID()}`;
+
+export const FOOD_CATEGORIES = [
+  'Spices & Seasonings','Snacks','Sauces & Condiments','Ready-to-Eat / Ready-to-Cook',
+  'Beverages','Bakery & Confectionery','Frozen & Processed Produce','Food Ingredients','Other Processed Foods'
+];
+
+export const FOOD_CERTIFICATIONS = [
+  'FSSAI','FSSC 22000','BRCGS Food Safety','ISO 22000','HACCP','IFS Food','SQF',
+  'GMP','Organic - NPOP','Organic - USDA','Organic - EU','Halal','Kosher','Non-GMO'
+];
+
+const PRODUCT_REVIEW_PATTERN = /(cure|treat|prevent)\s+(cancer|diabetes|disease|infection)|medicinal|therapeutic|miracle\s+cure|guaranteed\s+weight\s+loss|fda\s+approved/i;
+
+export function productRequiresReview(product={}) {
+  const text=[product.name,product.description,product.dietary_attributes,product.certifications]
+    .flatMap(value=>Array.isArray(value)?value:[value])
+    .filter(Boolean).join(' ');
+  return PRODUCT_REVIEW_PATTERN.test(text);
+}
+
+export const TRADE_DOCUMENT_TYPES = [
+  {value:'certificate_of_analysis',label:'Certificate of Analysis (COA)'},
+  {value:'food_safety',label:'Food safety certification'},
+  {value:'haccp_plan',label:'HACCP plan / certificate'},
+  {value:'organic_certificate',label:'Organic certificate'},
+  {value:'halal_certificate',label:'Halal certificate'},
+  {value:'kosher_certificate',label:'Kosher certificate'},
+  {value:'allergen_declaration',label:'Allergen declaration'},
+  {value:'lab_report',label:'Laboratory / microbiology report'},
+  {value:'product_specification',label:'Product specification sheet'},
+  {value:'nutrition_label',label:'Nutrition / label artwork'},
+  {value:'health_certificate',label:'Health / sanitary certificate'},
+  {value:'origin_certificate',label:'Certificate of origin'},
+  {value:'export_license',label:'Export registration / licence'},
+  {value:'business_registration',label:'Business registration'},
+  {value:'other',label:'Other trade evidence'}
+];
+
+export const marketplace = {
+  async reviews() { return data(await supabase.from('marketplace_reviews').select('*').order('created_at',{ascending:false}).limit(100)); },
+  async review(kind,targetId,decision,reason) {
+    return data(await supabase.rpc('review_marketplace_record',{target_kind:kind,target_id:targetId,decision,reason}));
+  },
+  async context() { return data(await supabase.rpc('marketplace_context')); },
+  async accounts() { return data(await supabase.rpc('marketplace_accounts')); },
+  async assignAccess(targetUser,targetOrg,targetRole) {
+    return data(await supabase.rpc('assign_marketplace_access',{target_user:targetUser,target_org:targetOrg,target_role:targetRole}));
+  },
+  async updateOrganization(organizationId,updates) {
+    return data(await supabase.from('organizations').update(updates).eq('id',organizationId).select().single());
+  },
+  async organizations(type) {
+    let q=supabase.from('organizations').select('*').order('created_at',{ascending:false});
+    if(type)q=q.eq('type',type);
+    return data(await q);
+  },
+  async createOrganization(input) {
+    return data(await supabase.from('organizations').insert({id:id(input.type==='buyer'?'BUYORG':'SELORG'),...input}).select().single());
+  },
+  async products(filters={}) {
+    let q=supabase.from('products').select('*, organizations!products_seller_org_id_fkey(*)').order('created_at',{ascending:false});
+    if(filters.sellerOrgId)q=q.eq('seller_org_id',filters.sellerOrgId);
+    if(filters.category)q=q.eq('category',filters.category);
+    if(filters.status)q=q.eq('status',filters.status);
+    if(filters.verified)q=q.eq('verification_status','verified');
+    if(filters.published)q=q.eq('status','active');
+    return data(await q);
+  },
+  async createProduct(input) {
+    return data(await supabase.from('products').insert({id:id('PRD'),...input}).select().single());
+  },
+  async updateProduct(productId,updates) {
+    return data(await supabase.from('products').update(updates).eq('id',productId).select().single());
+  },
+  async uploadProductImages(sellerOrgId,productId,files=[]) {
+    const uploaded=[];
+    for(const file of files) {
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error('Use JPG, PNG or WebP product images.');
+      if(file.size>5*1024*1024) throw new Error('Each product image must be 5 MB or smaller.');
+      const ext=(file.name?.split('.').pop()||file.type.split('/')[1]||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+      const path=`${sellerOrgId}/${productId}/${crypto.randomUUID()}.${ext||'jpg'}`;
+      const result=await supabase.storage.from('product-images').upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+      if(result.error) throw result.error;
+      const publicResult=supabase.storage.from('product-images').getPublicUrl(path);
+      uploaded.push(publicResult.data.publicUrl);
+    }
+    return uploaded;
+  },
+  async removeProductImages(urls=[]) {
+    const marker='/storage/v1/object/public/product-images/';
+    const paths=urls.map(url=>{
+      const index=String(url).indexOf(marker);
+      return index<0?null:decodeURIComponent(String(url).slice(index+marker.length));
+    }).filter(Boolean);
+    if(!paths.length)return;
+    const result=await supabase.storage.from('product-images').remove(paths);
+    if(result.error) throw result.error;
+  },
+  async documents(organizationId,productId=null) {
+    let q=supabase.from('trade_documents').select('*').order('created_at',{ascending:false});
+    if(organizationId)q=q.eq('organization_id',organizationId);
+    if(productId)q=q.eq('product_id',productId);
+    return data(await q);
+  },
+  async addDocument(input) {
+    return data(await supabase.from('trade_documents').insert({id:id('DOC'),...input}).select().single());
+  },
+  async updateDocument(documentId,updates) {
+    return data(await supabase.from('trade_documents').update(updates).eq('id',documentId).select().single());
+  },
+  async uploadTradeEvidence(organizationId,documentId,file) {
+    if(!file)throw new Error('Choose a certificate or evidence file.');
+    if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Use PDF, JPG, PNG or WebP evidence files.');
+    if(file.size>10*1024*1024)throw new Error('Evidence files must be 10 MB or smaller.');
+    const ext=(file.name?.split('.').pop()||file.type.split('/')[1]||'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const path=`${organizationId}/${documentId}/${crypto.randomUUID()}.${ext||'bin'}`;
+    const result=await supabase.storage.from('trade-evidence').upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+    if(result.error)throw result.error;
+    return {storage_path:path,file_name:file.name||'Evidence file',mime_type:file.type,file_size:file.size};
+  },
+  async removeTradeEvidence(path) {
+    if(!path)return;
+    const result=await supabase.storage.from('trade-evidence').remove([path]);
+    if(result.error)throw result.error;
+  },
+  async evidenceUrl(document,expiresIn=300) {
+    if(document?.storage_path){
+      const result=await supabase.storage.from('trade-evidence').createSignedUrl(document.storage_path,expiresIn);
+      if(result.error)throw result.error;
+      return result.data.signedUrl;
+    }
+    if(document?.file_url?.startsWith('https://'))return document.file_url;
+    throw new Error('Evidence file is unavailable.');
+  },
+  async rfqs({buyerOrgId,sellerOrgId}={}) {
+    let q=supabase.from('rfqs').select('*, products(*)').order('created_at',{ascending:false});
+    if(buyerOrgId)q=q.eq('buyer_org_id',buyerOrgId);
+    if(sellerOrgId)q=q.eq('seller_org_id',sellerOrgId);
+    return data(await q);
+  },
+  async createRfq(input) {
+    return data(await supabase.from('rfqs').insert({id:id('RFQ'),...input}).select().single());
+  },
+  async updateRfq(rfqId,updates) {
+    return data(await supabase.from('rfqs').update(updates).eq('id',rfqId).select().single());
+  },
+  async quotes(rfqId) {
+    let q=supabase.from('trade_quotes').select('*, organizations!trade_quotes_seller_org_id_fkey(*)').order('created_at',{ascending:false});
+    if(rfqId)q=q.eq('rfq_id',rfqId);
+    return data(await q);
+  },
+  async createQuote(input) {
+    return data(await supabase.from('trade_quotes').insert({id:id('TQ'),...input}).select().single());
+  },
+  async updateQuote(quoteId,updates) {
+    return data(await supabase.from('trade_quotes').update(updates).eq('id',quoteId).select().single());
+  },
+  async decideQuote(quoteId,decision,message='') {
+    return data(await supabase.rpc('decide_trade_quote',{target_quote_id:quoteId,decision,message}));
+  },
+  async reviseQuote(quoteId,values) {
+    return data(await supabase.rpc('revise_trade_quote',{
+      target_quote_id:quoteId,
+      quote_currency:values.currency,
+      quote_unit_price:values.unit_price,
+      quote_quantity:values.quantity,
+      quote_quantity_unit:values.quantity_unit,
+      quote_incoterm:values.incoterm,
+      quote_lead_time_days:values.lead_time_days,
+      quote_validity_ts:values.validity_ts,
+      quote_notes:values.notes||null
+    }));
+  },
+  async orders({buyerOrgId,sellerOrgId}={}) {
+    let q=supabase.from('trade_orders').select('*, rfqs(*), trade_quotes(*)').order('created_at',{ascending:false});
+    if(buyerOrgId)q=q.eq('buyer_org_id',buyerOrgId);
+    if(sellerOrgId)q=q.eq('seller_org_id',sellerOrgId);
+    return data(await q);
+  },
+  async updateOrderStatus(orderId,status,note='') {
+    return data(await supabase.rpc('update_trade_order_status',{target_order_id:orderId,new_status:status,note}));
+  }
+};
+
+```
+
+
+===== FILE: src/lib/markets.js =====
+
+```javascript
+export const EXPORT_MARKETS = [
+  {value:"EU",label:"European Union",short:"EU"},
+  {value:"US",label:"United States",short:"US"},
+  {value:"GB",label:"United Kingdom",short:"UK"},
+  {value:"AE",label:"UAE / Gulf",short:"UAE"},
+  {value:"CN",label:"China",short:"China"},
+  {value:"JP",label:"Japan",short:"Japan"},
+  {value:"BD",label:"Bangladesh",short:"BD"},
+  {value:"MV",label:"Maldives",short:"MV"},
+];
+
+export const marketConf = code => EXPORT_MARKETS.find(m=>m.value===code) || {value:code,label:code,short:code};
+
+```
+
+
+===== FILE: src/lib/readiness.js =====
+
+```javascript
+export const EXPORT_PRODUCTS = [
+  {value:"any",label:"Mixed stone products"},
+  {value:"granite",label:"Granite"},
+  {value:"marble",label:"Marble"},
+  {value:"sandstone",label:"Sandstone"},
+];
+
+export const EXPORT_CERTS = [
+  {id:"iec",label:"IEC"},
+  {id:"iso_9001",label:"ISO 9001"},
+  {id:"lab_report",label:"Lab test reports"},
+  {id:"social_audit",label:"Social / responsible sourcing audit"},
+  {id:"origin_docs",label:"Origin / shipment documents"},
+];
+
+export const EVIDENCE_STATUS = {
+  missing: { tone:"danger", label:"Missing", score:0 },
+  pending: { tone:"warning", label:"Working on it", score:45 },
+  uploaded: { tone:"info", label:"Uploaded", score:70 },
+  submitted: { tone:"info", label:"Submitted", score:75 },
+  verified: { tone:"success", label:"Verified", score:100 },
+  expired: { tone:"danger", label:"Expired", score:20 },
+  rejected: { tone:"danger", label:"Rejected", score:10 },
+  not_applicable: { tone:"neutral", label:"Not applicable", score:100 },
+};
+
+export const readinessStatusConf = status => EVIDENCE_STATUS[status] || EVIDENCE_STATUS.missing;
+
+export const READINESS_SECTIONS = [
+  {id:"market_entry",label:"Market Entry",hint:"Registrations and baseline documents needed before a shipment can move."},
+  {id:"product_standards",label:"Product Standards",hint:"Market-specific test reports, standards, and technical documentation."},
+  {id:"quality_evidence",label:"Quality Evidence",hint:"Operational records that show consistent inspection and quality control."},
+  {id:"origin_traceability",label:"Origin & Traceability",hint:"Source, supplier, batch, and origin documents buyers may ask to review."},
+  {id:"packaging_shipment",label:"Packaging & Shipment",hint:"Shipment documents, packaging proof, and labelling evidence."},
+  {id:"responsible_sourcing",label:"Responsible Sourcing",hint:"Social, safety, environmental, and due-diligence evidence."},
+];
+
+export const evidenceTypeFallback = type => {
+  const map = {
+    government_registration:"certificate_number",
+    management_system_cert:"certificate_number",
+    product_test_report:"lab_report",
+    responsible_sourcing_audit:"external_verification",
+    shipment_document:"document_upload",
+    operational_record:"checklist_confirmation",
+    training_record:"checklist_confirmation",
+    policy_document:"document_upload",
+  };
+  return map[type] || "document_upload";
+};
+
+export const marketsForRequirement = r => {
+  const list = Array.isArray(r.destination_markets) ? r.destination_markets : [];
+  if(list.length)return list;
+  return [r.destination_market || "GLOBAL"];
+};
+
+export const requirementApplies = (r,{sector,productType,market}) => {
+  const reqSector = r.sector || "stone";
+  const reqProduct = r.product_type || r.productCategory || r.product_category || "any";
+  const reqMarkets = marketsForRequirement(r);
+  return reqSector === sector
+    && (reqProduct === "any" || reqProduct === productType || productType === "any")
+    && (reqMarkets.includes("GLOBAL") || reqMarkets.includes("any") || reqMarkets.includes(market));
+};
+
+export const mapRequirement = r => ({
+  ...r,
+  requirementName:r.certification_name || r.requirement_name || r.name || r.id,
+  shortName:r.certification_code || r.requirement_name || r.id,
+  timelineMin:r.timeline_min_weeks ?? r.estimated_timeline_weeks_min,
+  timelineMax:r.timeline_max_weeks ?? r.estimated_timeline_weeks_max,
+  costMin:r.estimated_cost_min_inr,
+  costMax:r.estimated_cost_max_inr,
+  evidenceType:r.evidence_type || evidenceTypeFallback(r.evidence_lifecycle_type || r.certification_evidence_type),
+  lifecycleType:r.evidence_lifecycle_type || r.certification_evidence_type || r.evidence_type,
+});
+
+export const sectionForRequirement = r => {
+  const t=(r.requirement_type||"").toLowerCase();
+  const name=(r.requirementName||r.requirement_name||"").toLowerCase();
+  const evidence=(r.evidenceType||r.evidence_type||"").toLowerCase();
+  const lifecycle=(r.lifecycleType||r.evidence_lifecycle_type||"").toLowerCase();
+  if(t==="registration" || lifecycle==="government_registration")return "market_entry";
+  if(t==="testing" || t==="standard" || evidence==="lab_report" || lifecycle==="product_test_report")return "product_standards";
+  if(t==="packaging" || name.includes("packaging") || name.includes("origin") || lifecycle==="shipment_document")return "packaging_shipment";
+  if(name.includes("origin") || name.includes("trace") || name.includes("quarry") || name.includes("supplier"))return "origin_traceability";
+  if(t==="compliance" || lifecycle==="responsible_sourcing_audit" || name.includes("sourcing") || name.includes("silica") || name.includes("environment"))return "responsible_sourcing";
+  if(t==="certification" || lifecycle==="management_system_cert")return "quality_evidence";
+  return "market_entry";
+};
+
+export const scoreRequirements = (requirements,evidenceRows) => {
+  const evidenceMap={};
+  evidenceRows.forEach(e=>{evidenceMap[e.requirement_id]=e;});
+  const mandatory=requirements.filter(r=>r.is_mandatory!==false);
+  const applicable=mandatory.filter(r=>evidenceMap[r.id]?.status!=="not_applicable");
+  if(!applicable.length)return {score:requirements.length?100:0,complete:0,working:0,missing:requirements.length,total:requirements.length};
+  const total=applicable.reduce((sum,r)=>sum+(r.priority||50),0);
+  const earned=applicable.reduce((sum,r)=>{
+    const status=evidenceMap[r.id]?.status || "missing";
+    return sum + ((r.priority||50) * (readinessStatusConf(status).score/100));
+  },0);
+  const complete=requirements.filter(r=>["verified","not_applicable"].includes(evidenceMap[r.id]?.status)).length;
+  const working=requirements.filter(r=>["pending","uploaded","submitted"].includes(evidenceMap[r.id]?.status)).length;
+  const missing=requirements.filter(r=>["missing","rejected","expired",undefined].includes(evidenceMap[r.id]?.status)).length;
+  return {score:Math.round(earned/total*100),complete,working,missing,total:requirements.length};
+};
+
+```
+
+
+===== FILE: src/lib/supabase.js =====
+
+```javascript
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gfmrzcfajuwxishfnbur.supabase.co";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_rymg6uYPUH3WMferT4UpNw_BaFSnSxS";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+```
+
+
+===== FILE: src/lib/supabaseSafe.js =====
+
+```javascript
+export class DbError extends Error {
+  constructor(message, cause) {
+    super(message);
+    this.name = "DbError";
+    this.cause = cause;
+  }
+}
+
+export function requireData(result, fallbackMessage = "Database request failed") {
+  if (result.error) {
+    throw new DbError(result.error.message || fallbackMessage, result.error);
+  }
+  return result.data;
+}
+
+export function rows(result, fallback = []) {
+  return requireData(result) || fallback;
+}
+
+export function maybeOne(result) {
+  return requireData(result) || null;
+}
+
+```
+
+
+===== FILE: src/lib/tokens.js =====
+
+```javascript
+// Type scale - 5 steps
+export const TYPE = {
+  caption: { size: 11, lineHeight: 1.5, weight: 500, letterSpacing: 0.25 },
+  label: { size: 12, lineHeight: 1.5, weight: 600, letterSpacing: 0.15 },
+  body: { size: 14, lineHeight: 1.65, weight: 400, letterSpacing: 0 },
+  heading: { size: 18, lineHeight: 1.4, weight: 700, letterSpacing: 0 },
+  display: { size: 24, lineHeight: 1.3, weight: 700, letterSpacing: 0 },
+};
+
+// Weight scale - 3 levels
+export const WEIGHT = { regular: 400, medium: 600, bold: 700 };
+
+// Spacing - 8px base
+export const SPACE = { xs: 4, sm: 8, md: 12, base: 16, lg: 20, xl: 24, xxl: 32, section: 28 };
+
+// Radius
+export const RADIUS = { sm: 6, md: 10, lg: 14, pill: 999 };
+
+// Shadow
+export const SHADOW = {
+  card: "0 1px 3px rgba(10, 37, 64, 0.06), 0 4px 12px rgba(10, 37, 64, 0.04)",
+  raised: "0 4px 16px rgba(10, 37, 64, 0.10)",
+  modal: "0 12px 48px rgba(10, 37, 64, 0.20)",
+};
+
+// Font stack
+export const FONT_STACK =
+  '"Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+
+// Colors - original blue/teal Epistable palette
+export const COLOR = {
+  bg: "#f0f2f5",
+  surface: "#f8f9fb",
+  white: "#ffffff",
+  border: "#e2e8f0",
+
+  primary: "#0057a8",
+  primaryMid: "#003f7a",
+  primaryBg: "#e8f0fa",
+  primaryBorder: "#b8d0f0",
+
+  accent: "#0097a7",
+  accentBg: "#e0f7fa",
+  accentBorder: "#80deea",
+
+  text: "#1a2533",
+  textMid: "#4a5568",
+  textDim: "#8896a4",
+
+  green: "#2e7d32",
+  greenBg: "#e8f5e9",
+  greenBorder: "#a5d6a7",
+  red: "#c62828",
+  redBg: "#ffebee",
+  redBorder: "#ef9a9a",
+  amber: "#b45309",
+  amberBg: "#fffbeb",
+  amberBorder: "#fcd34d",
+  blue: "#1565c0",
+  blueBg: "#e3f2fd",
+  blueBorder: "#90caf9",
+  purple: "#6b21a8",
+  purpleBg: "#f5f0ff",
+  purpleBorder: "#d8b4fe",
+};
+
+
+```
+
+
+===== FILE: src/main.jsx =====
+
+```jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import MarketplaceApp from './MarketplaceApp.jsx'
+import { PasswordRecovery } from './marketplace/PasswordRecovery.jsx'
+import { LegacyWorkspaceNotice } from './marketplace/LegacyWorkspaceNotice.jsx'
+import { MarketplaceOnboarding } from './marketplace/MarketplaceOnboarding.jsx'
+import { registerServiceWorker } from './registerServiceWorker.js'
+import './styles.css'
+
+registerServiceWorker()
+
+const path = window.location.pathname
+const resetPassword = path === '/reset-password' || new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery'
+const forgotPassword = path === '/forgot-password'
+const joinMarketplace = path === '/join'
+const legacyRoute = path.startsWith('/slab/') || path.startsWith('/quote/') || path.startsWith('/invite') || path.startsWith('/legacy')
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    {!resetPassword && path.startsWith('/legacy') && <LegacyWorkspaceNotice />}
+    {resetPassword || forgotPassword ? <PasswordRecovery reset={resetPassword} /> : joinMarketplace ? <MarketplaceOnboarding /> : legacyRoute ? <App /> : <MarketplaceApp />}
+  </React.StrictMode>
+)
+
+```
