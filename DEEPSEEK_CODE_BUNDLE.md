@@ -13546,3 +13546,1161 @@ comment on column public.inspections.revision_note is
   'Human-readable reason for the latest inspection revision.';
 
 ```
+
+
+===== FILE: supabase/migrations/202605200005_backfill_generic_inspection_fields.sql =====
+
+```sql
+-- Backfill generic inspection fields from existing stone inspection data.
+-- Run after 202605200001_sector_foundation_fields.sql.
+
+update public.inspections
+set
+  template_key = coalesce(nullif(template_key, ''), 'stone_qc_basic'),
+  attributes = coalesce(attributes, '{}'::jsonb)
+    || jsonb_build_object(
+      'stone', stone,
+      'supplier', supplier,
+      'grade', grade,
+      'price_per_sq_ft', price_per_sq_ft,
+      'export_ready', export_ready,
+      'measurements', coalesce(measurements, '{}'::jsonb),
+      'defects', coalesce(defects, '[]'::jsonb)
+    ),
+  compliance = coalesce(compliance, '{}'::jsonb)
+    || jsonb_build_object(
+      'calibration_checked', (lower(coalesce(measurements->'audit'->>'calibrationChecked', 'false')) = 'true'),
+      'checklist_complete', (lower(coalesce(measurements->'audit'->>'checklistComplete', 'false')) = 'true'),
+      'root_cause', measurements->'audit'->>'rootCause',
+      'corrective_action', measurements->'audit'->>'correctiveAction',
+      'action_owner', measurements->'audit'->>'actionOwner',
+      'action_due', measurements->'audit'->>'actionDue'
+    ),
+  ai_review = coalesce(ai_review, '{}'::jsonb)
+    || coalesce(measurements->'aiReview', '{}'::jsonb),
+  evidence_summary = coalesce(evidence_summary, '{}'::jsonb)
+    || jsonb_build_object(
+      'photo_count', case
+        when jsonb_typeof(photos) = 'array' then jsonb_array_length(photos)
+        when photo is not null then 1
+        else 0
+      end,
+      'traceability_fields', (
+        select count(*)
+        from jsonb_each_text(coalesce(measurements->'traceability', '{}'::jsonb)) as t(key, value)
+        where nullif(value, '') is not null
+      ),
+      'audit_fields', (
+        select count(*)
+        from jsonb_each_text(coalesce(measurements->'audit', '{}'::jsonb)) as a(key, value)
+        where nullif(value, '') is not null
+      )
+    )
+where template_key = 'stone_qc_basic'
+  or attributes = '{}'::jsonb
+  or compliance = '{}'::jsonb
+  or ai_review = '{}'::jsonb
+  or evidence_summary = '{}'::jsonb;
+
+```
+
+
+===== FILE: supabase/migrations/202605200006_compliance_template_lifecycle.sql =====
+
+```sql
+-- Add lifecycle metadata for sector-agnostic compliance templates.
+-- This keeps future template changes auditable without changing current app behavior.
+
+alter table public.compliance_templates
+  add column if not exists effective_from bigint,
+  add column if not exists retired_at bigint,
+  add column if not exists supersedes_template_id text,
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+create index if not exists compliance_templates_lifecycle_idx
+  on public.compliance_templates (sector, status, effective_from, retired_at);
+
+comment on column public.compliance_templates.effective_from is
+  'Unix epoch milliseconds when this template version becomes valid for new inspections.';
+
+comment on column public.compliance_templates.retired_at is
+  'Unix epoch milliseconds when this template should stop being used for new inspections.';
+
+comment on column public.compliance_templates.supersedes_template_id is
+  'Optional template id that this template replaces or supersedes.';
+
+comment on column public.compliance_templates.metadata is
+  'Template authoring metadata such as source standard, owner, rollout notes, or sector-specific display hints.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605200007_activity_log_evidence_fields.sql =====
+
+```sql
+-- Extend activity logs for audit-ready evidence trails.
+-- Existing app inserts continue to work because all fields are nullable or defaulted.
+
+alter table public.activity_logs
+  add column if not exists event_source text not null default 'app',
+  add column if not exists severity text not null default 'info' check (severity in ('info', 'warning', 'critical')),
+  add column if not exists entity_version integer,
+  add column if not exists evidence_hash text,
+  add column if not exists snapshot jsonb not null default '{}'::jsonb;
+
+create index if not exists activity_logs_action_ts_idx
+  on public.activity_logs (action, ts desc);
+
+create index if not exists activity_logs_severity_ts_idx
+  on public.activity_logs (severity, ts desc);
+
+comment on column public.activity_logs.event_source is
+  'Source of the event such as app, migration, worker, import, or integration.';
+
+comment on column public.activity_logs.severity is
+  'Audit severity used to highlight warning or critical compliance events.';
+
+comment on column public.activity_logs.entity_version is
+  'Optional version number of the affected entity at the time of the event.';
+
+comment on column public.activity_logs.evidence_hash is
+  'Optional hash or checksum for exported evidence packets, certificates, or immutable snapshots.';
+
+comment on column public.activity_logs.snapshot is
+  'Optional JSON snapshot of key fields at the time of the event for later audit review.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605200008_evidence_packets.sql =====
+
+```sql
+-- Evidence packet foundation for buyer-audit-ready exports.
+-- Current app exports can remain client-side; this table supports future saved/shared packets.
+
+create table if not exists public.evidence_packets (
+  id text primary key,
+  factory_id text not null references public.factories(id),
+  title text not null,
+  packet_type text not null default 'audit' check (packet_type in ('audit', 'buyer', 'pilot', 'internal')),
+  status text not null default 'draft' check (status in ('draft', 'shared', 'revoked', 'archived')),
+  created_by text references public.profiles(id),
+  created_by_name text not null default '',
+  entity_refs jsonb not null default '[]'::jsonb,
+  summary jsonb not null default '{}'::jsonb,
+  evidence_hash text,
+  file_url text,
+  public_token text,
+  shared_at bigint,
+  expires_at bigint,
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create index if not exists evidence_packets_factory_status_idx
+  on public.evidence_packets (factory_id, status, created_at desc);
+
+create index if not exists evidence_packets_type_idx
+  on public.evidence_packets (packet_type, created_at desc);
+
+create unique index if not exists evidence_packets_public_token_idx
+  on public.evidence_packets (public_token)
+  where public_token is not null;
+
+alter table public.evidence_packets enable row level security;
+
+drop policy if exists "evidence packets read own factory" on public.evidence_packets;
+drop policy if exists "evidence packets manage own factory" on public.evidence_packets;
+
+create policy "evidence packets read own factory" on public.evidence_packets
+  for select using (
+    public.is_owner()
+    or public.same_factory(factory_id)
+  );
+
+create policy "evidence packets manage own factory" on public.evidence_packets
+  for all using (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  )
+  with check (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  );
+
+comment on table public.evidence_packets is
+  'Saved buyer, audit, pilot, and internal evidence packets assembled from inspections, certificates, quotes, and traceability records.';
+
+comment on column public.evidence_packets.entity_refs is
+  'JSON array of packet entities such as inspection ids, quote ids, supplier ids, batch ids, or certificate links.';
+
+comment on column public.evidence_packets.summary is
+  'JSON summary of readiness score, gaps, selected slabs, defects, CAPA status, and packet metadata.';
+
+comment on column public.evidence_packets.evidence_hash is
+  'Optional hash/checksum for the generated evidence packet artifact.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605200009_capa_actions.sql =====
+
+```sql
+-- CAPA foundation for corrective and preventive action tracking.
+-- Existing embedded inspection CAPA notes remain valid; this table supports future workflow depth.
+
+create table if not exists public.capa_actions (
+  id text primary key,
+  factory_id text not null references public.factories(id),
+  inspection_id text references public.inspections(id),
+  source_type text not null default 'inspection' check (source_type in ('inspection', 'supplier', 'audit', 'buyer', 'internal')),
+  title text not null,
+  issue text not null default '',
+  root_cause text not null default '',
+  corrective_action text not null default '',
+  preventive_action text not null default '',
+  owner_id text references public.profiles(id),
+  owner_name text not null default '',
+  due_at bigint,
+  closed_at bigint,
+  verified_at bigint,
+  verified_by text references public.profiles(id),
+  status text not null default 'open' check (status in ('open', 'in_progress', 'blocked', 'closed', 'verified', 'dismissed')),
+  severity text not null default 'medium' check (severity in ('low', 'medium', 'high', 'critical')),
+  evidence_refs jsonb not null default '[]'::jsonb,
+  notes text not null default '',
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create index if not exists capa_actions_factory_status_idx
+  on public.capa_actions (factory_id, status, due_at);
+
+create index if not exists capa_actions_inspection_idx
+  on public.capa_actions (inspection_id);
+
+create index if not exists capa_actions_owner_idx
+  on public.capa_actions (owner_id, status);
+
+alter table public.capa_actions enable row level security;
+
+drop policy if exists "capa actions read own factory" on public.capa_actions;
+drop policy if exists "capa actions manage own factory" on public.capa_actions;
+
+create policy "capa actions read own factory" on public.capa_actions
+  for select using (
+    public.is_owner()
+    or public.same_factory(factory_id)
+  );
+
+create policy "capa actions manage own factory" on public.capa_actions
+  for all using (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  )
+  with check (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  );
+
+comment on table public.capa_actions is
+  'Corrective and preventive actions linked to inspections, suppliers, audits, buyer feedback, or internal quality reviews.';
+
+comment on column public.capa_actions.evidence_refs is
+  'JSON array of supporting evidence references such as inspection ids, photo slots, certificate links, or evidence packet ids.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605200010_production_batches.sql =====
+
+```sql
+-- Sector-safe production batch foundation for traceability.
+-- Stone-specific source/block/shipment data can live in attributes until app workflows mature.
+
+create table if not exists public.production_batches (
+  id text primary key,
+  factory_id text not null references public.factories(id),
+  sector text not null default 'stone',
+  batch_ref text not null,
+  status text not null default 'open' check (status in ('open', 'in_progress', 'completed', 'shipped', 'archived')),
+  supplier_id text references public.suppliers(id),
+  supplier_name text not null default '',
+  production_date bigint,
+  customer_ref text not null default '',
+  shipment_ref text not null default '',
+  attributes jsonb not null default '{}'::jsonb,
+  evidence_summary jsonb not null default '{}'::jsonb,
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create index if not exists production_batches_factory_status_idx
+  on public.production_batches (factory_id, status, updated_at desc);
+
+create index if not exists production_batches_ref_idx
+  on public.production_batches (factory_id, batch_ref);
+
+create index if not exists production_batches_supplier_idx
+  on public.production_batches (supplier_id, updated_at desc);
+
+alter table public.production_batches enable row level security;
+
+drop policy if exists "production batches read own factory" on public.production_batches;
+drop policy if exists "production batches manage own factory" on public.production_batches;
+
+create policy "production batches read own factory" on public.production_batches
+  for select using (
+    public.is_owner()
+    or public.same_factory(factory_id)
+  );
+
+create policy "production batches manage own factory" on public.production_batches
+  for all using (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  )
+  with check (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  );
+
+comment on table public.production_batches is
+  'Sector-safe production or source batches used to group inspections, traceability evidence, customer/export references, and shipment context.';
+
+comment on column public.production_batches.attributes is
+  'Sector-specific batch attributes such as quarry source, block number, slab bundle, firing lot, textile lot, or metal heat number.';
+
+comment on column public.production_batches.evidence_summary is
+  'Computed or copied batch evidence summary such as scan count, readiness gaps, defect mix, and packet references.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605200011_batch_inspection_links.sql =====
+
+```sql
+-- Link inspections to production batches without changing existing inspection rows.
+
+create table if not exists public.batch_inspection_links (
+  id text primary key,
+  factory_id text not null references public.factories(id),
+  batch_id text not null references public.production_batches(id) on delete cascade,
+  inspection_id text not null references public.inspections(id) on delete cascade,
+  link_type text not null default 'member' check (link_type in ('member', 'sample', 'representative', 'exception')),
+  notes text not null default '',
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  unique (batch_id, inspection_id)
+);
+
+create index if not exists batch_inspection_links_factory_idx
+  on public.batch_inspection_links (factory_id, created_at desc);
+
+create index if not exists batch_inspection_links_inspection_idx
+  on public.batch_inspection_links (inspection_id);
+
+alter table public.batch_inspection_links enable row level security;
+
+drop policy if exists "batch inspection links read own factory" on public.batch_inspection_links;
+drop policy if exists "batch inspection links manage own factory" on public.batch_inspection_links;
+
+create policy "batch inspection links read own factory" on public.batch_inspection_links
+  for select using (
+    public.is_owner()
+    or public.same_factory(factory_id)
+  );
+
+create policy "batch inspection links manage own factory" on public.batch_inspection_links
+  for all using (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  )
+  with check (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  );
+
+comment on table public.batch_inspection_links is
+  'Many-to-many links between production batches and inspection evidence records.';
+
+comment on column public.batch_inspection_links.link_type is
+  'How the inspection relates to the batch, for example member, sample, representative, or exception.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605200012_calibration_records.sql =====
+
+```sql
+-- Calibration evidence foundation for audit-readiness.
+
+create table if not exists public.calibration_records (
+  id text primary key,
+  factory_id text not null references public.factories(id),
+  equipment_id text not null,
+  equipment_name text not null,
+  equipment_type text not null default '',
+  calibration_date bigint not null,
+  next_due_at bigint,
+  status text not null default 'valid' check (status in ('valid', 'due_soon', 'overdue', 'failed', 'retired')),
+  performed_by text not null default '',
+  certificate_ref text not null default '',
+  evidence_refs jsonb not null default '[]'::jsonb,
+  notes text not null default '',
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create index if not exists calibration_records_factory_status_idx
+  on public.calibration_records (factory_id, status, next_due_at);
+
+create index if not exists calibration_records_equipment_idx
+  on public.calibration_records (factory_id, equipment_id, calibration_date desc);
+
+alter table public.calibration_records enable row level security;
+
+drop policy if exists "calibration records read own factory" on public.calibration_records;
+drop policy if exists "calibration records manage own factory" on public.calibration_records;
+
+create policy "calibration records read own factory" on public.calibration_records
+  for select using (
+    public.is_owner()
+    or public.same_factory(factory_id)
+  );
+
+create policy "calibration records manage own factory" on public.calibration_records
+  for all using (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  )
+  with check (
+    public.is_owner()
+    or (
+      public.current_profile_role() in ('admin', 'manager')
+      and public.same_factory(factory_id)
+    )
+  );
+
+comment on table public.calibration_records is
+  'Calibration evidence for equipment, gauges, scales, tools, or inspection devices used in quality workflows.';
+
+comment on column public.calibration_records.evidence_refs is
+  'JSON array of evidence references such as certificate files, activity logs, inspection ids, or evidence packet ids.';
+
+
+```
+
+
+===== FILE: supabase/migrations/202605230001_traceability_schema_hardening.sql =====
+
+```sql
+-- Hardening for traceability, evidence packets, and calibration readiness.
+-- Additive migration: do not rewrite previous migration history.
+
+-- Batch references should be unique inside a factory. This prevents retry-created
+-- duplicate lots from splitting traceability evidence across ghost batches.
+create unique index if not exists production_batches_factory_batch_ref_uidx
+  on public.production_batches (factory_id, batch_ref);
+
+-- Link rows carry factory_id for RLS, but that value must match both referenced
+-- records. Enforce it in a trigger so a privileged user cannot create a
+-- cross-factory link by supplying their own factory_id on the link row.
+create or replace function public.enforce_batch_inspection_link_factory()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  batch_factory text;
+  inspection_factory text;
+begin
+  select factory_id into batch_factory
+  from public.production_batches
+  where id = new.batch_id;
+
+  select factory_id into inspection_factory
+  from public.inspections
+  where id = new.inspection_id;
+
+  if batch_factory is null then
+    raise exception 'Batch % does not exist', new.batch_id;
+  end if;
+
+  if inspection_factory is null then
+    raise exception 'Inspection % does not exist', new.inspection_id;
+  end if;
+
+  if new.factory_id is distinct from batch_factory then
+    raise exception 'Link factory_id % does not match batch factory_id %', new.factory_id, batch_factory;
+  end if;
+
+  if new.factory_id is distinct from inspection_factory then
+    raise exception 'Link factory_id % does not match inspection factory_id %', new.factory_id, inspection_factory;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists batch_inspection_links_factory_guard on public.batch_inspection_links;
+create trigger batch_inspection_links_factory_guard
+  before insert or update of factory_id, batch_id, inspection_id
+  on public.batch_inspection_links
+  for each row
+  execute function public.enforce_batch_inspection_link_factory();
+
+-- Shared evidence packet tokens should be consumed through this function/view so
+-- expiry is always evaluated at read time, not only when a row is edited.
+create or replace function public.revoke_expired_evidence_packets()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_count integer;
+begin
+  update public.evidence_packets
+  set status = 'revoked',
+      public_token = null,
+      updated_at = (extract(epoch from now()) * 1000)::bigint
+  where status = 'shared'
+    and expires_at is not null
+    and expires_at <= (extract(epoch from now()) * 1000)::bigint;
+
+  get diagnostics updated_count = row_count;
+  return updated_count;
+end;
+$$;
+
+create or replace view public.live_evidence_packets
+with (security_invoker = true) as
+select *
+from public.evidence_packets
+where status = 'shared'
+  and public_token is not null
+  and (
+    expires_at is null
+    or expires_at > (extract(epoch from now()) * 1000)::bigint
+  );
+
+create or replace function public.get_live_evidence_packet(token text)
+returns setof public.evidence_packets
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select *
+  from public.live_evidence_packets
+  where public_token = token
+  limit 1;
+$$;
+
+-- Calibration has time-dependent status. Preserve the human-entered status but
+-- expose an objective effective status for dashboards and audit reports.
+create or replace function public.calibration_effective_status(
+  input_status text,
+  next_due_at bigint
+)
+returns text
+language sql
+stable
+as $$
+  select case
+    when input_status in ('failed', 'retired') then input_status
+    when next_due_at is not null
+      and next_due_at <= (extract(epoch from now()) * 1000)::bigint then 'overdue'
+    when next_due_at is not null
+      and next_due_at <= ((extract(epoch from now()) * 1000)::bigint + 7 * 86400000) then 'due_soon'
+    else input_status
+  end;
+$$;
+
+create or replace view public.calibration_records_with_effective_status
+with (security_invoker = true) as
+select
+  c.*,
+  public.calibration_effective_status(c.status, c.next_due_at) as effective_status
+from public.calibration_records c;
+
+comment on index public.production_batches_factory_batch_ref_uidx is
+  'Prevents duplicate batch references inside a factory, preserving deterministic traceability.';
+
+comment on function public.enforce_batch_inspection_link_factory() is
+  'Ensures batch_inspection_links.factory_id matches both the referenced batch and inspection factory.';
+
+comment on function public.revoke_expired_evidence_packets() is
+  'Revokes shared evidence packets whose expires_at has passed. Can be called manually or by a scheduler.';
+
+comment on view public.live_evidence_packets is
+  'Evidence packets whose public token is currently live after expiry evaluation.';
+
+comment on view public.calibration_records_with_effective_status is
+  'Calibration records with time-aware effective_status for audit-readiness dashboards.';
+
+```
+
+
+===== FILE: supabase/migrations/202605240001_export_readiness_foundation.sql =====
+
+```sql
+-- Export readiness foundation.
+-- Additive, parallel module: factories remain the exporter anchor for now.
+
+create table if not exists public.export_readiness_profiles (
+  id text primary key,
+  factory_id text not null references public.factories(id) on delete cascade,
+  sector text not null default 'stone',
+  product_type text not null,
+  destination_markets text[] not null default '{}'::text[],
+  current_certifications text[] not null default '{}'::text[],
+  company_size text,
+  export_status text not null default 'planning'
+    check (export_status in ('planning', 'first_export', 'active_exporter', 'expanding_markets')),
+  readiness_stage text not null default 'draft'
+    check (readiness_stage in ('draft', 'profile_complete', 'roadmap_ready', 'documents_in_progress', 'buyer_ready')),
+  onboarding_inputs jsonb not null default '{}'::jsonb,
+  onboarding_completed_at bigint,
+  last_reviewed_at bigint,
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create table if not exists public.export_requirements (
+  id text primary key,
+  sector text not null,
+  product_type text not null default 'any',
+  destination_market text not null default 'any',
+  requirement_type text not null
+    check (requirement_type in ('registration', 'certification', 'standard', 'documentation', 'compliance', 'packaging', 'testing')),
+  requirement_name text not null,
+  description text not null,
+  is_mandatory boolean not null default true,
+  priority integer not null default 50 check (priority between 1 and 100),
+  estimated_cost_min_inr integer,
+  estimated_cost_max_inr integer,
+  estimated_timeline_weeks_min integer,
+  estimated_timeline_weeks_max integer,
+  evidence_type text not null
+    check (evidence_type in ('document_upload', 'certificate_number', 'lab_report', 'photo_evidence', 'checklist_confirmation', 'external_verification', 'factory_declaration')),
+  evidence_instructions text,
+  renewal_period_months integer,
+  documents_required jsonb not null default '[]'::jsonb,
+  evidence_examples jsonb not null default '[]'::jsonb,
+  source_notes text,
+  active boolean not null default true,
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create table if not exists public.certification_bodies (
+  id text primary key,
+  name text not null,
+  body_type text not null default 'certification_body'
+    check (body_type in ('certification_body', 'testing_lab', 'export_council', 'consultant', 'government_portal')),
+  description text,
+  accreditations jsonb not null default '[]'::jsonb,
+  locations jsonb not null default '[]'::jsonb,
+  contact jsonb not null default '{}'::jsonb,
+  website text,
+  is_verified boolean not null default false,
+  is_featured boolean not null default false,
+  featured_label text,
+  commercial_disclosure text,
+  response_sla_days integer,
+  pricing_notes text,
+  active boolean not null default true,
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create table if not exists public.certification_body_requirements (
+  body_id text not null references public.certification_bodies(id) on delete cascade,
+  requirement_id text not null references public.export_requirements(id) on delete cascade,
+  scope_notes text,
+  primary key (body_id, requirement_id)
+);
+
+create table if not exists public.certification_body_sectors (
+  body_id text not null references public.certification_bodies(id) on delete cascade,
+  sector text not null,
+  product_types text[] not null default '{}'::text[],
+  primary key (body_id, sector)
+);
+
+create table if not exists public.certification_body_markets (
+  body_id text not null references public.certification_bodies(id) on delete cascade,
+  destination_market text not null,
+  scope_notes text,
+  primary key (body_id, destination_market)
+);
+
+create table if not exists public.readiness_roadmaps (
+  id text primary key,
+  factory_id text not null references public.factories(id) on delete cascade,
+  profile_id text not null references public.export_readiness_profiles(id) on delete cascade,
+  status text not null default 'draft'
+    check (status in ('draft', 'generated', 'in_progress', 'complete', 'archived')),
+  generated_by text not null default 'manual'
+    check (generated_by in ('manual', 'claude', 'imported')),
+  model text,
+  summary text,
+  steps jsonb not null default '[]'::jsonb,
+  gap_list jsonb not null default '[]'::jsonb,
+  readiness_score integer not null default 0 check (readiness_score between 0 and 100),
+  generated_at bigint,
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create table if not exists public.readiness_evidence (
+  id text primary key,
+  factory_id text not null references public.factories(id) on delete cascade,
+  profile_id text not null references public.export_readiness_profiles(id) on delete cascade,
+  requirement_id text not null references public.export_requirements(id),
+  roadmap_id text references public.readiness_roadmaps(id) on delete set null,
+  evidence_type text not null
+    check (evidence_type in ('document_upload', 'certificate_number', 'lab_report', 'photo_evidence', 'checklist_confirmation', 'external_verification', 'factory_declaration')),
+  status text not null default 'missing'
+    check (status in ('missing', 'pending', 'uploaded', 'submitted', 'verified', 'rejected', 'expired', 'not_applicable')),
+  file_url text,
+  certificate_number text,
+  issuing_body_id text references public.certification_bodies(id) on delete set null,
+  issued_at bigint,
+  expires_at bigint,
+  notes text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create table if not exists public.readiness_documents (
+  id text primary key,
+  factory_id text not null references public.factories(id) on delete cascade,
+  profile_id text not null references public.export_readiness_profiles(id) on delete cascade,
+  requirement_id text references public.export_requirements(id),
+  evidence_id text references public.readiness_evidence(id) on delete set null,
+  document_name text not null,
+  document_type text not null default 'document',
+  status text not null default 'needed'
+    check (status in ('needed', 'uploaded', 'submitted', 'verified', 'rejected', 'expired', 'not_applicable')),
+  file_url text,
+  notes text,
+  created_by text references public.profiles(id),
+  created_at bigint not null default (extract(epoch from now()) * 1000)::bigint,
+  updated_at bigint not null default (extract(epoch from now()) * 1000)::bigint
+);
+
+create index if not exists export_readiness_profiles_factory_idx on public.export_readiness_profiles(factory_id);
+create index if not exists export_readiness_profiles_sector_product_idx on public.export_readiness_profiles(sector, product_type);
+create index if not exists export_requirements_lookup_idx on public.export_requirements(sector, product_type, destination_market, active, priority);
+create index if not exists export_requirements_type_idx on public.export_requirements(requirement_type, evidence_type);
+create index if not exists certification_bodies_active_featured_idx on public.certification_bodies(active, is_featured, is_verified);
+create index if not exists readiness_roadmaps_factory_profile_idx on public.readiness_roadmaps(factory_id, profile_id, status);
+create index if not exists readiness_evidence_factory_profile_idx on public.readiness_evidence(factory_id, profile_id, status);
+create index if not exists readiness_evidence_requirement_idx on public.readiness_evidence(requirement_id, status);
+create index if not exists readiness_documents_factory_profile_idx on public.readiness_documents(factory_id, profile_id, status);
+
+alter table public.export_readiness_profiles enable row level security;
+alter table public.export_requirements enable row level security;
+alter table public.certification_bodies enable row level security;
+alter table public.certification_body_requirements enable row level security;
+alter table public.certification_body_sectors enable row level security;
+alter table public.certification_body_markets enable row level security;
+alter table public.readiness_roadmaps enable row level security;
+alter table public.readiness_evidence enable row level security;
+alter table public.readiness_documents enable row level security;
+
+create policy "export readiness profiles own factory" on public.export_readiness_profiles
+  for all using (public.is_owner() or public.same_factory(factory_id))
+  with check (public.is_owner() or public.same_factory(factory_id));
+
+create policy "export requirements read active" on public.export_requirements
+  for select using (active or public.is_owner());
+
+create policy "export requirements owner writes" on public.export_requirements
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+create policy "certification bodies read active" on public.certification_bodies
+  for select using (active or public.is_owner());
+
+create policy "certification bodies owner writes" on public.certification_bodies
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+create policy "certification body requirements read active" on public.certification_body_requirements
+  for select using (
+    public.is_owner()
+    or exists (
+      select 1 from public.certification_bodies b
+      where b.id = certification_body_requirements.body_id and b.active
+    )
+  );
+
+create policy "certification body requirements owner writes" on public.certification_body_requirements
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+create policy "certification body sectors read active" on public.certification_body_sectors
+  for select using (
+    public.is_owner()
+    or exists (
+      select 1 from public.certification_bodies b
+      where b.id = certification_body_sectors.body_id and b.active
+    )
+  );
+
+create policy "certification body sectors owner writes" on public.certification_body_sectors
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+create policy "certification body markets read active" on public.certification_body_markets
+  for select using (
+    public.is_owner()
+    or exists (
+      select 1 from public.certification_bodies b
+      where b.id = certification_body_markets.body_id and b.active
+    )
+  );
+
+create policy "certification body markets owner writes" on public.certification_body_markets
+  for all using (public.is_owner())
+  with check (public.is_owner());
+
+create policy "readiness roadmaps own factory" on public.readiness_roadmaps
+  for all using (public.is_owner() or public.same_factory(factory_id))
+  with check (public.is_owner() or public.same_factory(factory_id));
+
+create policy "readiness evidence own factory" on public.readiness_evidence
+  for all using (public.is_owner() or public.same_factory(factory_id))
+  with check (public.is_owner() or public.same_factory(factory_id));
+
+create policy "readiness documents own factory" on public.readiness_documents
+  for all using (public.is_owner() or public.same_factory(factory_id))
+  with check (public.is_owner() or public.same_factory(factory_id));
+
+insert into public.export_requirements (
+  id, sector, product_type, destination_market, requirement_type, requirement_name,
+  description, is_mandatory, priority, estimated_cost_min_inr, estimated_cost_max_inr,
+  estimated_timeline_weeks_min, estimated_timeline_weeks_max, evidence_type,
+  evidence_instructions, renewal_period_months, documents_required, evidence_examples, source_notes
+) values
+  (
+    'stone_any_any_iec',
+    'stone', 'any', 'any', 'registration', 'Importer Exporter Code (IEC)',
+    'DGFT registration required for Indian businesses to import or export goods.',
+    true, 95, 500, 2000, 1, 2, 'certificate_number',
+    'Enter IEC number and upload the DGFT IEC certificate or acknowledgement.',
+    null,
+    '["IEC certificate","PAN/GST details","bank details used for IEC"]'::jsonb,
+    '["IEC number","DGFT certificate PDF"]'::jsonb,
+    'Exporter should verify latest DGFT process before application.'
+  ),
+  (
+    'stone_any_any_iso_9001',
+    'stone', 'any', 'any', 'certification', 'ISO 9001 Quality Management System',
+    'Quality management system certification commonly requested by international buyers and larger procurement teams.',
+    false, 80, 120000, 300000, 8, 16, 'certificate_number',
+    'Upload ISO 9001 certificate, certificate number, issuing body, issue date, and expiry date.',
+    36,
+    '["ISO 9001 certificate","audit report or scope statement","quality manual or process evidence"]'::jsonb,
+    '["valid certificate","scope covering stone processing/export operations"]'::jsonb,
+    'Scope, accreditation, and expiry must be checked with the issuing body.'
+  ),
+  (
+    'stone_granite_us_astm',
+    'stone', 'granite', 'US', 'testing', 'ASTM Dimensional Stone Test Evidence',
+    'US buyers often request ASTM-based material test evidence for dimensional stone performance and suitability.',
+    true, 85, 25000, 90000, 2, 6, 'lab_report',
+    'Upload relevant ASTM lab reports for the stone type and buyer specification.',
+    null,
+    '["ASTM lab test report","sample identification","test method references"]'::jsonb,
+    '["compressive strength report","absorption/density report","abrasion or flexural test where requested"]'::jsonb,
+    'Exact ASTM methods depend on buyer specification and product application.'
+  ),
+  (
+    'stone_marble_us_astm',
+    'stone', 'marble', 'US', 'testing', 'ASTM Dimensional Stone Test Evidence',
+    'US buyers often request ASTM-based material test evidence for marble performance and suitability.',
+    true, 85, 25000, 90000, 2, 6, 'lab_report',
+    'Upload relevant ASTM lab reports for marble and the buyer specification.',
+    null,
+    '["ASTM lab test report","sample identification","test method references"]'::jsonb,
+    '["absorption/density report","flexural strength report","abrasion report where requested"]'::jsonb,
+    'Exact ASTM methods depend on buyer specification and product application.'
+  ),
+  (
+    'stone_any_eu_en_ce_evidence',
+    'stone', 'any', 'EU', 'standard', 'EN / CE Evidence for Construction Stone',
+    'EU construction buyers may require EN standard evidence and CE-related documentation depending on product use and harmonised requirements.',
+    true, 90, 40000, 150000, 4, 10, 'lab_report',
+    'Upload EN test reports, declaration/performance documentation where applicable, and any buyer-specific compliance pack.',
+    null,
+    '["EN lab reports","Declaration of Performance if applicable","product technical data sheet"]'::jsonb,
+    '["EN test report","DoP or technical declaration","traceable sample reference"]'::jsonb,
+    'Applicability depends on product category, use case, and current EU rules; verify with an accredited advisor or notified body where needed.'
+  ),
+  (
+    'stone_any_eu_responsible_sourcing',
+    'stone', 'any', 'EU', 'compliance', 'Responsible Sourcing and Due Diligence Evidence',
+    'EU buyers increasingly ask for origin, social, environmental, and ethical sourcing evidence for stone supply chains.',
+    true, 75, 10000, 120000, 2, 12, 'external_verification',
+    'Upload quarry/source details, supplier declarations, social audit evidence, and traceability records.',
+    12,
+    '["supplier declaration","quarry/source record","social audit or due diligence evidence","traceability sheet"]'::jsonb,
+    '["source map","audit report","signed supplier declaration","batch traceability export"]'::jsonb,
+    'Specific due diligence expectations vary by buyer and jurisdiction.'
+  ),
+  (
+    'stone_any_any_silica_environment',
+    'stone', 'any', 'any', 'compliance', 'Silica Dust and Environmental Compliance',
+    'Factories should maintain worker safety, dust-control, water/waste, and environmental compliance evidence for buyer audits.',
+    true, 70, 10000, 200000, 2, 16, 'document_upload',
+    'Upload relevant safety/environment registrations, monitoring records, SOPs, PPE evidence, and corrective actions.',
+    12,
+    '["dust-control SOP","PPE records","environmental consent or local compliance evidence","water/waste records"]'::jsonb,
+    '["PPE checklist","dust extraction maintenance log","water recycling or waste record"]'::jsonb,
+    'Local legal requirements and buyer audit criteria should be verified for each factory.'
+  ),
+  (
+    'stone_any_any_origin_gsp',
+    'stone', 'any', 'any', 'documentation', 'Certificate of Origin / Preferential Origin Documents',
+    'Export shipments usually need origin documentation; some markets may require preferential origin or GSP-related documents where applicable.',
+    true, 65, 1000, 10000, 1, 3, 'document_upload',
+    'Upload sample Certificate of Origin, chamber/export council documentation, or shipment-specific origin documents.',
+    null,
+    '["Certificate of Origin","invoice","packing list","shipping bill references"]'::jsonb,
+    '["CoO PDF","shipment document pack"]'::jsonb,
+    'Exact document route depends on shipment, destination, and scheme eligibility.'
+  ),
+  (
+    'stone_any_any_packaging_labeling',
+    'stone', 'any', 'any', 'packaging', 'Export Packaging and Labelling Requirements',
+    'Stone exports need buyer-appropriate packing, labelling, handling marks, and wood-packaging compliance where relevant.',
+    true, 60, 5000, 60000, 1, 4, 'photo_evidence',
+    'Upload packaging photos, crate labels, packing list, and fumigation or ISPM-15 evidence where wooden packaging is used.',
+    null,
+    '["packing list","crate label photo","packaging photos","fumigation/ISPM-15 evidence if applicable"]'::jsonb,
+    '["label photo","crate photo","packing list","fumigation certificate"]'::jsonb,
+    'Destination and buyer packaging requirements should be checked before shipment.'
+  )
+on conflict (id) do update set
+  sector=excluded.sector,
+  product_type=excluded.product_type,
+  destination_market=excluded.destination_market,
+  requirement_type=excluded.requirement_type,
+  requirement_name=excluded.requirement_name,
+  description=excluded.description,
+  is_mandatory=excluded.is_mandatory,
+  priority=excluded.priority,
+  estimated_cost_min_inr=excluded.estimated_cost_min_inr,
+  estimated_cost_max_inr=excluded.estimated_cost_max_inr,
+  estimated_timeline_weeks_min=excluded.estimated_timeline_weeks_min,
+  estimated_timeline_weeks_max=excluded.estimated_timeline_weeks_max,
+  evidence_type=excluded.evidence_type,
+  evidence_instructions=excluded.evidence_instructions,
+  renewal_period_months=excluded.renewal_period_months,
+  documents_required=excluded.documents_required,
+  evidence_examples=excluded.evidence_examples,
+  source_notes=excluded.source_notes,
+  active=true,
+  updated_at=(extract(epoch from now()) * 1000)::bigint;
+
+insert into public.certification_bodies (
+  id, name, body_type, description, accreditations, locations, contact, website,
+  is_verified, is_featured, featured_label, commercial_disclosure, response_sla_days, pricing_notes
+) values
+  (
+    'body_dgft',
+    'DGFT',
+    'government_portal',
+    'Government portal for Importer Exporter Code and foreign trade services.',
+    '[]'::jsonb,
+    '[{"country":"India","mode":"online"}]'::jsonb,
+    '{"channel":"online portal"}'::jsonb,
+    'https://www.dgft.gov.in',
+    true, false, null, 'Government portal; not a paid placement.', null, 'Government fees and consultant charges vary.'
+  ),
+  (
+    'body_sgs',
+    'SGS',
+    'certification_body',
+    'Global testing, inspection, and certification organisation. Verify current local scope and accreditation before engagement.',
+    '[{"note":"Verify current accreditation and India scope before use."}]'::jsonb,
+    '[{"country":"India"},{"country":"Global"}]'::jsonb,
+    '{"channel":"website"}'::jsonb,
+    'https://www.sgs.com',
+    false, false, null, 'Neutral directory listing; not a paid placement.', null, 'Request current quotation and scope confirmation.'
+  ),
+  (
+    'body_bureau_veritas',
+    'Bureau Veritas',
+    'certification_body',
+    'Global testing, inspection, and certification organisation. Verify current local scope and accreditation before engagement.',
+    '[{"note":"Verify current accreditation and India scope before use."}]'::jsonb,
+    '[{"country":"India"},{"country":"Global"}]'::jsonb,
+    '{"channel":"website"}'::jsonb,
+    'https://www.bureauveritas.com',
+    false, false, null, 'Neutral directory listing; not a paid placement.', null, 'Request current quotation and scope confirmation.'
+  ),
+  (
+    'body_intertek',
+    'Intertek',
+    'certification_body',
+    'Global testing, inspection, and certification organisation. Verify current local scope and accreditation before engagement.',
+    '[{"note":"Verify current accreditation and India scope before use."}]'::jsonb,
+    '[{"country":"India"},{"country":"Global"}]'::jsonb,
+    '{"channel":"website"}'::jsonb,
+    'https://www.intertek.com',
+    false, false, null, 'Neutral directory listing; not a paid placement.', null, 'Request current quotation and scope confirmation.'
+  ),
+  (
+    'body_tuv_nord',
+    'TUV NORD',
+    'certification_body',
+    'Testing, inspection, and certification organisation. Verify current local scope and accreditation before engagement.',
+    '[{"note":"Verify current accreditation and India scope before use."}]'::jsonb,
+    '[{"country":"India"},{"country":"Global"}]'::jsonb,
+    '{"channel":"website"}'::jsonb,
+    'https://www.tuv-nord.com',
+    false, false, null, 'Neutral directory listing; not a paid placement.', null, 'Request current quotation and scope confirmation.'
+  ),
+  (
+    'body_cdos_jaipur',
+    'CDOS Jaipur',
+    'testing_lab',
+    'Stone-sector testing and development organisation in Jaipur. Verify current test scope and accreditation status before use.',
+    '[{"note":"Verify current test scope and accreditation status before use."}]'::jsonb,
+    '[{"city":"Jaipur","state":"Rajasthan","country":"India"}]'::jsonb,
+    '{"channel":"website / direct inquiry"}'::jsonb,
+    null,
+    false, false, null, 'Neutral directory listing; not a paid placement.', null, 'Request current test quotation and sample requirements.'
+  ),
+  (
+    'body_capexil',
+    'CAPEXIL',
+    'export_council',
+    'Export promotion council relevant to stone and mineral product exporters. Verify membership and documentation routes directly.',
+    '[]'::jsonb,
+    '[{"country":"India"}]'::jsonb,
+    '{"channel":"website / direct inquiry"}'::jsonb,
+    'https://capexil.org',
+    false, false, null, 'Neutral directory listing; not a paid placement.', null, 'Membership and document fees vary.'
+  )
+on conflict (id) do update set
+  name=excluded.name,
+  body_type=excluded.body_type,
+  description=excluded.description,
+  accreditations=excluded.accreditations,
+  locations=excluded.locations,
+  contact=excluded.contact,
+  website=excluded.website,
+  is_verified=excluded.is_verified,
+  is_featured=excluded.is_featured,
+  featured_label=excluded.featured_label,
+  commercial_disclosure=excluded.commercial_disclosure,
+  response_sla_days=excluded.response_sla_days,
+  pricing_notes=excluded.pricing_notes,
+  active=true,
+  updated_at=(extract(epoch from now()) * 1000)::bigint;
+
+insert into public.certification_body_sectors (body_id, sector, product_types) values
+  ('body_dgft', 'stone', '{"granite","marble","sandstone"}'::text[]),
+  ('body_sgs', 'stone', '{"granite","marble","sandstone"}'::text[]),
+  ('body_bureau_veritas', 'stone', '{"granite","marble","sandstone"}'::text[]),
+  ('body_intertek', 'stone', '{"granite","marble","sandstone"}'::text[]),
+  ('body_tuv_nord', 'stone', '{"granite","marble","sandstone"}'::text[]),
+  ('body_cdos_jaipur', 'stone', '{"granite","marble","sandstone"}'::text[]),
+  ('body_capexil', 'stone', '{"granite","marble","sandstone"}'::text[])
+on conflict (body_id, sector) do update set product_types=excluded.product_types;
+
+insert into public.certification_body_markets (body_id, destination_market, scope_notes) values
+  ('body_dgft', 'any', 'IEC and exporter registration route for Indian exporters.'),
+  ('body_sgs', 'EU', 'Potential testing/certification support; verify current scope.'),
+  ('body_sgs', 'US', 'Potential testing/certification support; verify current scope.'),
+  ('body_bureau_veritas', 'EU', 'Potential testing/certification support; verify current scope.'),
+  ('body_bureau_veritas', 'US', 'Potential testing/certification support; verify current scope.'),
+  ('body_intertek', 'EU', 'Potential testing/certification support; verify current scope.'),
+  ('body_intertek', 'US', 'Potential testing/certification support; verify current scope.'),
+  ('body_tuv_nord', 'EU', 'Potential testing/certification support; verify current scope.'),
+  ('body_cdos_jaipur', 'any', 'Stone testing support; verify current scope and accepted standards.'),
+  ('body_capexil', 'any', 'Export promotion, membership, and document guidance; verify route directly.')
+on conflict (body_id, destination_market) do update set scope_notes=excluded.scope_notes;
+
+insert into public.certification_body_requirements (body_id, requirement_id, scope_notes) values
+  ('body_dgft', 'stone_any_any_iec', 'Official IEC route.'),
+  ('body_sgs', 'stone_any_any_iso_9001', 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_bureau_veritas', 'stone_any_any_iso_9001', 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_intertek', 'stone_any_any_iso_9001', 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_tuv_nord', 'stone_any_any_iso_9001', 'Possible ISO 9001 certification support; verify accreditation and scope.'),
+  ('body_cdos_jaipur', 'stone_granite_us_astm', 'Potential stone lab testing route; confirm accepted methods.'),
+  ('body_cdos_jaipur', 'stone_marble_us_astm', 'Potential stone lab testing route; confirm accepted methods.'),
+  ('body_cdos_jaipur', 'stone_any_eu_en_ce_evidence', 'Potential stone lab testing route; confirm accepted methods.'),
+  ('body_sgs', 'stone_any_eu_en_ce_evidence', 'Potential EU evidence support; verify scope.'),
+  ('body_bureau_veritas', 'stone_any_eu_en_ce_evidence', 'Potential EU evidence support; verify scope.'),
+  ('body_intertek', 'stone_any_eu_en_ce_evidence', 'Potential EU evidence support; verify scope.'),
+  ('body_capexil', 'stone_any_any_origin_gsp', 'Potential origin/export documentation guidance; verify route.')
+on conflict (body_id, requirement_id) do update set scope_notes=excluded.scope_notes;
+
+comment on table public.export_readiness_profiles is
+  'Exporter readiness profile anchored to factories. Captures product, target markets, certifications, and onboarding status.';
+
+comment on table public.export_requirements is
+  'Market-aware, category-aware export readiness requirements. UI and AI roadmap generation should read from this table instead of hardcoding certification logic.';
+
+comment on column public.export_requirements.evidence_type is
+  'Defines how readiness is proven: document, certificate number, lab report, photo, checklist, external verification, or declaration.';
+
+comment on table public.certification_bodies is
+  'Directory of certification bodies, labs, councils, portals, and advisors. Paid placement must be separated using is_featured and commercial_disclosure.';
+
+comment on table public.readiness_evidence is
+  'Evidence attached to export requirements, including files, certificate numbers, issuing bodies, validity dates, and verification status.';
+
+comment on table public.readiness_roadmaps is
+  'Generated or manual export-readiness roadmap linked to an exporter profile.';
+
+```
