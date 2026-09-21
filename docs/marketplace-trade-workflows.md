@@ -1,29 +1,27 @@
 # Processed-food trade workflows
 
-This phase extends the organisation/portal foundation with working seller catalogue and evidence forms, buyer discovery/RFQs, seller quote responses, and Epistable review.
+## Catalogue and trust
 
-## Behaviour
+Sellers maintain company profiles, products and images with origin, MOQ, capacity, lead time, packaging, shelf life, storage, ingredients, allergens, claimed certifications and export markets. Product details are seller-provided. Verify the seller and certification/evidence separately; high-risk health/regulatory claims may require manual review before publication.
 
-- Sellers save named drafts or submit complete products with origin, minimum order/unit, packaging, shelf life and storage. Additional fields include ingredients, allergens, certifications claimed, dietary attributes, monthly capacity, lead time and export markets. Editing returns a verified product to draft/review and clears its old review reason.
-- Buyers search verified products and suppliers, filter categories, read product details, and create targeted or open RFQs. Requests include quantity/unit, destination, optional required date and requirements. Drafts can be resumed; submitted requests are immutable to ordinary buyer updates under existing RLS.
-- Sellers respond to open RFQs with a draft or sent quote, including three-letter currency, price, quantity, Incoterm, validity, lead time and named-place/payment notes. Decimal totals are calculated without binary floating-point rounding. Database constraints verify totals and ensure one non-draft quote per seller/RFQ. The organisation must be verified to send; sent terms remain immutable to the seller.
-- Evidence records link to existing HTTPS documents, with issuer, reference, issue/expiry dates, optional product association and marketplace visibility. Sellers can edit/resubmit evidence. This phase does not upload files or secure an external file host; the form states that source-file access belongs to its host. A private Storage upload flow remains a follow-up.
-- Admin reviews organisations, submitted products and documents, sees supporting evidence and records an approval/rejection reason. Product approval requires a verified seller and publishes the product. Expired or missing-source documents cannot be approved. Review decisions are appended with actor, time and record snapshot. Browser clients, including platform admins, cannot edit or delete history. History is restricted to platform admins and the owning organisation.
+Buyers discover active listings from verified sellers, save products and use Trade GPT-style catalogue matching. Do not imply catalogue matching is regulatory clearance or an underwriting decision.
 
-## Database and compatibility
+## RFQ to order
 
-Applied migration: 20260913163014_marketplace_trade_workflows.sql. This adds marketplace validation, review notes, an RLS-protected history table and guarded invoker review RPC. No legacy RLS policies, Auth functions, public slab/quote routes, or legacy components are modified. No real users, organisations, products, requests, quotes or evidence were seeded. Auth count remains 11; test fixtures roll back.
+Buyers create targeted/open RFQs with quantity/unit, destination, requirements and deadlines. Sellers provide currency, quantities, pricing, totals, Incoterms, validity and lead time. Quote comparison supports acceptance, change requests and rejection; revisions use controlled RPCs.
 
-All three SQL suites were rerun against the deployed migration: 39 access assertions, 16 organisation assertions and 24 workflow assertions passed. Fixture defaults are set only inside each test transaction to supply complete terms under the stricter schema. The latest security advisor result remains the previous baseline: one intentionally default-deny private table, 13 legacy definer functions, and the existing password-protection setting. No new advisor findings.
+Acceptance creates a real trade_orders record. The lifecycle is confirmed → production → inspection → ready_to_dispatch → dispatched → delivered → completed. The backend also supports cancellation under its transition rules. These states record workflow progress; they do not mean Epistable operates logistics.
 
-## Validation and release
+## Evidence
 
-19 component/domain tests pass, including role navigation at 375/1280px, form payloads, failed writes, precise totals and review reason requirements. Production build passes. Production npm audit reports zero vulnerabilities; legacy build-tool advisories remain outside this feature's scope. The Vite 5 CJS warning and React-plugin deprecation warnings under Vitest's newer Vite remain non-fatal.
+Private files upload to the trade-evidence bucket. Evidence records track issuer/reference, dates, review status, optional product linkage and visibility. Buyer download requires controlled/signed access to eligible verified evidence.
 
-The foundation's GitHub Actions test-and-build check passed on commit 971f77295fcc2a3ef806247467ac0acb3e052bb3. Cloudflare preview failed on that commit and its predecessor, while database-only PR previews succeeded. Cloudflare's log page was blocked by its security-verification screen, so the exact cause is not yet known. A Node 24 runtime file and npm CI check now make the required runtime explicit; this did not by itself resolve the Cloudflare failure. See the Cloudflare check's linked deployment log before making another deployment change.
+The September audit identifies a follow-up integrity risk in mutable Storage paths for verified documents. Private storage alone does not make verified file contents immutable.
 
-Real authenticated desktop/mobile visual tests, the release preview and legacy print checks remain required before merging. The browser cannot access this local development server, and no authenticated marketplace browser session is available; component tests are not a substitute for those gates.
+## Finance readiness
 
-## Next phase
+The backend records PO reference/value/date, payment terms, invoice reference/amount/dates/status, payment status/amount paid, milestones and append-only trade_order_events. Regulated partners will supply future payment/finance/insurance integrations. No current lending or money-movement capability is implied.
 
-Transaction acceptance and fulfilment, quote revisions, protected file uploads, destination-specific compliance rules and future financing remain planned. No quote acceptance, payment or finance execution is implied by these screens. Categories are data values and country fields are open; the launch taxonomy can expand without introducing factory/slab assumptions.
+## Verification
+
+Current source includes these workflows; production inspection confirms the trade RPCs, finance columns, private bucket and RLS-enabled core tables. Full end-to-end financial/order and authenticated UI journeys were not validated in this audit. See security-audit-2026-09-21.md for exact tests and outstanding release gates.
