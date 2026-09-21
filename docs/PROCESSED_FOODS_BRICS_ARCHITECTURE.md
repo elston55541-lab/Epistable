@@ -9,20 +9,20 @@ BRICS is the initial trade corridor, not the permanent boundary of the platform.
 ## Core marketplace
 
 ### Buyer organisations
-Buyer Admin, Procurement Manager, and Team Member accounts operate under a buyer organisation.
+Implemented roles are Buyer Admin and Buyer Member. Procurement Manager is a business persona, not a separate authorization role.
 
 Core capabilities:
 - Discover processed-food manufacturers and products
 - Search/filter by category, origin, certifications, MOQ, capacity and export market
-- View verified supplier, product and compliance evidence
+- View verified seller/company and certification evidence alongside seller-provided product facts
 - Compare suppliers
 - Submit RFQs
 - Receive and compare quotes
-- Progress accepted quotes toward orders
+- Create real trade orders from accepted quotes
 - Track transactions and supplier relationships
 
 ### Seller organisations
-Seller Admin, Sales/Export Manager, Compliance/QA Manager, and Team Member accounts operate under a seller organisation.
+Implemented roles are Seller Admin and Seller Member. Sales/Export and Compliance/QA are business personas, not separate authorization roles.
 
 Core capabilities:
 - Company/factory profile
@@ -35,7 +35,7 @@ Core capabilities:
 - Track buyer opportunities and orders
 
 ### Epistable platform
-Platform Owner, Admin, Verification/Compliance and Support roles govern the marketplace.
+The implemented platform role is Platform Admin. Verification/Compliance and Support describe responsibilities, not additional authorization roles.
 
 Core capabilities:
 - Approve and verify seller organisations
@@ -71,6 +71,9 @@ Product records should be able to capture:
 - Buyer-specific/private documents
 
 ## Trust layer
+
+Verify the seller/company, not every ordinary SKU before publication. Product facts are seller-provided; certification evidence has a separate review state. Do not introduce a broad Product Verified badge. High-risk health/regulatory claims may be held for manual review. The capabilities below include product direction, not a claim that every operational process is already implemented.
+
 
 Epistable should differentiate itself from a directory by making trust and transaction readiness first-class platform objects:
 - Organisation verification

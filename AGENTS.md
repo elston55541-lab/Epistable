@@ -4,7 +4,19 @@ Read this before every task. These rules apply to every PR unless the task brief
 
 ## Project
 
-Epistable is an industrial quality and buyer-audit-readiness platform for stone factories (expanding to other manufacturing sectors). React + Vite frontend, Supabase backend (Postgres + Auth + Storage + RLS), Anthropic Claude API for AI grading and chatbot. Production app with paying pilot factories — every change ships to real users.
+Epistable is verified cross-border food trade infrastructure. Launch vertical: processed foods; initial India → BRICS / emerging-markets orientation, with geography-agnostic architecture. React + Vite frontend and Supabase Postgres/Auth/Storage/RLS. The stone/factory workspace is legacy compatibility functionality, not the current marketplace direction. Read PRODUCT.md and the current task brief before using older phase documents as requirements.
+
+## Current product and security contract
+
+- Direction: Discovery → Verification → Transaction → Finance.
+- Roles: Platform Admin, Seller Admin/Member, Buyer Admin/Member. Marketplace authority comes exclusively from epistable_private.marketplace_access. Do not infer it from legacy profile roles, editable profile fields or JWT metadata.
+- Verify sellers/companies and certification evidence separately. Ordinary SKU facts are seller-provided. Do not add a broad Product Verified badge or imply physical inspection/testing. High-risk claims may require review.
+- Preserve Buyer mobile UI, bottom navigation, Trade GPT layout, login design and existing Seller/Admin structure unless explicitly asked to redesign.
+- Keep /legacy, /slab/*, /quote/* and /invite until explicitly retired.
+- RLS is the security boundary. Keep service-role credentials out of frontend code. Private evidence requires controlled access to eligible verified documents.
+- Finance readiness records transaction evidence. Future finance/payments/insurance use regulated partners. Epistable is not a lender, certification body or logistics operator.
+- Explicit user authorization to fix auth, RLS, migrations or documentation opens those areas for that task. The default restrictions below do not require asking again for work already authorized.
+- Implement in focused PRs; distinguish source changes, rolled-back database verification and permanently deployed production changes.
 
 ## Hard rules (non-negotiable)
 
@@ -100,7 +112,7 @@ For every PR, run and report:
 
 1. `npm run build` — succeeds with no new warnings.
 2. `npm run dev` — app launches, no console errors on initial load.
-3. **Visual identity check** — open the login page and one screen as each role (owner, factory admin, factory inspector, buyer). Confirm no unintended visual regressions vs. the pre-PR state. Screenshot if possible.
+3. **Visual identity check** — open login and the current Platform Admin, Seller and Buyer views on desktop/mobile. Preserve Buyer bottom navigation and Trade GPT layout. Check legacy owner/factory roles when the change touches them. Record unavailable authenticated checks as unverified; do not substitute component mocks for browser verification.
 4. **Public surfaces still work** — open `/slab/<known-id>` and `/quote/<known-id>` if relevant to the change. Print preview on the certificate still renders cleanly.
 5. **Legacy imports resolve** — `grep -r "C\." src/App.jsx | head -20` and `grep -r "T\." src/App.jsx | head -20` — no broken references.
 
@@ -117,7 +129,7 @@ Stop and ask the user (do not proceed) when:
 - The brief contradicts existing code conventions in this file.
 - You'd need to remove a legacy alias to clean things up.
 
-Default to asking. The user is the architect; you are the implementer. Surfacing a question is never the wrong call.
+Use the explicit task brief to resolve routine implementation choices and already-authorized changes. Ask only when a material scope or product decision remains unresolved.
 
 ## Commit and PR conventions
 
