@@ -88,7 +88,7 @@ insert into cases values('invoice insufficient role downgraded','downgraded','se
 insert into cases values('payment insufficient role seller_admin','seller_admin','select public.record_trade_order_payment(''guard_order'',''paid'',100,2,''{}'')','42501','Platform administrator access required',0,'select true');
 insert into cases values('payment insufficient role buyer_admin','buyer_admin','select public.record_trade_order_payment(''guard_order'',''paid'',100,2,''{}'')','42501','Platform administrator access required',0,'select true');
 insert into cases values('same status updates note without transition event','seller_member','select public.update_trade_order_status(''guard_order'',''confirmed'',''new note'')',null,null,0,'select status=''confirmed'' and status_note=''new note'' and updated_at>1 from public.trade_orders where id=''guard_order''');
-insert into cases values('closed order rejects removed user','removed','select public.update_trade_order_status(''guard_order'',''production'',''test note'')','42501','Marketplace context required',0,'select true');
+insert into cases values('context gate rejects removed user with completed order','removed','select public.update_trade_order_status(''guard_order'',''production'',''test note'')','42501','Marketplace context required',0,'select true');
 insert into cases values('legacy fulfillment rejects anon','anon','select public.update_quote_fulfillment(''guard_legacy'',''payment_received'')','42501','permission denied for function',0,'select true');
 insert into cases values('legacy fulfillment rejects unassigned','unassigned','select public.update_quote_fulfillment(''guard_legacy'',''payment_received'')','42501','Not allowed',0,'select true');
 insert into cases values('legacy fulfillment rejects pending','pending','select public.update_quote_fulfillment(''guard_legacy'',''payment_received'')','42501','Active authenticated profile required',0,'select true');
@@ -127,13 +127,33 @@ insert into cases values ('malformed missing_org po','seller_admin','select publ
 insert into cases values ('malformed missing_org invoice','seller_admin','select public.record_trade_order_invoice(''guard_order'',''INV-1'',100,1,2)','42501','Seller administrator or platform administrator access required',0,'select true');
 insert into cases values ('malformed missing_org payment','seller_admin','select public.record_trade_order_payment(''guard_order'',''paid'',100,2,''{}'')','42501','Platform administrator access required',0,'select true');
 
+-- Review follow-up: existing closed-order policy, value boundaries and role crossings.
+insert into cases values('closed completed rejects seller_admin','seller_admin','select public.update_trade_order_status(''guard_order'',''production'',''test note'')','23514','Closed orders cannot be changed',0,'select true');
+insert into cases values('closed completed rejects seller_member','seller_member','select public.update_trade_order_status(''guard_order'',''production'',''test note'')','23514','Closed orders cannot be changed',0,'select true');
+insert into cases values('closed completed permits platform','platform','select public.update_trade_order_status(''guard_order'',''production'',''test note'')',null,null,1,'select status=''production'' and status_note=''test note'' from public.trade_orders where id=''guard_order''');
+insert into cases values('closed cancelled rejects seller_admin','seller_admin','select public.update_trade_order_status(''guard_order'',''production'',''test note'')','23514','Closed orders cannot be changed',0,'select true');
+insert into cases values('closed cancelled rejects seller_member','seller_member','select public.update_trade_order_status(''guard_order'',''production'',''test note'')','23514','Closed orders cannot be changed',0,'select true');
+insert into cases values('closed cancelled permits platform','platform','select public.update_trade_order_status(''guard_order'',''production'',''test note'')',null,null,1,'select status=''production'' and status_note=''test note'' from public.trade_orders where id=''guard_order''');
+insert into cases values('status rejects oversized note','seller_member','select public.update_trade_order_status(''guard_order'',''production'',repeat(''x'',4001))','23514','Order note is too long',0,'select true');
+insert into cases values('status permits maximum note length','seller_member','select public.update_trade_order_status(''guard_order'',''production'',repeat(''x'',4000))',null,null,1,'select status=''production'' and status_note=repeat(''x'',4000) from public.trade_orders where id=''guard_order''');
+insert into cases values('po rejects value 0','buyer_admin','select public.record_trade_order_purchase_order(''guard_order'',''PO-1'',1,0,30,''Net 30'')','23514','Purchase order number and positive value are required',0,'select true');
+insert into cases values('invoice rejects amount 0','seller_admin','select public.record_trade_order_invoice(''guard_order'',''INV-1'',0,1,2)','23514','Invoice number and positive amount are required',0,'select true');
+insert into cases values('po rejects value -1','buyer_admin','select public.record_trade_order_purchase_order(''guard_order'',''PO-1'',1,-1,30,''Net 30'')','23514','Purchase order number and positive value are required',0,'select true');
+insert into cases values('invoice rejects amount -1','seller_admin','select public.record_trade_order_invoice(''guard_order'',''INV-1'',-1,1,2)','23514','Invoice number and positive amount are required',0,'select true');
+insert into cases values('payment rejects negative amount','platform','select public.record_trade_order_payment(''guard_order'',''pending'',-1,2,''{}'')','23514','Amount paid cannot be negative',0,'select true');
+insert into cases values('payment permits zero amount','platform','select public.record_trade_order_payment(''guard_order'',''pending'',0,2,''{}'')',null,null,1,'select payment_status=''pending'' and amount_paid=0 from public.trade_orders where id=''guard_order''');
+insert into cases values('po insufficient role seller_admin','seller_admin','select public.record_trade_order_purchase_order(''guard_order'',''PO-1'',1,100,30,''Net 30'')','42501','Buyer administrator or platform administrator access required',0,'select true');
+insert into cases values('invoice insufficient role buyer_admin','buyer_admin','select public.record_trade_order_invoice(''guard_order'',''INV-1'',100,1,2)','42501','Seller administrator or platform administrator access required',0,'select true');
+
 create function pg_temp.run_cases() returns table(label text,passed boolean,detail text) language plpgsql as $$
 declare c record; before_state jsonb; after_state jsonb; err text; msg text; before_events int; after_events int; verified boolean;
 begin
  for c in select * from cases loop
   label:=c.label; passed:=false; detail:=null;
   begin
-   if c.label='closed order rejects removed user' then update public.trade_orders set status='completed' where id='guard_order'; end if;
+   if c.label='context gate rejects removed user with completed order' then update public.trade_orders set status='completed' where id='guard_order'; end if;
+   if c.label like 'closed completed %' then update public.trade_orders set status='completed' where id='guard_order'; end if;
+   if c.label like 'closed cancelled %' then update public.trade_orders set status='cancelled' where id='guard_order'; end if;
    -- Synthetic malformed-context variants exercise predicate totality, not only
    -- today's NULL-returning helper. Replacement is undone by the case savepoint.
    if c.label like 'malformed %' then

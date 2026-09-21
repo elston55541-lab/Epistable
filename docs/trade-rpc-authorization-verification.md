@@ -62,3 +62,25 @@ The test runner uses role switching rather than real browser tokens. Each case s
 - Current discovered notification-helper caller is respond_to_quote only; no repository client, deployed Edge Function or cron.job caller was found. External service-key clients and dynamically constructed calls cannot be excluded.
 
 Advisor reference: https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+
+## Review follow-up: coverage additions
+
+The reviewed migration is unchanged. A follow-up test commit adds 16 cases:
+
+- Completed and cancelled orders each reject an active same-organisation seller admin and member with 23514 / Closed orders cannot be changed; platform admin may reopen each, with exactly one transition event.
+- A 4,001-character order note is rejected with 23514 / Order note is too long; a 4,000-character note is preserved and produces one event.
+- Zero and negative PO values and invoice amounts are rejected with their specific 23514 messages. Negative payment amount is rejected; zero payment amount succeeds with one event.
+- Seller admin cannot record a PO; buyer admin cannot record an invoice. Buyer admin rejection on order status was already covered.
+
+The earlier closed-order/removed-user case is renamed to explicitly describe the context gate; its assertions are unchanged. Each closed-state setup remains inside the per-case rollback block and occurs before the snapshot. All other original 85 case expectations remain unchanged.
+
+These order-note and finance-value validations already existed in the finance foundation migration; this security migration did not introduce them. All 16 added cases pass before and after the fix, as expected for preserved behaviour.
+
+| Expanded suite | Total | Passed | Failed |
+| --- | ---: | ---: | ---: |
+| Unchanged deployed definitions | 101 | 55 | 46 |
+| Same tests with candidate migration | 101 | 101 | 0 |
+
+The original 85-case results above remain the historical red-to-green record. All 85 were newly added tests, not 39 pre-existing plus 46 new tests. The same 46 failures remain in the expanded baseline, including the two SQLSTATE-only differences.
+
+Both follow-up SQL runs used explicit transactions ending in ROLLBACK. Post-run checks found zero fixture users/orders, the original anonymous helper grant and the original payment definition. No production deployment or merge occurred. The frontend build passed again with the existing warnings; this follow-up changes only tests and this report. No browser or concurrent-transaction verification was added.
