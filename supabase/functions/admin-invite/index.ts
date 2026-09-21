@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: callerProfile, error: callerProfileError } = await admin
     .from("profiles")
-    .select("id, role, status")
+    .select("id, role, status, factory_id")
     .eq("auth_user_id", caller.id)
     .maybeSingle();
 
@@ -52,6 +52,9 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Invalid request body" }, 400);
   }
 
+  if (!body || Object.values(body).some(value => value != null && typeof value !== "string")) {
+    return json({ error: "Invalid request body" }, 400);
+  }
   const email = body.email?.trim().toLowerCase();
   const name = body.name?.trim() || "Epistable User";
   const role = body.role?.trim() || "buyer";
@@ -60,6 +63,17 @@ Deno.serve(async (req: Request) => {
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) return json({ error: "Valid email is required" }, 400);
   if (!allowedRoles.includes(role)) return json({ error: "Invalid role" }, 400);
 
+  // Only legacy owners may create owners or invite across factories.
+  // This endpoint never writes marketplace_access.
+  const isOwner = callerProfile.role === "owner";
+  const factoryId = body.factory_id?.trim() || null;
+  if (!isOwner && (role === "owner" || !callerProfile.factory_id || factoryId !== callerProfile.factory_id)) {
+    return json({ error: "Forbidden invitation scope" }, 403);
+  }
+  if (["admin", "manager", "inspector"].includes(role) && !factoryId) {
+    return json({ error: "Factory is required for this role" }, 400);
+  }
+
   const { data: existingProfile, error: existingProfileError } = await admin
     .from("profiles")
     .select("*")
@@ -67,6 +81,9 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (existingProfileError) return json({ error: existingProfileError.message }, 500);
+  if (!isOwner && existingProfile && (existingProfile.role === "owner" || existingProfile.factory_id !== callerProfile.factory_id)) {
+    return json({ error: "Forbidden invitation scope" }, 403);
+  }
   if (existingProfile?.status === "suspended") return json({ error: "Account suspended" }, 403);
   if (existingProfile?.auth_user_id) return json({ error: "A login already exists for this email" }, 409);
 
@@ -80,7 +97,7 @@ Deno.serve(async (req: Request) => {
         name,
         email,
         role,
-        factory_id: body.factory_id ?? null,
+        factory_id: factoryId,
         factory_name: body.factory_name ?? null,
         status: "pending",
         created_at: Date.now(),
@@ -95,7 +112,7 @@ Deno.serve(async (req: Request) => {
       .update({
         name,
         role,
-        factory_id: body.factory_id ?? existingProfile.factory_id ?? null,
+        factory_id: factoryId,
         factory_name: body.factory_name ?? existingProfile.factory_name ?? null,
         status: "pending",
       })

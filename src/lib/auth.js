@@ -72,6 +72,11 @@ export async function acceptInviteWithPassword(email, password, mode = "signup")
   const normalizedEmail = email.trim().toLowerCase();
 
   if (mode === "signup") {
+    // getSession waits for Supabase to consume the invite URL session.
+    const session = await getSession();
+    if (!session?.access_token || session.user?.email?.toLowerCase() !== normalizedEmail) {
+      throw new Error("Open the invitation link sent to this email before setting a password.");
+    }
     const inviteResult = requireData(
       await withTimeout(
         supabase.functions.invoke("accept-invite", {

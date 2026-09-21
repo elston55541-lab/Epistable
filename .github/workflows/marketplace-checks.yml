@@ -18,5 +18,7 @@ jobs:
       # Match the npm version in the Cloudflare failure log, not only Node 24 bundled npm.
       - run: npm install --global npm@10.8.2
       - run: npm ci
+      - run: node --test tests/edge-invites.test.mjs
       - run: npm test
       - run: npm run build
+
