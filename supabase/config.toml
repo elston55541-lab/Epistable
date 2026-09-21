@@ -1,2 +1,5 @@
 [functions.accept-invite]
-verify_jwt = false
+verify_jwt = true
+
+[functions.admin-invite]
+verify_jwt = true
