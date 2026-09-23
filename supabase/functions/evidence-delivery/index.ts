@@ -34,32 +34,44 @@ Deno.serve(async (req) => {
   const { data: context, error: contextError } = await userClient.rpc("authorize_evidence_delivery", {
     target_document_id: body.document_id
   });
-  if (contextError || !context?.storage_path) return new Response("Evidence unavailable", { status: 403 });
-
-  const { data: blob, error: downloadError } = await serviceClient.storage
-    .from("trade-evidence")
-    .download(context.storage_path);
-  if (downloadError || !blob) return new Response("Evidence unavailable", { status: 404 });
-
-  const bytes = await blob.arrayBuffer();
-  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
-  if (!context.evidence_sha256 || digest !== context.evidence_sha256) {
-    return new Response("Evidence integrity check failed", { status: 409 });
+  if (contextError || !context?.storage_path) {
+    const rateLimited = contextError?.message?.includes("Too many");
+    return new Response(rateLimited ? "Too many evidence requests" : "Evidence unavailable", {
+      status: rateLimited ? 429 : 403
+    });
   }
 
-  const contentType = allowedTypes.has(context.mime_type) ? context.mime_type : "application/octet-stream";
-  const filename = safeName(context.file_name);
+  const leaseToken = context.lease_token;
+  try {
+    const { data: blob, error: downloadError } = await serviceClient.storage
+      .from("trade-evidence")
+      .download(context.storage_path);
+    if (downloadError || !blob) return new Response("Evidence unavailable", { status: 404 });
 
-  return new Response(bytes, {
-    status: 200,
-    headers: {
-      "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "X-Content-Type-Options": "nosniff",
-      "Cache-Control": "private, no-store",
-      "Pragma": "no-cache"
+    const bytes = await blob.arrayBuffer();
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+    if (!context.evidence_sha256 || digest !== context.evidence_sha256) {
+      return new Response("Evidence integrity check failed", { status: 409 });
     }
-  });
+
+    const contentType = allowedTypes.has(context.mime_type) ? context.mime_type : "application/octet-stream";
+    const filename = safeName(context.file_name);
+
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-store",
+        "Pragma": "no-cache"
+      }
+    });
+  } finally {
+    if (leaseToken) {
+      await userClient.rpc("complete_evidence_delivery", { target_lease: leaseToken });
+    }
+  }
 });
