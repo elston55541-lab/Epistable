@@ -90,7 +90,7 @@ function EvidenceAction({document,api}) {
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
   async function open(){
     setBusy(true);setError("");
-    try{const url=await api.evidenceUrl(document);window.open(url,"_blank","noopener,noreferrer");}
+    try{await api.downloadEvidence(document);}
     catch(e){setError(e.message||"Could not open evidence.");}
     finally{setBusy(false);}
   }
