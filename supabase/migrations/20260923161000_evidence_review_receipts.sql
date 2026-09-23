@@ -245,6 +245,10 @@ $$;
 revoke all on function public.prepare_marketplace_document_review(text) from public,anon;
 grant execute on function public.prepare_marketplace_document_review(text) to authenticated;
 
+-- Retire the earlier receipt-overload draft if a test/partial environment saw it.
+-- Production currently has only the four-argument signature, so this is a no-op there.
+drop function if exists public.review_marketplace_record(text,text,text,text,uuid);
+
 -- Preserve the existing generic RPC for organization/product review. Documents fail
 -- closed here so there is no receiptless compatibility path.
 create or replace function public.review_marketplace_record(target_kind text,target_id text,decision text,reason text)
