@@ -87,9 +87,11 @@ security invoker
 set search_path=''
 as $$
 begin
-  if old.storage_path is distinct from new.storage_path
-     or old.evidence_sha256 is distinct from new.evidence_sha256
-     or old.evidence_version is distinct from new.evidence_version then
+  if tg_op='UPDATE' and (
+       old.storage_path is distinct from new.storage_path
+       or old.evidence_sha256 is distinct from new.evidence_sha256
+       or old.evidence_version is distinct from new.evidence_version
+     ) then
     if old.verification_status='verified'
        or old.delivery_status in ('current','superseded','revoked') then
       raise exception 'Approved evidence bytes and version are immutable; create a replacement version'
@@ -120,7 +122,7 @@ revoke all on function epistable_private.guard_trade_document_integrity() from p
 
 drop trigger if exists trade_document_integrity_guard on public.trade_documents;
 create trigger trade_document_integrity_guard
-before update on public.trade_documents
+before insert or update on public.trade_documents
 for each row execute function epistable_private.guard_trade_document_integrity();
 
 -- Protected Storage: browser roles may upload fresh objects, but cannot read, sign,
