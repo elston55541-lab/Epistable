@@ -90,3 +90,34 @@ The `session_id` binding intentionally survives access-token refresh within the 
 `workflow_revision` is stored in `epistable_private.evidence_integrity_config` and copied into the receipt at issuance. Consumption compares the receipt to the current revision. A revision change invalidates outstanding receipts with the explicit error detail `EVIDENCE_REVIEW_WORKFLOW_REVISION_MISMATCH`.
 
 Receipt expiry is stored as `expires_at` at issuance. Later TTL configuration changes do not alter live receipts. The configured TTL is constrained to 60-3600 seconds.
+
+
+## Disposable hosted-platform validation
+
+The phase 1 and receipt migrations were applied to the disposable hosted Supabase project before production deployment.
+
+Receipt regression:
+- schema rejects `visibility='public'`;
+- schema rejects a null evidence digest;
+- receipt issuance requires a matching private byte binding;
+- wrong target, reviewer, session, version, digest, workflow revision and expiry fail closed with distinct error details;
+- identical committed retry is idempotent and leaves exactly one history row;
+- an incompatible retry is rejected;
+- deleting the underlying `auth.sessions` row invalidates further use of the receipt.
+
+Concurrent PostgREST race:
+- two simultaneous identical consumes both resolved successfully but produced exactly one receipt consumption and one `marketplace_reviews` row;
+- simultaneous conflicting decisions produced exactly one winning mutation and one `EVIDENCE_REVIEW_RECEIPT_ALREADY_CONSUMED` failure;
+- reversing request order reversed the winner, confirming the design does not privilege one decision value.
+
+Cleanup Storage state test, with privileged before/after existence verification:
+- unreferenced upload: deleted;
+- pending evidence: deleted;
+- rejected evidence: deleted;
+- verified/current evidence: retained;
+- expired-after-approval evidence: retained;
+- verified/superseded evidence: retained.
+
+For the retained states, the seller Storage SDK returned no error with an empty result while the privileged post-check proved the object still existed. This is another direct application of the Storage Mutation Verification Principle.
+
+RLS policy-set verification must also assert that no stale broad protected-evidence policy survives cutover. PostgreSQL permissive RLS policies are OR-combined; an old SELECT policy can silently widen a newly narrow policy. The migration therefore drops both the production policy names and known earlier-draft cleanup aliases before creating the operation-scoped policies.
