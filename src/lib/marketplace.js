@@ -46,12 +46,15 @@ export const marketplace = {
     return data(await supabase.rpc('prepare_marketplace_document_review',{target_id:targetId}));
   },
   async review(kind,targetId,decision,reason,reviewReceipt=null) {
-    const args={target_kind:kind,target_id:targetId,decision,reason};
     if(kind==='document'){
       if(!reviewReceipt)throw new Error('Preview this evidence again before recording a decision.');
-      args.review_receipt=reviewReceipt;
+      return data(await supabase.rpc('review_marketplace_document',{
+        target_id:targetId,decision,reason,review_receipt:reviewReceipt
+      }));
     }
-    return data(await supabase.rpc('review_marketplace_record',args));
+    return data(await supabase.rpc('review_marketplace_record',{
+      target_kind:kind,target_id:targetId,decision,reason
+    }));
   },
   async context() { return data(await supabase.rpc('marketplace_context')); },
   async accounts() { return data(await supabase.rpc('marketplace_accounts')); },
