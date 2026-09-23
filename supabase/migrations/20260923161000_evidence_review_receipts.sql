@@ -407,7 +407,7 @@ begin
         using errcode='23514', detail='EVIDENCE_REVIEW_RECEIPT_ALREADY_CONSUMED';
     else
       raise exception 'Review receipt could not be consumed'
-        using errcode='40001', detail='EVIDENCE_REVIEW_RECEIPT_CONSUME_RACE';
+        using errcode='P0001', detail='EVIDENCE_REVIEW_RECEIPT_CONSUME_RACE';
     end if;
   end if;
 
@@ -470,7 +470,7 @@ begin
 
   if changed<>1 then
     raise exception 'Document changed or is not ready for this review. Preview it again.'
-      using errcode='40001', detail='EVIDENCE_REVIEW_DOCUMENT_COMPARE_AND_SET_FAILED';
+      using errcode='P0001', detail='EVIDENCE_REVIEW_DOCUMENT_COMPARE_AND_SET_FAILED';
   end if;
 
   -- record_marketplace_review fires from the document update in this same transaction.
