@@ -8,6 +8,8 @@ Status: proposed implementation branch. Production ledger remains 7.5 until depl
 
 **Operation-specific Storage Principle.** Every new Storage operation for protected evidence requires its own permission scope and hosted-platform spike. Do not inherit broad SELECT from an existing role.
 
+**Deployed Policy-Set Verification Principle.** Authorization is tested against the complete deployed policy set, not the newly added policy in isolation. PostgreSQL permissive RLS policies are OR-combined, so any stale broader policy can silently defeat a narrow replacement.
+
 ## Cutover precondition
 
 The clean cutover is valid only while production has no protected marketplace evidence. Before deployment:
@@ -26,6 +28,8 @@ The clean cutover is valid only while production has no protected marketplace ev
 During steps 1-5, zero protected evidence uploads/deliveries is expected fail-closed service state, not an incident. Do not restore direct Storage read access as an operational workaround.
 
 The write freeze may require operator scheduling. That calendar dependency is separate from the 15-21 engineering-day estimate.
+
+The receipt migration is not independently deployable. The current admin Verification UI still calls document review without a receipt, and the current seller evidence cleanup path still calls browser-side Storage `remove()` without an independent privileged post-state check. Therefore the cutover release must include the secure preview/receipt UI and a server-side verified cleanup path (or remove those cleanup calls) before protected evidence writes are reopened. There must be no intermediate production window where the new database contract is live while those legacy callers remain active.
 
 ## Replacement and cleanup state machine
 
