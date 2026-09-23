@@ -13,8 +13,7 @@ function Source({record,api,onOpened}) {
   async function openEvidence(){
     setBusy(true);setError('');
     try{
-      const url=await api.evidenceUrl(record);
-      window.open(url,'_blank','noopener,noreferrer');
+      await api.downloadEvidence(record);
       await onOpened?.();
     }
     catch(e){setError(e.message||'Could not open evidence.');}
