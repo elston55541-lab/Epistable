@@ -42,8 +42,16 @@ export const TRADE_DOCUMENT_TYPES = [
 
 export const marketplace = {
   async reviews() { return data(await supabase.from('marketplace_reviews').select('*').order('created_at',{ascending:false}).limit(100)); },
-  async review(kind,targetId,decision,reason) {
-    return data(await supabase.rpc('review_marketplace_record',{target_kind:kind,target_id:targetId,decision,reason}));
+  async prepareDocumentReview(targetId) {
+    return data(await supabase.rpc('prepare_marketplace_document_review',{target_id:targetId}));
+  },
+  async review(kind,targetId,decision,reason,reviewReceipt=null) {
+    const args={target_kind:kind,target_id:targetId,decision,reason};
+    if(kind==='document'){
+      if(!reviewReceipt)throw new Error('Preview this evidence again before recording a decision.');
+      args.review_receipt=reviewReceipt;
+    }
+    return data(await supabase.rpc('review_marketplace_record',args));
   },
   async context() { return data(await supabase.rpc('marketplace_context')); },
   async accounts() { return data(await supabase.rpc('marketplace_accounts')); },
