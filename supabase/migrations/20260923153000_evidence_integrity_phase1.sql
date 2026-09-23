@@ -5,13 +5,35 @@
 -- trade_documents rows. If that precondition is no longer true, abort and classify
 -- existing rows rather than silently manufacturing byte bindings.
 
-do $$
+do $
+declare
+  document_rows bigint;
+  storage_path_rows bigint;
+  file_url_rows bigint;
+  bucket_objects bigint;
 begin
-  if exists(select 1 from public.trade_documents limit 1) then
-    raise exception 'Evidence clean-cutover precondition failed: trade_documents is not empty'
-      using errcode='23514', detail='EVIDENCE_CLEAN_CUTOVER_ROWS_PRESENT';
+  select count(*),
+         count(*) filter (where storage_path is not null),
+         count(*) filter (where file_url is not null)
+  into document_rows,storage_path_rows,file_url_rows
+  from public.trade_documents;
+
+  select count(*) into bucket_objects
+  from storage.objects
+  where bucket_id='trade-evidence';
+
+  if document_rows<>0
+     or storage_path_rows<>0
+     or file_url_rows<>0
+     or bucket_objects<>0 then
+    raise exception 'Evidence clean-cutover precondition failed'
+      using errcode='23514',
+            detail=format(
+              'EVIDENCE_CLEAN_CUTOVER_DIRTY documents=%s storage_paths=%s file_urls=%s bucket_objects=%s',
+              document_rows,storage_path_rows,file_url_rows,bucket_objects
+            );
   end if;
-end $$;
+end $;
 
 create table if not exists epistable_private.evidence_byte_bindings (
   id uuid primary key default gen_random_uuid(),
