@@ -68,6 +68,9 @@ create unique index if not exists trade_documents_binding_once
 -- Browser actors must not read/sign protected evidence directly after cutover.
 drop policy if exists trade_evidence_select on storage.objects;
 drop policy if exists trade_evidence_update on storage.objects;
+-- Retire prior cleanup-discovery policy names as well. RLS policies are OR-combined,
+-- so a stale permissive policy would silently widen the new operation-specific grant.
+drop policy if exists trade_evidence_delete_select on storage.objects;
 
 -- Ordinary seller upload remains INSERT-only. Cleanup deletion is not a replacement
 -- mechanism. It is limited to unreferenced objects or objects referenced exclusively
