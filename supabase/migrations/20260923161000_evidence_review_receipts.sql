@@ -172,7 +172,7 @@ begin
 
   select * into doc
   from public.trade_documents d
-  where d.id=p_target_id;
+  where d.id=target_id;
 
   if doc.id is null then
     raise exception 'Document not found'
@@ -268,7 +268,7 @@ begin
  end if;
 
  if target_kind='organization' then
-  update public.organizations set verification_status=p_decision,review_note=trim(reason) where id=p_target_id
+  update public.organizations set verification_status=decision,review_note=trim(reason) where id=target_id
    and verification_status in ('pending','unverified')
    and (decision='rejected' or nullif(trim(country),'') is not null);
   get diagnostics changed=row_count;
