@@ -56,7 +56,7 @@ it('admin review requires a reason and records the selected target',async()=>{
 it('document review requires preview and submits the bound receipt',async()=>{
   const open=vi.spyOn(window,'open').mockImplementation(()=>null);
   const api={
-    evidenceUrl:vi.fn().mockResolvedValue('blob:evidence'),
+    downloadEvidence:vi.fn().mockResolvedValue(undefined),
     prepareDocumentReview:vi.fn().mockResolvedValue({receipt_id:'receipt-1',document_version:3}),
     review:vi.fn().mockResolvedValue(undefined)
   },saved=vi.fn();
