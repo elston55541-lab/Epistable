@@ -199,10 +199,10 @@ begin
       using errcode='23514', detail='EVIDENCE_REVIEW_DOCUMENT_EXPIRED';
   end if;
 
-  select review_receipt_ttl_seconds,workflow_revision
+  select cfg.review_receipt_ttl_seconds,cfg.workflow_revision
   into ttl_seconds,current_revision
-  from epistable_private.evidence_integrity_config
-  where singleton=true;
+  from epistable_private.evidence_integrity_config cfg
+  where cfg.singleton=true;
 
   if ttl_seconds is null or current_revision is null then
     raise exception 'Evidence review configuration is unavailable'
