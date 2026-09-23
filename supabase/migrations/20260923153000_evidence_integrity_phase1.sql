@@ -31,7 +31,7 @@ alter table public.trade_documents
   add column if not exists content_sha256 text,
   add column if not exists evidence_binding_id uuid references epistable_private.evidence_byte_bindings(id),
   add column if not exists supersedes_document_id text references public.trade_documents(id),
-  add column if not exists superseded_at bigint,
+  add column if not exists superseded_at timestamptz,
   add column if not exists current_version boolean default true;
 
 -- Because the clean-cutover guard guarantees zero rows, there is no nullable legacy
