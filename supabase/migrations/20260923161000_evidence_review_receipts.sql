@@ -123,6 +123,10 @@ begin
 end $$;
 revoke all on function epistable_private.record_marketplace_review() from public,anon,authenticated;
 
+-- Retire prior prepare signatures before recreating the table-return contract.
+drop function if exists public.prepare_marketplace_document_review(text);
+drop function if exists epistable_private.prepare_marketplace_document_review_internal(text);
+
 -- Privileged receipt access stays in the non-exposed private schema. The helper is
 -- callable by authenticated users only through checks that independently establish
 -- platform-admin authority and a live Supabase Auth session.
