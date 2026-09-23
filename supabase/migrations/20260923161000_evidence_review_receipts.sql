@@ -172,7 +172,7 @@ begin
 
   select * into doc
   from public.trade_documents d
-  where d.id=target_id;
+  where d.id=p_target_id;
 
   if doc.id is null then
     raise exception 'Document not found'
@@ -268,7 +268,7 @@ begin
  end if;
 
  if target_kind='organization' then
-  update public.organizations set verification_status=decision,review_note=trim(reason) where id=target_id
+  update public.organizations set verification_status=p_decision,review_note=trim(reason) where id=p_target_id
    and verification_status in ('pending','unverified')
    and (decision='rejected' or nullif(trim(country),'') is not null);
   get diagnostics changed=row_count;
@@ -316,6 +316,9 @@ declare
   uid uuid := auth.uid();
   sid_text text := auth.jwt()->>'session_id';
   sid uuid;
+  p_target_id text := target_id;
+  p_decision text := decision;
+  p_review_receipt uuid := review_receipt;
   normalized_reason text := trim(reason);
   current_revision text;
   r epistable_private.marketplace_review_receipts%rowtype;
@@ -361,10 +364,10 @@ begin
   -- Atomic winner election. A competing transaction cannot also change consumed_at
   -- from NULL. Any later failure in this transaction rolls this consumption back.
   update epistable_private.marketplace_review_receipts
-  set consumed_at=now(),consumed_decision=decision,consumed_reason=normalized_reason
-  where id=review_receipt
+  set consumed_at=now(),consumed_decision=p_decision,consumed_reason=normalized_reason
+  where id=p_review_receipt
     and consumed_at is null
-    and target_document_id=target_id
+    and target_document_id=p_target_id
     and reviewer_id=uid
     and session_id=sid
     and purpose='document_review'
@@ -375,12 +378,12 @@ begin
   if r.id is null then
     select * into existing_receipt
     from epistable_private.marketplace_review_receipts
-    where id=review_receipt;
+    where id=p_review_receipt;
 
     if existing_receipt.id is null then
       raise exception 'Review receipt does not exist'
         using errcode='23514', detail='EVIDENCE_REVIEW_RECEIPT_NOT_FOUND';
-    elsif existing_receipt.target_document_id is distinct from target_id then
+    elsif existing_receipt.target_document_id is distinct from p_target_id then
       raise exception 'Review receipt belongs to a different document'
         using errcode='42501', detail='EVIDENCE_REVIEW_TARGET_MISMATCH';
     elsif existing_receipt.reviewer_id is distinct from uid then
@@ -399,14 +402,14 @@ begin
       raise exception 'Review receipt has expired'
         using errcode='23514', detail='EVIDENCE_REVIEW_RECEIPT_EXPIRED';
     elsif existing_receipt.consumed_at is not null then
-      if existing_receipt.consumed_decision=decision
+      if existing_receipt.consumed_decision=p_decision
          and existing_receipt.consumed_reason=normalized_reason
          and exists(
            select 1 from public.marketplace_reviews mr
            where mr.receipt_id=existing_receipt.id
              and mr.target_kind='document'
-             and mr.target_id=target_id
-             and mr.decision=decision
+             and mr.target_id=p_target_id
+             and mr.decision=p_decision
              and mr.reason=normalized_reason
          ) then
         return;
@@ -421,7 +424,7 @@ begin
 
   select * into doc
   from public.trade_documents d
-  where d.id=target_id
+  where d.id=p_target_id
   for update;
 
   if doc.id is null then
@@ -455,20 +458,20 @@ begin
     raise exception 'Evidence byte binding is no longer valid'
       using errcode='23514', detail='EVIDENCE_REVIEW_BYTE_BINDING_MISMATCH';
   end if;
-  if decision='verified' and doc.expires_at is not null
+  if p_decision='verified' and doc.expires_at is not null
      and doc.expires_at<=extract(epoch from now())*1000 then
     raise exception 'Expired evidence cannot be approved'
       using errcode='23514', detail='EVIDENCE_REVIEW_DOCUMENT_EXPIRED';
   end if;
 
   update public.trade_documents
-  set verification_status=decision,
+  set verification_status=p_decision,
       review_note=normalized_reason,
       review_receipt_id=r.id,
       reviewed_evidence_version=r.evidence_version,
       reviewed_content_sha256=r.content_sha256,
       review_workflow_revision=r.workflow_revision
-  where id=target_id
+  where id=p_target_id
     and verification_status='pending'
     and evidence_binding_id=r.evidence_binding_id
     and evidence_version=r.evidence_version
