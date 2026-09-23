@@ -22,7 +22,7 @@ create table if not exists epistable_private.marketplace_review_receipts (
   purpose text not null check (purpose='document_review'),
   workflow_revision text not null,
   evidence_binding_id uuid not null references epistable_private.evidence_byte_bindings(id),
-  evidence_version integer not null check (evidence_version>0),
+  evidence_version bigint not null check (evidence_version>0),
   content_sha256 text not null check (content_sha256 ~ '^[0-9a-f]{64}$'),
   storage_path text not null,
   issued_at timestamptz not null default now(),
@@ -47,7 +47,7 @@ create index if not exists marketplace_review_receipts_reviewer
 
 alter table public.trade_documents
   add column if not exists review_receipt_id uuid references epistable_private.marketplace_review_receipts(id),
-  add column if not exists reviewed_evidence_version integer,
+  add column if not exists reviewed_evidence_version bigint,
   add column if not exists reviewed_content_sha256 text,
   add column if not exists review_workflow_revision text;
 
@@ -67,7 +67,7 @@ alter table public.trade_documents
 alter table public.marketplace_reviews
   add column if not exists receipt_id uuid references epistable_private.marketplace_review_receipts(id),
   add column if not exists evidence_binding_id uuid references epistable_private.evidence_byte_bindings(id),
-  add column if not exists evidence_version integer,
+  add column if not exists evidence_version bigint,
   add column if not exists content_sha256 text,
   add column if not exists workflow_revision text;
 
@@ -114,7 +114,7 @@ begin
     new.id,new.verification_status,new.review_note,auth.uid(),to_jsonb(new),
     case when tg_table_name='trade_documents' then (to_jsonb(new)->>'review_receipt_id')::uuid else null end,
     case when tg_table_name='trade_documents' then (to_jsonb(new)->>'evidence_binding_id')::uuid else null end,
-    case when tg_table_name='trade_documents' then (to_jsonb(new)->>'reviewed_evidence_version')::integer else null end,
+    case when tg_table_name='trade_documents' then (to_jsonb(new)->>'reviewed_evidence_version')::bigint else null end,
     case when tg_table_name='trade_documents' then to_jsonb(new)->>'reviewed_content_sha256' else null end,
     case when tg_table_name='trade_documents' then to_jsonb(new)->>'review_workflow_revision' else null end
   );
@@ -131,7 +131,7 @@ returns table(
   receipt_id uuid,
   document_id text,
   evidence_binding_id uuid,
-  evidence_version integer,
+  evidence_version bigint,
   content_sha256 text,
   expires_at timestamptz,
   workflow_revision text
@@ -233,7 +233,7 @@ returns table(
   receipt_id uuid,
   document_id text,
   evidence_binding_id uuid,
-  evidence_version integer,
+  evidence_version bigint,
   content_sha256 text,
   expires_at timestamptz,
   workflow_revision text
