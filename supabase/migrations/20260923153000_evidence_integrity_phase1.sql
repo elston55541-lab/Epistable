@@ -5,7 +5,7 @@
 -- trade_documents rows. If that precondition is no longer true, abort and classify
 -- existing rows rather than silently manufacturing byte bindings.
 
-do $
+do $evidence_cutover$
 declare
   document_rows bigint;
   storage_path_rows bigint;
@@ -33,7 +33,7 @@ begin
               document_rows,storage_path_rows,file_url_rows,bucket_objects
             );
   end if;
-end $;
+end $evidence_cutover$;
 
 create table if not exists epistable_private.evidence_byte_bindings (
   id uuid primary key default gen_random_uuid(),
