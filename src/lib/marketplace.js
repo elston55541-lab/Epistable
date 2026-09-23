@@ -134,12 +134,22 @@ export const marketplace = {
     const result=await supabase.storage.from('trade-evidence').remove([path]);
     if(result.error)throw result.error;
   },
-  async evidenceUrl(document) {
+  async downloadEvidence(document) {
     if(!document?.id||!document?.storage_path)throw new Error('Evidence file is unavailable.');
     const result=await supabase.functions.invoke('evidence-delivery',{body:{document_id:document.id}});
     if(result.error)throw result.error;
     if(!(result.data instanceof Blob))throw new Error('Evidence service returned an invalid response.');
-    return URL.createObjectURL(result.data);
+    const url=URL.createObjectURL(result.data);
+    const link=window.document.createElement?.('a');
+    if(!link)throw new Error('Evidence download is unavailable in this browser.');
+    link.href=url;
+    link.download=document.file_name||'evidence';
+    link.rel='noopener noreferrer';
+    link.style.display='none';
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
   },
   async rfqs({buyerOrgId,sellerOrgId}={}) {
     let q=supabase.from('rfqs').select('*, products(*)').order('created_at',{ascending:false});
