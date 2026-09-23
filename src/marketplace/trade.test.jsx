@@ -42,11 +42,35 @@ it('seller sends exact commercial terms and handles a failed send',async()=>{
   await user.type(screen.getByLabelText('Unit price *'),'1.005');await user.type(screen.getByLabelText('Valid through *'),'2099-12-01');await user.click(screen.getByRole('button',{name:'Send quote'}));
   expect(await screen.findByRole('alert')).toHaveProperty('textContent','RFQ is no longer open');expect(save.mock.calls[0][0]).toMatchObject({total_amount:'100.50',rfq_id:'r1',status:'sent'});expect(screen.getByLabelText('Unit price *').value).toBe('1.005');
 });
-it('evidence rejects an insecure source without writing',async()=>{
-  const save=vi.fn();render(<DocumentForm products={[]} onSave={save} onCancel={()=>{}}/>);const user=userEvent.setup();await user.type(screen.getByLabelText('Document title *'),'Food safety certificate');await user.type(screen.getByLabelText('External evidence source (optional)'),'http://example.invalid/doc');await user.click(screen.getByRole('button',{name:'Submit evidence for verification'}));expect(await screen.findByRole('alert')).toHaveProperty('textContent','Use an HTTPS evidence source.');expect(save).not.toHaveBeenCalled();
+it('protected evidence is file-only and does not expose an external URL field',async()=>{
+  const save=vi.fn();render(<DocumentForm products={[]} onSave={save} onCancel={()=>{}}/>);const user=userEvent.setup();
+  expect(screen.queryByLabelText('External evidence source (optional)')).toBeNull();
+  await user.type(screen.getByLabelText('Document title *'),'Food safety certificate');
+  await user.click(screen.getByRole('button',{name:'Submit evidence for verification'}));
+  expect(await screen.findByRole('alert')).toHaveProperty('textContent','Upload a certificate or evidence file.');
+  expect(save).not.toHaveBeenCalled();
 });
 it('admin review requires a reason and records the selected target',async()=>{
-  const api={review:vi.fn()},saved=vi.fn();render(<Verification data={{organizations:[],documents:[],reviews:[],products:[{id:'p1',name:'Sauce',verification_status:'pending'}]}} api={api} onSaved={saved}/>);const user=userEvent.setup();await user.click(screen.getByRole('button',{name:'Review'}));await user.click(screen.getByRole('button',{name:'Save decision'}));expect(api.review).not.toHaveBeenCalled();await user.type(screen.getByLabelText('Review reason *'),'Checked specification');await user.click(screen.getByRole('button',{name:'Save decision'}));await waitFor(()=>expect(api.review).toHaveBeenCalledWith('product','p1','verified','Checked specification'));
+  const api={review:vi.fn()},saved=vi.fn();render(<Verification data={{organizations:[],documents:[],reviews:[],products:[{id:'p1',name:'Sauce',verification_status:'pending'}]}} api={api} onSaved={saved}/>);const user=userEvent.setup();await user.click(screen.getByRole('button',{name:'Review'}));await user.click(screen.getByRole('button',{name:'Save decision'}));expect(api.review).not.toHaveBeenCalled();await user.type(screen.getByLabelText('Review reason *'),'Checked specification');await user.click(screen.getByRole('button',{name:'Save decision'}));await waitFor(()=>expect(api.review).toHaveBeenCalledWith('product','p1','verified','Checked specification',null));
+});
+it('document review requires preview and submits the bound receipt',async()=>{
+  const open=vi.spyOn(window,'open').mockImplementation(()=>null);
+  const api={
+    downloadEvidence:vi.fn().mockResolvedValue(undefined),
+    prepareDocumentReview:vi.fn().mockResolvedValue({receipt_id:'receipt-1',document_version:3}),
+    review:vi.fn().mockResolvedValue(undefined)
+  },saved=vi.fn();
+  render(<Verification data={{organizations:[],products:[],reviews:[],documents:[{id:'d1',title:'COA',verification_status:'pending',storage_path:'seller/d1/file.pdf'}]}} api={api} onSaved={saved}/>);
+  const user=userEvent.setup();
+  await user.click(screen.getByRole('button',{name:'Review'}));
+  expect(screen.getByRole('button',{name:'Save decision'}).disabled).toBe(true);
+  await user.click(screen.getByRole('button',{name:'Open evidence file'}));
+  await waitFor(()=>expect(api.prepareDocumentReview).toHaveBeenCalledWith('d1'));
+  expect(screen.getByRole('button',{name:'Save decision'}).disabled).toBe(false);
+  await user.type(screen.getByLabelText('Review reason *'),'Reviewed exact bytes');
+  await user.click(screen.getByRole('button',{name:'Save decision'}));
+  await waitFor(()=>expect(api.review).toHaveBeenCalledWith('document','d1','verified','Reviewed exact bytes','receipt-1'));
+  open.mockRestore();
 });
 
 it('buyer discovery keeps the previous compact marketplace card layout',()=>{

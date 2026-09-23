@@ -24,10 +24,10 @@ insert into public.products(id,seller_org_id,name,category,status,verification_s
 ('phase0_pa','phase0_sa','Verified','Spices','active','verified'),
 ('phase0_draft','phase0_sa','Draft','Spices','draft','unverified'),
 ('phase0_pb','phase0_sb','Other seller','Spices','active','verified');
-insert into public.trade_documents(id,organization_id,product_id,document_type,title,visibility,verification_status,expires_at) values
-('phase0_doc','phase0_sa','phase0_pa','coa','Verified','buyers','verified',null),
-('phase0_private','phase0_sa','phase0_pa','coa','Private','private','verified',null),
-('phase0_expired','phase0_sa','phase0_pa','coa','Expired','buyers','verified',1);
+insert into public.trade_documents(id,organization_id,product_id,document_type,title,visibility,verification_status,expires_at,delivery_status) values
+('phase0_doc','phase0_sa','phase0_pa','coa','Verified','buyers','verified',null,'current'),
+('phase0_private','phase0_sa','phase0_pa','coa','Private','private','verified',null,'current'),
+('phase0_expired','phase0_sa','phase0_pa','coa','Expired','buyers','verified',1,'current');
 insert into public.rfqs(id,buyer_org_id,seller_org_id,product_id,status) values
 ('phase0_r','phase0_ba','phase0_sa','phase0_pa','open'),
 ('phase0_r2','phase0_bb','phase0_sb','phase0_pb','open'),

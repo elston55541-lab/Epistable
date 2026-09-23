@@ -42,8 +42,13 @@ export const TRADE_DOCUMENT_TYPES = [
 
 export const marketplace = {
   async reviews() { return data(await supabase.from('marketplace_reviews').select('*').order('created_at',{ascending:false}).limit(100)); },
-  async review(kind,targetId,decision,reason) {
-    return data(await supabase.rpc('review_marketplace_record',{target_kind:kind,target_id:targetId,decision,reason}));
+  async prepareDocumentReview(documentId) {
+    return data(await supabase.rpc('prepare_document_review',{target_document_id:documentId}));
+  },
+  async review(kind,targetId,decision,reason,reviewReceipt=null) {
+    return data(await supabase.rpc('review_marketplace_record',{
+      target_kind:kind,target_id:targetId,decision,reason,review_receipt:reviewReceipt
+    }));
   },
   async context() { return data(await supabase.rpc('marketplace_context')); },
   async accounts() { return data(await supabase.rpc('marketplace_accounts')); },
@@ -118,23 +123,33 @@ export const marketplace = {
     if(file.size>10*1024*1024)throw new Error('Evidence files must be 10 MB or smaller.');
     const ext=(file.name?.split('.').pop()||file.type.split('/')[1]||'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
     const path=`${organizationId}/${documentId}/${crypto.randomUUID()}.${ext||'bin'}`;
+    const bytes=await file.arrayBuffer();
+    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(x=>x.toString(16).padStart(2,'0')).join('');
     const result=await supabase.storage.from('trade-evidence').upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
     if(result.error)throw result.error;
-    return {storage_path:path,file_name:file.name||'Evidence file',mime_type:file.type,file_size:file.size};
+    return {storage_path:path,file_name:file.name||'Evidence file',mime_type:file.type,file_size:file.size,evidence_sha256:digest};
   },
   async removeTradeEvidence(path) {
     if(!path)return;
     const result=await supabase.storage.from('trade-evidence').remove([path]);
     if(result.error)throw result.error;
   },
-  async evidenceUrl(document,expiresIn=300) {
-    if(document?.storage_path){
-      const result=await supabase.storage.from('trade-evidence').createSignedUrl(document.storage_path,expiresIn);
-      if(result.error)throw result.error;
-      return result.data.signedUrl;
-    }
-    if(document?.file_url?.startsWith('https://'))return document.file_url;
-    throw new Error('Evidence file is unavailable.');
+  async downloadEvidence(document) {
+    if(!document?.id||!document?.storage_path)throw new Error('Evidence file is unavailable.');
+    const result=await supabase.functions.invoke('evidence-delivery',{body:{document_id:document.id}});
+    if(result.error)throw result.error;
+    if(!(result.data instanceof Blob))throw new Error('Evidence service returned an invalid response.');
+    const url=URL.createObjectURL(result.data);
+    const link=window.document.createElement?.('a');
+    if(!link)throw new Error('Evidence download is unavailable in this browser.');
+    link.href=url;
+    link.download=document.file_name||'evidence';
+    link.rel='noopener noreferrer';
+    link.style.display='none';
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
   },
   async rfqs({buyerOrgId,sellerOrgId}={}) {
     let q=supabase.from('rfqs').select('*, products(*)').order('created_at',{ascending:false});
