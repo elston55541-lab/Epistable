@@ -456,14 +456,16 @@ begin
     raise exception 'Authentication required' using errcode='42501';
   end if;
 
-  select d.*,
-         exists(
-           select 1 from public.organizations o
-           where o.id=d.organization_id and o.type='seller' and o.verification_status='verified'
-         )
-  into doc,seller_verified
+  select * into doc
   from public.trade_documents d
   where d.id=target_document_id;
+
+  if doc.id is not null then
+    select exists(
+      select 1 from public.organizations o
+      where o.id=doc.organization_id and o.type='seller' and o.verification_status='verified'
+    ) into seller_verified;
+  end if;
 
   if doc.id is null or doc.storage_path is null or doc.file_url is not null then
     raise exception 'Evidence is unavailable' using errcode='42501';
