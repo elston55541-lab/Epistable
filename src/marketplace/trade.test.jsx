@@ -63,10 +63,10 @@ it('document review requires preview and submits the bound receipt',async()=>{
   render(<Verification data={{organizations:[],products:[],reviews:[],documents:[{id:'d1',title:'COA',verification_status:'pending',storage_path:'seller/d1/file.pdf'}]}} api={api} onSaved={saved}/>);
   const user=userEvent.setup();
   await user.click(screen.getByRole('button',{name:'Review'}));
-  expect(screen.getByRole('button',{name:'Save decision'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Save decision'}).disabled).toBe(true);
   await user.click(screen.getByRole('button',{name:'Open evidence file'}));
   await waitFor(()=>expect(api.prepareDocumentReview).toHaveBeenCalledWith('d1'));
-  expect(screen.getByRole('button',{name:'Save decision'})).not.toBeDisabled();
+  expect(screen.getByRole('button',{name:'Save decision'}).disabled).toBe(false);
   await user.type(screen.getByLabelText('Review reason *'),'Reviewed exact bytes');
   await user.click(screen.getByRole('button',{name:'Save decision'}));
   await waitFor(()=>expect(api.review).toHaveBeenCalledWith('document','d1','verified','Reviewed exact bytes','receipt-1'));
