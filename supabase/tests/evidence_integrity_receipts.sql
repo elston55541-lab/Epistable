@@ -263,7 +263,8 @@ set local role authenticated;
 -- Expiry is evaluated from the stored expires_at, not current TTL config.
 reset role;
 update epistable_private.marketplace_review_receipts
-set expires_at=now()-interval '1 second'
+set issued_at=now()-interval '10 minutes',
+    expires_at=now()-interval '1 second'
 where id=(select receipt_id from captured_receipt);
 set local role authenticated;
 select pg_temp.assert_true(
@@ -278,7 +279,8 @@ select pg_temp.assert_true(
 );
 reset role;
 update epistable_private.marketplace_review_receipts
-set expires_at=now()+interval '5 minutes'
+set issued_at=now(),
+    expires_at=now()+interval '5 minutes'
 where id=(select receipt_id from captured_receipt);
 set local role authenticated;
 
