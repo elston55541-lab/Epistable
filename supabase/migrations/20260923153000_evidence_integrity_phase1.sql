@@ -83,12 +83,11 @@ using (
   bucket_id='trade-evidence'
   and (select epistable_private.context()->>'role') like 'seller_%'
   and (storage.foldername(name))[1]=(select epistable_private.context()->>'org')
-  and not exists (
-    select 1
+  and coalesce((
+    select bool_and(d.verification_status = any(array['pending','rejected']::text[]))
     from public.trade_documents d
     where d.storage_path=storage.objects.name
-      and d.verification_status not in ('pending','rejected')
-  )
+  ),true)
 );
 
 -- Hosted Storage delete_many needs SELECT to discover rows to delete. This SELECT is
@@ -101,12 +100,11 @@ using (
   and storage.allow_only_operation('storage.object.delete_many')
   and (select epistable_private.context()->>'role') like 'seller_%'
   and (storage.foldername(name))[1]=(select epistable_private.context()->>'org')
-  and not exists (
-    select 1
+  and coalesce((
+    select bool_and(d.verification_status = any(array['pending','rejected']::text[]))
     from public.trade_documents d
     where d.storage_path=storage.objects.name
-      and d.verification_status not in ('pending','rejected')
-  )
+  ),true)
 );
 
 comment on table epistable_private.evidence_byte_bindings is
