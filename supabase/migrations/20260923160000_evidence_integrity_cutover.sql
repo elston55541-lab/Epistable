@@ -192,10 +192,10 @@ using (
   )
 );
 
-create or replace function public.prepare_document_review(target_document_id text)
+create or replace function epistable_private.issue_document_review_receipt(target_document_id text)
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path=''
 as $$
 declare
@@ -204,6 +204,7 @@ declare
   receipt_id uuid;
   session_id text := auth.jwt()->>'session_id';
   ttl_seconds integer;
+  expires_at_value timestamptz;
 begin
   if auth.uid() is null or ctx->>'role' is distinct from 'platform_admin' then
     raise exception 'Platform administrator required' using errcode='42501';
@@ -227,13 +228,13 @@ begin
 
   select review_receipt_ttl_seconds into ttl_seconds
   from epistable_private.evidence_settings where singleton=true;
+  expires_at_value := now()+make_interval(secs=>ttl_seconds);
 
   insert into epistable_private.document_review_receipts(
     document_id,document_version,evidence_sha256,reviewer_id,session_id,expires_at
   )
   values(
-    doc.id,doc.evidence_version,doc.evidence_sha256,auth.uid(),session_id,
-    now()+make_interval(secs=>ttl_seconds)
+    doc.id,doc.evidence_version,doc.evidence_sha256,auth.uid(),session_id,expires_at_value
   )
   returning id into receipt_id;
 
@@ -242,12 +243,121 @@ begin
     'document_id',doc.id,
     'document_version',doc.evidence_version,
     'evidence_sha256',doc.evidence_sha256,
-    'expires_at',now()+make_interval(secs=>ttl_seconds)
+    'expires_at',expires_at_value
   );
 end
 $$;
+revoke all on function epistable_private.issue_document_review_receipt(text) from public,anon;
+grant execute on function epistable_private.issue_document_review_receipt(text) to authenticated;
+
+create or replace function public.prepare_document_review(target_document_id text)
+returns jsonb
+language sql
+security invoker
+set search_path=''
+as $$
+  select epistable_private.issue_document_review_receipt(target_document_id)
+$$;
 revoke all on function public.prepare_document_review(text) from public,anon;
 grant execute on function public.prepare_document_review(text) to authenticated;
+
+create or replace function epistable_private.claim_document_review_receipt(
+  target_receipt uuid,
+  target_document_id text,
+  target_decision text,
+  target_reason text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  receipt epistable_private.document_review_receipts%rowtype;
+  current_session text := auth.jwt()->>'session_id';
+begin
+  if auth.uid() is null
+     or (epistable_private.context()->>'role') is distinct from 'platform_admin'
+     or nullif(current_session,'') is null then
+    raise exception 'Platform administrator session required' using errcode='42501';
+  end if;
+
+  select * into receipt
+  from epistable_private.document_review_receipts
+  where id=target_receipt
+  for update;
+
+  if receipt.id is null
+     or receipt.document_id<>target_document_id
+     or receipt.reviewer_id<>auth.uid()
+     or receipt.session_id<>current_session then
+    raise exception 'Review receipt does not belong to this reviewer, session or document'
+      using errcode='42501';
+  end if;
+
+  if receipt.consumed_at is not null then
+    if receipt.decision=target_decision and receipt.reason=trim(target_reason) then
+      return jsonb_build_object(
+        'idempotent',true,
+        'document_version',receipt.document_version,
+        'evidence_sha256',receipt.evidence_sha256
+      );
+    end if;
+    raise exception 'Review receipt has already been consumed' using errcode='23514';
+  end if;
+
+  if receipt.expires_at<=now() then
+    raise exception 'Review receipt has expired; preview the evidence again'
+      using errcode='23514';
+  end if;
+
+  update epistable_private.document_review_receipts
+  set consumed_at=now(),decision=target_decision,reason=trim(target_reason)
+  where id=target_receipt and consumed_at is null;
+
+  if not found then
+    raise exception 'Review receipt was consumed concurrently' using errcode='23514';
+  end if;
+
+  return jsonb_build_object(
+    'idempotent',false,
+    'document_version',receipt.document_version,
+    'evidence_sha256',receipt.evidence_sha256
+  );
+end
+$$;
+revoke all on function epistable_private.claim_document_review_receipt(uuid,text,text,text) from public,anon;
+grant execute on function epistable_private.claim_document_review_receipt(uuid,text,text,text) to authenticated;
+
+create or replace function epistable_private.finalize_document_review_receipt(target_receipt uuid)
+returns void
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  review_id uuid;
+begin
+  if auth.uid() is null or (epistable_private.context()->>'role') is distinct from 'platform_admin' then
+    raise exception 'Platform administrator required' using errcode='42501';
+  end if;
+
+  select id into review_id
+  from public.marketplace_reviews
+  where review_receipt_id=target_receipt
+  order by created_at desc limit 1;
+
+  if review_id is null then
+    raise exception 'Receipt-bound review history was not recorded' using errcode='23514';
+  end if;
+
+  update epistable_private.document_review_receipts
+  set result_review_id=review_id
+  where id=target_receipt and reviewer_id=auth.uid();
+end
+$$;
+revoke all on function epistable_private.finalize_document_review_receipt(uuid) from public,anon;
+grant execute on function epistable_private.finalize_document_review_receipt(uuid) to authenticated;
 
 create or replace function epistable_private.record_marketplace_review()
 returns trigger
@@ -303,9 +413,8 @@ as $$
 declare
   changed integer;
   ctx jsonb := epistable_private.context();
-  receipt epistable_private.document_review_receipts%rowtype;
+  receipt_claim jsonb;
   doc public.trade_documents%rowtype;
-  review_id uuid;
   current_session text := auth.jwt()->>'session_id';
 begin
   if auth.uid() is null or ctx->>'role' is distinct from 'platform_admin' then
@@ -352,29 +461,12 @@ begin
         using errcode='23514';
     end if;
 
-    select * into receipt
-    from epistable_private.document_review_receipts
-    where id=review_receipt
-    for update;
+    receipt_claim := epistable_private.claim_document_review_receipt(
+      review_receipt,target_id,decision,reason
+    );
 
-    if receipt.id is null
-       or receipt.document_id<>target_id
-       or receipt.reviewer_id<>auth.uid()
-       or receipt.session_id<>current_session then
-      raise exception 'Review receipt does not belong to this reviewer, session or document'
-        using errcode='42501';
-    end if;
-
-    if receipt.consumed_at is not null then
-      if receipt.decision=decision and receipt.reason=trim(reason) then
-        return;
-      end if;
-      raise exception 'Review receipt has already been consumed' using errcode='23514';
-    end if;
-
-    if receipt.expires_at<=now() then
-      raise exception 'Review receipt has expired; preview the evidence again'
-        using errcode='23514';
+    if coalesce((receipt_claim->>'idempotent')::boolean,false) then
+      return;
     end if;
 
     select * into doc from public.trade_documents
@@ -382,8 +474,8 @@ begin
 
     if doc.id is null
        or doc.verification_status<>'pending'
-       or doc.evidence_version<>receipt.document_version
-       or doc.evidence_sha256 is distinct from receipt.evidence_sha256
+       or doc.evidence_version<>(receipt_claim->>'document_version')::bigint
+       or doc.evidence_sha256 is distinct from receipt_claim->>'evidence_sha256'
        or doc.storage_path is null
        or doc.file_url is not null
        or (doc.expires_at is not null and doc.expires_at<=extract(epoch from now())*1000) then
@@ -413,17 +505,7 @@ begin
     end if;
 
     if changed=1 then
-      select id into review_id
-      from public.marketplace_reviews
-      where review_receipt_id=review_receipt
-      order by created_at desc limit 1;
-
-      update epistable_private.document_review_receipts
-      set consumed_at=now(),decision=decision,reason=trim(reason),result_review_id=review_id
-      where id=review_receipt and consumed_at is null;
-      if not found then
-        raise exception 'Review receipt was consumed concurrently' using errcode='23514';
-      end if;
+      perform epistable_private.finalize_document_review_receipt(review_receipt);
       perform set_config('epistable.review_receipt_id','',true);
     end if;
 
