@@ -3,3 +3,7 @@ verify_jwt = true
 
 [functions.admin-invite]
 verify_jwt = true
+
+
+[functions.evidence-delivery]
+verify_jwt = true
