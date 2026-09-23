@@ -95,7 +95,7 @@ insert into public.trade_documents(
 ('evidence_other','evidence_seller','coa','Other Evidence','buyers','pending',
  'evidence_seller/doc/other.pdf',1,repeat('d',64),'00000000-0000-0000-0000-00000000e013');
 
-create temporary table captured_receipt(receipt_id uuid primary key);
+create temporary table captured_receipt(receipt_id uuid primary key, issued_expiry timestamptz not null);
 grant select,insert,delete on captured_receipt to authenticated;
 
 -- Reviewer 1, session 1.
@@ -116,13 +116,29 @@ select pg_temp.assert_true(
   'generic document review requires receipt'
 );
 
-insert into captured_receipt
-select receipt_id from public.prepare_marketplace_document_review('evidence_doc');
+insert into captured_receipt(receipt_id,issued_expiry)
+select receipt_id,expires_at from public.prepare_marketplace_document_review('evidence_doc');
 
 select pg_temp.assert_true(
   (select count(*)=1 from captured_receipt),
   'receipt issued'
 );
+
+-- Changing TTL config after issuance must not retroactively alter the live receipt.
+reset role;
+update epistable_private.evidence_integrity_config
+set review_receipt_ttl_seconds=60
+where singleton=true;
+select pg_temp.assert_true(
+  (select r.expires_at=c.issued_expiry and r.expires_at>now()
+   from epistable_private.marketplace_review_receipts r
+   join captured_receipt c on c.receipt_id=r.id),
+  'TTL config change does not alter issued receipt expires_at'
+);
+update epistable_private.evidence_integrity_config
+set review_receipt_ttl_seconds=300
+where singleton=true;
+set local role authenticated;
 
 -- Wrong target.
 select pg_temp.assert_true(
