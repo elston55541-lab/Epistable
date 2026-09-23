@@ -54,7 +54,13 @@ alter table public.marketplace_reviews
 create table if not exists epistable_private.evidence_settings (
   singleton boolean primary key default true check (singleton),
   review_receipt_ttl_seconds integer not null default 600
-    check (review_receipt_ttl_seconds between 30 and 3600)
+    check (review_receipt_ttl_seconds between 30 and 3600),
+  delivery_requests_per_minute integer not null default 30
+    check (delivery_requests_per_minute between 1 and 600),
+  delivery_max_concurrent integer not null default 4
+    check (delivery_max_concurrent between 1 and 50),
+  delivery_lease_seconds integer not null default 120
+    check (delivery_lease_seconds between 30 and 600)
 );
 insert into epistable_private.evidence_settings(singleton)
 values(true) on conflict(singleton) do nothing;
@@ -522,10 +528,32 @@ $$;
 revoke all on function public.review_marketplace_record(text,text,text,text,uuid) from public,anon;
 grant execute on function public.review_marketplace_record(text,text,text,text,uuid) to authenticated;
 
+create table if not exists epistable_private.evidence_delivery_windows (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  window_start timestamptz not null,
+  request_count integer not null check (request_count>0),
+  primary key(user_id,window_start)
+);
+alter table epistable_private.evidence_delivery_windows enable row level security;
+revoke all on epistable_private.evidence_delivery_windows from public,anon,authenticated;
+grant select,insert,update,delete on epistable_private.evidence_delivery_windows to service_role;
+
+create table if not exists epistable_private.evidence_delivery_leases (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  document_id text not null references public.trade_documents(id) on delete cascade,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+alter table epistable_private.evidence_delivery_leases enable row level security;
+revoke all on epistable_private.evidence_delivery_leases from public,anon,authenticated;
+grant select,insert,update,delete on epistable_private.evidence_delivery_leases to service_role;
+create index if not exists evidence_delivery_leases_user_expiry
+  on epistable_private.evidence_delivery_leases(user_id,expires_at);
+
 create or replace function public.authorize_evidence_delivery(target_document_id text)
 returns jsonb
 language plpgsql
-stable
 security definer
 set search_path=''
 as $$
@@ -533,6 +561,13 @@ declare
   ctx jsonb := epistable_private.context();
   doc public.trade_documents%rowtype;
   seller_verified boolean;
+  requests_limit integer;
+  concurrency_limit integer;
+  lease_seconds integer;
+  rate_count integer;
+  active_count integer;
+  lease_id uuid;
+  current_window timestamptz := date_trunc('minute',now());
 begin
   if auth.uid() is null or ctx is null then
     raise exception 'Authentication required' using errcode='42501';
@@ -569,6 +604,39 @@ begin
     raise exception 'Evidence is unavailable' using errcode='42501';
   end if;
 
+  select delivery_requests_per_minute,delivery_max_concurrent,delivery_lease_seconds
+  into requests_limit,concurrency_limit,lease_seconds
+  from epistable_private.evidence_settings where singleton=true;
+
+  delete from epistable_private.evidence_delivery_leases
+  where expires_at<=now();
+
+  select count(*) into active_count
+  from epistable_private.evidence_delivery_leases
+  where user_id=auth.uid() and expires_at>now();
+
+  if active_count>=concurrency_limit then
+    raise exception 'Too many concurrent evidence requests' using errcode='P0001';
+  end if;
+
+  insert into epistable_private.evidence_delivery_windows(user_id,window_start,request_count)
+  values(auth.uid(),current_window,1)
+  on conflict(user_id,window_start) do update
+    set request_count=epistable_private.evidence_delivery_windows.request_count+1
+    where epistable_private.evidence_delivery_windows.request_count<requests_limit
+  returning request_count into rate_count;
+
+  if rate_count is null then
+    raise exception 'Too many evidence requests' using errcode='P0001';
+  end if;
+
+  delete from epistable_private.evidence_delivery_windows
+  where window_start<now()-interval '1 day';
+
+  insert into epistable_private.evidence_delivery_leases(user_id,document_id,expires_at)
+  values(auth.uid(),doc.id,now()+make_interval(secs=>lease_seconds))
+  returning id into lease_id;
+
   return jsonb_build_object(
     'document_id',doc.id,
     'storage_path',doc.storage_path,
@@ -576,12 +644,31 @@ begin
     'mime_type',coalesce(doc.mime_type,'application/octet-stream'),
     'file_size',doc.file_size,
     'evidence_sha256',doc.evidence_sha256,
-    'evidence_version',doc.evidence_version
+    'evidence_version',doc.evidence_version,
+    'lease_token',lease_id
   );
 end
 $$;
 revoke all on function public.authorize_evidence_delivery(text) from public,anon;
 grant execute on function public.authorize_evidence_delivery(text) to authenticated;
+
+create or replace function public.complete_evidence_delivery(target_lease uuid)
+returns void
+language plpgsql
+security definer
+set search_path=''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required' using errcode='42501';
+  end if;
+
+  delete from epistable_private.evidence_delivery_leases
+  where id=target_lease and user_id=auth.uid();
+end
+$$;
+revoke all on function public.complete_evidence_delivery(uuid) from public,anon;
+grant execute on function public.complete_evidence_delivery(uuid) to authenticated;
 
 -- Buyers may see only current approved protected evidence. Sellers/admins retain row
 -- visibility for workflow/history, but bytes are delivered only through the proxy.
