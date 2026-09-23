@@ -27,7 +27,7 @@ revoke all on epistable_private.evidence_byte_bindings from public,anon,authenti
 grant select,insert on epistable_private.evidence_byte_bindings to service_role;
 
 alter table public.trade_documents
-  add column if not exists evidence_version integer default 1,
+  add column if not exists evidence_version bigint default 1,
   add column if not exists content_sha256 text,
   add column if not exists evidence_binding_id uuid references epistable_private.evidence_byte_bindings(id),
   add column if not exists supersedes_document_id text references public.trade_documents(id),
@@ -38,6 +38,7 @@ alter table public.trade_documents
 -- compatibility window. Re-running a partially applied migration while still frozen
 -- converges these columns to the required shape.
 alter table public.trade_documents
+  alter column evidence_version type bigint using evidence_version::bigint,
   alter column evidence_version set not null,
   alter column content_sha256 set not null,
   alter column evidence_binding_id set not null,
