@@ -21,4 +21,5 @@ jobs:
       - run: node --test tests/edge-invites.test.mjs
       - run: npm test
       - run: npm run build
+      - run: node scripts/check-evidence-boundary.mjs
 
