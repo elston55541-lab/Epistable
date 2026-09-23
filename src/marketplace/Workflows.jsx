@@ -7,24 +7,34 @@ const labels={description:'Product description',ingredients:'Ingredients / compo
 export function Details({record}) {
   return <dl className="mp-details">{Object.entries(labels).filter(([key])=>record[key]!=null&&record[key]!==''&&(!Array.isArray(record[key])||record[key].length)).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{Array.isArray(record[key])?record[key].join(', '):String(record[key])}</dd></div>)}{[['required_by','Required by'],['validity_ts','Valid through'],['issued_at','Issued'],['expires_at','Expires']].filter(([key])=>record[key]).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{new Date(record[key]).toLocaleDateString(undefined,{timeZone:'UTC'})}</dd></div>)}</dl>;
 }
-function Source({record,api}) {
+function Source({record,api,onOpened}) {
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
-  if(!record.storage_path&&!record.file_url?.startsWith('https://'))return null;
-  if(!record.storage_path)return <p><a href={record.file_url} target="_blank" rel="noopener noreferrer">Open evidence source</a></p>;
+  if(!record.storage_path)return null;
   async function openEvidence(){
     setBusy(true);setError('');
-    try{const url=await api.evidenceUrl(record);window.open(url,'_blank','noopener,noreferrer');}
+    try{
+      const url=await api.evidenceUrl(record);
+      window.open(url,'_blank','noopener,noreferrer');
+      await onOpened?.();
+    }
     catch(e){setError(e.message||'Could not open evidence.');}
     finally{setBusy(false);}
   }
   return <p><Button variant="secondary" onClick={openEvidence} disabled={busy}>{busy?'Opening…':'Open evidence file'}</Button>{error&&<small className="mp-error">{error}</small>}</p>;
 }
 export function Verification({data,api,onSaved}) {
-  const [selected,setSelected]=useState(null),[reason,setReason]=useState(''),[decision,setDecision]=useState('verified'),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+  const [selected,setSelected]=useState(null),[reason,setReason]=useState(''),[decision,setDecision]=useState('verified'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[reviewReceipt,setReviewReceipt]=useState(null);
   const queue=[...data.organizations.filter(o=>['pending','unverified'].includes(o.verification_status)).map(o=>({kind:'organization',record:o})),...data.products.filter(p=>p.verification_status==='pending').map(p=>({kind:'product',record:p})),...data.documents.filter(d=>d.verification_status==='pending').map(d=>({kind:'document',record:d}))];
-  async function submit(e){e.preventDefault();setBusy(true);setError('');try{await api.review(selected.kind,selected.record.id,decision,reason.trim());setSelected(null);await onSaved();}catch(e){setError(e.message||'Could not save review.');}finally{setBusy(false);}}
+  async function submit(e){
+    e.preventDefault();setBusy(true);setError('');
+    try{
+      if(selected.kind==='document'&&!reviewReceipt?.receipt_id)throw new Error('Open the evidence file before recording a document decision.');
+      await api.review(selected.kind,selected.record.id,decision,reason.trim(),selected.kind==='document'?reviewReceipt.receipt_id:null);
+      setSelected(null);setReviewReceipt(null);await onSaved();
+    }catch(e){setError(e.message||'Could not save review.');}finally{setBusy(false);}
+  }
   const supporting=selected?data.documents.filter(d=>selected.kind==='product'?d.product_id===selected.record.id:selected.kind==='organization'?d.organization_id===selected.record.id:false):[];
-  return <><Heading title="Epistable verification" description="Verify organisations and supporting evidence. Products enter this queue only when a higher-risk claim requires manual review."/>{selected?<><article className="mp-card"><p className="mp-eyebrow">{selected.kind}</p><h2>{selected.record.name||selected.record.title}</h2><Details record={selected.record}/><Source record={selected.record} api={api}/>{supporting.length>0&&<><h2>Supporting evidence</h2>{supporting.map(d=><div key={d.id}><strong>{d.title}</strong> <Status value={d.verification_status}/><Source record={d} api={api}/><Details record={d}/></div>)}</>}</article><form onSubmit={submit} className="mp-card mp-form"><fieldset disabled={busy}><legend>Record decision</legend><Field label="Decision" options={[{value:'verified',label:'Approve verification'},{value:'rejected',label:'Reject and request changes'}]} value={decision} onChange={e=>setDecision(e.target.value)}/><Field label="Review reason" multiline required maxLength={4000} value={reason} onChange={e=>setReason(e.target.value)} hint="Record what you checked and any required corrections. This decision is kept in review history."/>{error&&<Notice error>{error}</Notice>}<div className="mp-actions"><Button type="submit">{busy?'Saving…':'Save decision'}</Button><Button variant="secondary" onClick={()=>setSelected(null)}>Cancel</Button></div></fieldset></form></>:!queue.length?<Empty title="No reviews waiting" icon="verified">New organisation profiles, higher-risk product claims and submitted evidence will appear here.</Empty>:<div className="mp-grid">{queue.map(({kind,record})=><article className="mp-card" key={kind+record.id}><div className="mp-row"><span className="mp-eyebrow">{kind}</span><Status value={record.verification_status}/></div><h2>{record.name||record.title}</h2><p>{record.country||record.country_of_origin||record.issuer}</p><Button onClick={()=>{setSelected({kind,record});setReason('');setDecision('verified');setError('');}}>Review</Button></article>)}</div>}<h2>Review history</h2>{!data.reviews.length?<p>No decisions recorded yet.</p>:<div className="mp-list">{data.reviews.map(r=><article key={r.id} className="mp-card"><div className="mp-row"><strong>{r.snapshot?.name||r.snapshot?.title||r.target_id}</strong><Status value={r.decision}/></div><p>{r.reason||'Submitted or updated by the organisation.'}</p><small>{new Date(r.created_at).toLocaleString()} · {r.target_kind}</small></article>)}</div>}</>;
+  return <><Heading title="Epistable verification" description="Verify organisations and supporting evidence. Products enter this queue only when a higher-risk claim requires manual review."/>{selected?<><article className="mp-card"><p className="mp-eyebrow">{selected.kind}</p><h2>{selected.record.name||selected.record.title}</h2><Details record={selected.record}/><Source record={selected.record} api={api} onOpened={selected.kind==='document'?async()=>setReviewReceipt(await api.prepareDocumentReview(selected.record.id)):undefined}/>{selected.kind==='document'&&!reviewReceipt&&<Notice>Open the evidence file before recording the decision. A review receipt is issued only after a successful preview.</Notice>}{selected.kind==='document'&&reviewReceipt&&<Notice>Evidence preview bound to version {reviewReceipt.document_version}. Complete the decision before the review receipt expires.</Notice>}{supporting.length>0&&<><h2>Supporting evidence</h2>{supporting.map(d=><div key={d.id}><strong>{d.title}</strong> <Status value={d.verification_status}/><Source record={d} api={api}/><Details record={d}/></div>)}</>}</article><form onSubmit={submit} className="mp-card mp-form"><fieldset disabled={busy}><legend>Record decision</legend><Field label="Decision" options={[{value:'verified',label:'Approve verification'},{value:'rejected',label:'Reject and request changes'}]} value={decision} onChange={e=>setDecision(e.target.value)}/><Field label="Review reason" multiline required maxLength={4000} value={reason} onChange={e=>setReason(e.target.value)} hint="Record what you checked and any required corrections. This decision is kept in review history."/>{error&&<Notice error>{error}</Notice>}<div className="mp-actions"><Button type="submit" disabled={selected.kind==='document'&&!reviewReceipt}>{busy?'Saving…':'Save decision'}</Button><Button variant="secondary" onClick={()=>{setSelected(null);setReviewReceipt(null);}}>Cancel</Button></div></fieldset></form></>:!queue.length?<Empty title="No reviews waiting" icon="verified">New organisation profiles, higher-risk product claims and submitted evidence will appear here.</Empty>:<div className="mp-grid">{queue.map(({kind,record})=><article className="mp-card" key={kind+record.id}><div className="mp-row"><span className="mp-eyebrow">{kind}</span><Status value={record.verification_status}/></div><h2>{record.name||record.title}</h2><p>{record.country||record.country_of_origin||record.issuer}</p><Button onClick={()=>{setSelected({kind,record});setReason('');setDecision('verified');setError('');setReviewReceipt(null);}}>Review</Button></article>)}</div>}<h2>Review history</h2>{!data.reviews.length?<p>No decisions recorded yet.</p>:<div className="mp-list">{data.reviews.map(r=><article key={r.id} className="mp-card"><div className="mp-row"><strong>{r.snapshot?.name||r.snapshot?.title||r.target_id}</strong><Status value={r.decision}/></div><p>{r.reason||'Submitted or updated by the organisation.'}</p><small>{new Date(r.created_at).toLocaleString()} · {r.target_kind}</small></article>)}</div>}</>;
 }
 export function Workflows({page,mode,access,data,api,onSaved}) {
   const [selected,setSelected]=useState(null),[search,setSearch]=useState(''),[category,setCategory]=useState('');
@@ -53,14 +63,19 @@ export function Workflows({page,mode,access,data,api,onSaved}) {
   if(selected?.type==='order')return <><Heading title="Update trade order"/><OrderStatusForm order={selected.order} onCancel={()=>setSelected(null)} onSave={async values=>{await api.updateOrderStatus(selected.order.id,values.status,values.note);await saved();}}/></>;
   if(selected?.type==='document')return <><Heading title="Add certification or trade evidence"/><DocumentForm initial={selected.record} products={data.products} onCancel={()=>setSelected(null)} onSave={async values=>{
     const {__file,...documentValues}=values;
-    const documentId=selected.record?.id||'DOC_'+selected.id;
+    const replacingApproved=Boolean(selected.record&&__file&&selected.record.verification_status==='verified');
+    const documentId=replacingApproved?'DOC_'+selected.id:(selected.record?.id||'DOC_'+selected.id);
     let uploaded=null;
     try{
       if(__file)uploaded=await api.uploadTradeEvidence(access.org,documentId,__file);
-      const payload={...documentValues,...(uploaded||{})};
-      if(selected.record)await api.updateDocument(documentId,payload);
-      else await api.addDocument({...payload,id:documentId,organization_id:access.org});
-      if(uploaded&&selected.record?.storage_path&&selected.record.storage_path!==uploaded.storage_path)try{await api.removeTradeEvidence(selected.record.storage_path);}catch{}
+      const payload={...documentValues,file_url:null,...(uploaded||{})};
+      if(replacingApproved){
+        await api.addDocument({...payload,id:documentId,organization_id:access.org,supersedes_document_id:selected.record.id,verification_status:'pending',delivery_status:'candidate'});
+      }else if(selected.record){
+        await api.updateDocument(documentId,payload);
+      }else{
+        await api.addDocument({...payload,id:documentId,organization_id:access.org,verification_status:'pending',delivery_status:'candidate'});
+      }
       await saved();
     }catch(error){
       if(uploaded?.storage_path)try{await api.removeTradeEvidence(uploaded.storage_path);}catch{}
