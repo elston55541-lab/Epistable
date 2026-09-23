@@ -1,7 +1,17 @@
 -- Evidence integrity phase 1: immutable/versioned protected evidence foundation.
 -- Proposed only. Deploy under the controlled write-freeze runbook after P0 rehearsal.
--- Production currently has zero trade_documents rows, so version/digest invariants are
--- introduced without a nullable legacy window.
+--
+-- This is deliberately a clean-cutover migration. Production was measured at zero
+-- trade_documents rows. If that precondition is no longer true, abort and classify
+-- existing rows rather than silently manufacturing byte bindings.
+
+do $$
+begin
+  if exists(select 1 from public.trade_documents limit 1) then
+    raise exception 'Evidence clean-cutover precondition failed: trade_documents is not empty'
+      using errcode='23514', detail='EVIDENCE_CLEAN_CUTOVER_ROWS_PRESENT';
+  end if;
+end $$;
 
 create table if not exists epistable_private.evidence_byte_bindings (
   id uuid primary key default gen_random_uuid(),
@@ -17,12 +27,21 @@ revoke all on epistable_private.evidence_byte_bindings from public,anon,authenti
 grant select,insert on epistable_private.evidence_byte_bindings to service_role;
 
 alter table public.trade_documents
-  add column if not exists evidence_version integer not null default 1,
-  add column if not exists content_sha256 text not null,
-  add column if not exists evidence_binding_id uuid not null references epistable_private.evidence_byte_bindings(id),
+  add column if not exists evidence_version integer default 1,
+  add column if not exists content_sha256 text,
+  add column if not exists evidence_binding_id uuid references epistable_private.evidence_byte_bindings(id),
   add column if not exists supersedes_document_id text references public.trade_documents(id),
   add column if not exists superseded_at bigint,
-  add column if not exists current_version boolean not null default true;
+  add column if not exists current_version boolean default true;
+
+-- Because the clean-cutover guard guarantees zero rows, there is no nullable legacy
+-- compatibility window. Re-running a partially applied migration while still frozen
+-- converges these columns to the required shape.
+alter table public.trade_documents
+  alter column evidence_version set not null,
+  alter column content_sha256 set not null,
+  alter column evidence_binding_id set not null,
+  alter column current_version set not null;
 
 alter table public.trade_documents
   drop constraint if exists trade_documents_visibility_check;
@@ -49,10 +68,9 @@ create unique index if not exists trade_documents_binding_once
 drop policy if exists trade_evidence_select on storage.objects;
 drop policy if exists trade_evidence_update on storage.objects;
 
--- Ordinary seller upload remains INSERT-only. The existing INSERT policy is retained.
--- Cleanup deletion is intentionally narrow and is never the replacement mechanism for
--- approved/superseded evidence. It is limited to unreferenced uploads or evidence whose
--- only referencing document rows are explicitly pending/rejected.
+-- Ordinary seller upload remains INSERT-only. Cleanup deletion is not a replacement
+-- mechanism. It is limited to unreferenced objects or objects referenced exclusively
+-- by the explicit deletable states below. Future states do not inherit deletion.
 drop policy if exists trade_evidence_delete on storage.objects;
 drop policy if exists trade_evidence_delete_pending_cleanup on storage.objects;
 create policy trade_evidence_delete_pending_cleanup
@@ -69,8 +87,8 @@ using (
   )
 );
 
--- Hosted Storage delete_many needs SELECT to discover the rows to delete. Keep that
--- SELECT scoped to the delete operation so it cannot authorize reads or signed URLs.
+-- Hosted Storage delete_many needs SELECT to discover rows to delete. This SELECT is
+-- operation-scoped so it cannot authorize object reads or signed-URL creation.
 drop policy if exists trade_evidence_delete_discovery on storage.objects;
 create policy trade_evidence_delete_discovery
 on storage.objects for select to authenticated
@@ -88,8 +106,8 @@ using (
 );
 
 comment on table epistable_private.evidence_byte_bindings is
-  'Server-established binding between immutable Storage bytes and their SHA-256 digest. Browser roles have no access.';
+  'Server-established immutable Storage-byte binding. Browser roles have no table privileges.';
 comment on policy trade_evidence_delete_pending_cleanup on storage.objects is
-  'Seller cleanup only for unreferenced uploads or pending/rejected evidence. Never replacement deletion for approved/superseded evidence.';
+  'Seller cleanup only for unreferenced objects or objects referenced exclusively by pending/rejected documents. Verified, expired and superseded-approved evidence is retained.';
 comment on policy trade_evidence_delete_discovery on storage.objects is
   'Operation-specific SELECT for delete_many cleanup only. Never a protected evidence read grant.';
