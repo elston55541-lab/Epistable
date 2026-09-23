@@ -422,6 +422,7 @@ begin
       if not found then
         raise exception 'Review receipt was consumed concurrently' using errcode='23514';
       end if;
+      perform set_config('epistable.review_receipt_id','',true);
     end if;
 
   else
